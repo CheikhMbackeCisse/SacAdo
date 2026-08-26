@@ -1,0 +1,162 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+
+type Slide = {
+  title: string;
+  subtitle: string;
+  cta: string;
+  href: string;
+  // absent -> pas encore de vraie photo, on retombe sur un dégradé de marque.
+  image?: string;
+  // "dark" = photo à fond clair -> texte foncé + voile clair. Défaut "light"
+  // = photo chargée/sombre -> texte blanc + voile sombre (voir CLAUDE.md
+  // section 5 : jamais de texte clair sur fond clair sans voile).
+  theme?: "light" | "dark";
+};
+
+const SLIDES: Slide[] = [
+  {
+    title: "Tout ce qu'il vous faut pour la rentrée avec SacAdo",
+    subtitle: "Pour chaque niveau, de la maternelle à l'université",
+    cta: "Découvrir",
+    href: "/categories",
+    image: "/images/hero-marque.jpg",
+    theme: "dark",
+  },
+  {
+    title: "Sa classe, son kit prêt à commander, ebook offert",
+    subtitle: "Pour chaque kit complet acheté, 1 ebook offert",
+    cta: "Composer mon kit",
+    href: "/kits",
+    image: "/images/cat-kits.png",
+    theme: "dark",
+  },
+  {
+    title: "Vous commandez, on vous l'apporte",
+    subtitle: "Partout au Sénégal, paiement à la réception",
+    cta: "Commander",
+    href: "/categories",
+    image: "/images/hero-livraison.jpg",
+  },
+  {
+    title: "Un endroit rien qu'à lui pour apprendre",
+    subtitle: "Le bureau, la chaise, tout pour se concentrer",
+    cta: "Aménager son espace",
+    href: "/categorie/mobilier",
+    image: "/images/hero-coin-etude.jpg",
+  },
+  {
+    title: "Les outils du numérique à votre portée",
+    subtitle: "Pour apprendre, créer et grandir avec le temps",
+    cta: "Voir le matériel",
+    href: "/categorie/ordinateurs",
+    image: "/images/hero-informatique.jpg",
+    theme: "dark",
+  },
+];
+
+const AUTO_SLIDE_MS = 4500;
+// Un clone de la 1re slide est ajouté après la 5e : l'auto-rotation glisse
+// dessus normalement, puis on se replace sur la vraie 1re slide sans
+// animation une fois la transition finie -> boucle infinie sans saut visible.
+const LOOP_SLIDES = [...SLIDES, SLIDES[0]];
+const LAST_INDEX = LOOP_SLIDES.length - 1;
+// Délai après le dernier évènement "scroll" avant de considérer la position
+// stabilisée : lire scrollLeft PENDANT l'animation (au lieu d'attendre la fin)
+// donnait un index intermédiaire qui annulait la transition en cours -> c'est
+// ce qui bloquait l'auto-rotation.
+const SCROLL_SETTLE_MS = 120;
+
+export function HeroCarousel() {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [trackIndex, setTrackIndex] = useState(0);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTrackIndex((current) => Math.min(current + 1, LAST_INDEX));
+    }, AUTO_SLIDE_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollTo({ left: trackIndex * track.clientWidth, behavior: "smooth" });
+  }, [trackIndex]);
+
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
+
+  return (
+    <div className="px-4 pt-3">
+      <div
+        ref={trackRef}
+        onScroll={(event) => {
+          const track = event.currentTarget;
+          if (settleTimer.current) clearTimeout(settleTimer.current);
+          settleTimer.current = setTimeout(() => {
+            const settledIndex = Math.round(track.scrollLeft / track.clientWidth);
+            if (settledIndex === LAST_INDEX) {
+              // Le clone de la 1re slide est identique à la vraie : le saut
+              // instantané est invisible pour l'œil.
+              track.scrollTo({ left: 0, behavior: "auto" });
+              setTrackIndex(0);
+            } else {
+              setTrackIndex(settledIndex);
+            }
+          }, SCROLL_SETTLE_MS);
+        }}
+        className="flex snap-x snap-mandatory overflow-x-auto rounded-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {LOOP_SLIDES.map((slide, i) => {
+          const isDark = slide.theme === "dark";
+          return (
+            <div
+              key={i}
+              className="relative flex min-h-56 w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-ink sm:min-h-64"
+            >
+              {slide.image ? (
+                <Image
+                  src={slide.image}
+                  alt={slide.title}
+                  fill
+                  priority={i < SLIDES.length}
+                  sizes="100vw"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-brand to-ink" />
+              )}
+              {/* Voile : garantit un texte toujours lisible, quelle que soit la photo. */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-t ${
+                  isDark ? "from-surface/95 via-surface/55 to-transparent" : "from-ink/80 via-ink/25 to-transparent"
+                }`}
+              />
+
+              <div
+                className={`relative flex flex-col gap-2 px-6 py-6 ${isDark ? "text-ink" : "text-surface"}`}
+              >
+                <h2 className="font-heading text-base font-bold leading-tight sm:text-lg">
+                  {slide.title}
+                </h2>
+                <p className={`text-sm ${isDark ? "text-ink/70" : "text-surface/90"}`}>{slide.subtitle}</p>
+                <Link
+                  href={slide.href}
+                  className="mt-1 inline-flex w-fit items-center rounded-full bg-action px-4 py-2 text-sm font-semibold text-ink transition-transform active:scale-95"
+                >
+                  {slide.cta}
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

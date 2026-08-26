@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+/*
+ * Palette de marque SacAdo (voir CLAUDE.md section 4).
+ * Rôle unique par couleur : ne pas réutiliser une couleur hors de son rôle.
+ */
+:root {
+  --color-brand: #0b3d91; /* marque / primaire */
+  --color-surface: #fefdff; /* fond général, header, bottom nav */
+  --color-ink: #001314; /* texte */
+  --color-action: #e07b39; /* achat uniquement */
+  --color-success: #16a34a; /* statuts positifs uniquement */
+  --color-decorative: #64b6ac; /* touches décoratives rares */
+}
+
+@theme inline {
+  --color-brand: var(--color-brand);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-action: var(--color-action);
+  --color-success: var(--color-success);
+  --color-decorative: var(--color-decorative);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-heading);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in-up {
+    animation: fade-in-up 400ms ease-out both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

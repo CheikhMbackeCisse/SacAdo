@@ -1,0 +1,59 @@
+"use client";
+
+import { useCallback, useSyncExternalStore } from "react";
+
+const KEY = "sacado_identite";
+const EVENT = "sacado:identite";
+
+export type Identite = { nom: string; telephone: string };
+
+let cache: Identite | null | undefined;
+
+function read(): Identite | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    return raw ? (JSON.parse(raw) as Identite) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getSnapshot(): Identite | null {
+  if (cache === undefined) cache = read();
+  return cache;
+}
+
+function getServerSnapshot(): Identite | null {
+  return null;
+}
+
+function subscribe(callback: () => void) {
+  window.addEventListener(EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+// Pas de compte client en v1 : après une commande (ou une recherche manuelle
+// par numéro), on retient nom + téléphone sur l'appareil pour retrouver "Mes
+// commandes" et la boîte de réception sans redemander à chaque visite.
+export function useIdentite() {
+  const identite = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  const setIdentite = useCallback((next: Identite) => {
+    cache = next;
+    window.localStorage.setItem(KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(EVENT));
+  }, []);
+
+  const oublier = useCallback(() => {
+    cache = null;
+    window.localStorage.removeItem(KEY);
+    window.dispatchEvent(new CustomEvent(EVENT));
+  }, []);
+
+  return { identite, setIdentite, oublier };
+}
