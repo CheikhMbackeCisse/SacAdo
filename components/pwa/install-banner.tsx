@@ -2,47 +2,62 @@
 
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
+import { onInstallChange, promptInstall, useInstallState } from "@/lib/pwa/install-prompt";
 
-const SEEN_KEY = "sacado_install_banner_vu";
+// Après un rejet, on ne re-propose pas la bannière avant ce délai — sauf si
+// l'utilisateur désinstalle l'app entre-temps (voir plus bas).
+const DISMISS_KEY = "sacado_install_dismiss";
+const INSTALLED_KEY = "sacado_pwa_installed";
+const RE_ASK_MS = 3 * 24 * 60 * 60 * 1000;
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
-
-// "beforeinstallprompt" n'existe que sur Chrome/Edge/Android — pas de
-// bannière sur iOS Safari (l'événement n'y est jamais déclenché), conforme à
-// CLAUDE.md qui ne demande rien de plus pour la v1.
+// "beforeinstallprompt" n'existe que sur Chrome/Edge/Android — pas de bannière
+// sur iOS Safari (l'événement n'y est jamais déclenché). L'option reste
+// accessible dans Moi > Paramètres.
 export function InstallBanner() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [visible, setVisible] = useState(false);
+  const { canPrompt, installed } = useInstallState();
+  // Masquée par défaut ; révélée après évaluation de l'historique local.
+  const [masquee, setMasquee] = useState(true);
 
   useEffect(() => {
-    if (window.localStorage.getItem(SEEN_KEY)) return;
-
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-      setVisible(true);
+    const evaluer = () => {
+      try {
+        // App installée puis désinstallée -> on efface la suppression pour
+        // reproposer tout de suite.
+        if (window.localStorage.getItem(INSTALLED_KEY) && canPrompt) {
+          window.localStorage.removeItem(INSTALLED_KEY);
+          window.localStorage.removeItem(DISMISS_KEY);
+        }
+        if (installed) window.localStorage.setItem(INSTALLED_KEY, "1");
+        const rejetLe = Number(window.localStorage.getItem(DISMISS_KEY) || 0);
+        setMasquee(Date.now() - rejetLe < RE_ASK_MS);
+      } catch {
+        setMasquee(false);
+      }
     };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-  }, []);
+    // setTimeout : évite un setState synchrone dans le corps de l'effet.
+    const t = setTimeout(evaluer, 0);
+    const unsub = onInstallChange(evaluer);
+    return () => {
+      clearTimeout(t);
+      unsub();
+    };
+  }, [canPrompt, installed]);
 
   const fermer = () => {
-    setVisible(false);
-    window.localStorage.setItem(SEEN_KEY, "1");
+    try {
+      window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    } catch {
+      // masqué pour cette session de toute façon
+    }
+    setMasquee(true);
   };
 
   const installer = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    await promptInstall();
     fermer();
   };
 
-  if (!visible) return null;
+  if (installed || !canPrompt || masquee) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-16 z-40 px-4 pb-2 lg:bottom-0">

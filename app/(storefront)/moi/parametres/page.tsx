@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Moon, Smartphone, Sun } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { useTheme, type Theme } from "@/lib/local/theme";
+import { InstallCard } from "@/components/pwa/install-card";
 
 const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "clair", label: "Clair", icon: Sun },
@@ -20,6 +21,8 @@ export default function ParametresPage() {
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-4">
       <h1 className="font-heading text-xl font-bold text-ink">Paramètres</h1>
+
+      <InstallCard />
 
       <section className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated">
         <div className="flex items-center justify-between px-4 py-3">
