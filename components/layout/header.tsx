@@ -28,6 +28,15 @@ export function Header() {
     return categorieActive?.placeholders ?? DEFAULT_PLACEHOLDERS;
   }, [pathname]);
 
+  const placeholderActuel = placeholders[placeholderIndex % placeholders.length];
+
+  const lancerRecherche = (terme: string) => {
+    const nettoye = terme.trim();
+    if (!nettoye) return;
+    router.push(`/recherche?q=${encodeURIComponent(nettoye)}`);
+    setQuery("");
+  };
+
   useEffect(() => {
     const id = setInterval(() => {
       setPlaceholderIndex((index) => (index + 1) % placeholders.length);
@@ -60,11 +69,10 @@ export function Header() {
           role="search"
           onSubmit={(event) => {
             event.preventDefault();
-            const trimmed = query.trim();
-            // Rien de tapé (seul le placeholder est visible) -> pas de
-            // recherche déclenchée par la touche/icône "rechercher" du clavier.
-            if (!trimmed) return;
-            router.push(`/recherche?q=${encodeURIComponent(trimmed)}`);
+            // Clavier (touche "rechercher") : uniquement si l'utilisateur a
+            // tapé quelque chose. Le clic sur l'icône, lui, retombe sur le
+            // placeholder (voir le bouton ci-dessous).
+            lancerRecherche(query);
           }}
         >
           <div className="relative">
@@ -72,15 +80,20 @@ export function Header() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={placeholders[placeholderIndex % placeholders.length]}
+              placeholder={placeholderActuel}
               aria-label="Rechercher un produit"
-              className="w-full rounded-lg border border-ink/10 bg-elevated py-2 pl-4 pr-9 text-base text-ink placeholder:text-ink/40 transition-colors duration-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 sm:text-sm"
+              className="w-full rounded-lg border border-ink/10 bg-elevated py-2 pl-4 pr-11 text-base text-ink placeholder:text-ink/40 transition-colors duration-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 sm:text-sm"
             />
-            <Search
-              size={16}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink/40"
-              aria-hidden="true"
-            />
+            <button
+              type="button"
+              // Icône cliquée sans rien taper -> on recherche l'article affiché
+              // dans le placeholder.
+              onClick={() => lancerRecherche(query || placeholderActuel)}
+              aria-label={query.trim() ? "Rechercher" : `Rechercher : ${placeholderActuel}`}
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-2.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-90"
+            >
+              <Search size={16} aria-hidden="true" />
+            </button>
           </div>
         </form>
 
