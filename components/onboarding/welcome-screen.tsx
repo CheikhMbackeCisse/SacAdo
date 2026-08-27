@@ -235,7 +235,7 @@ export function WelcomeScreen() {
 
           <p className="flex items-center justify-center gap-1.5 text-xs text-[#001314]/50">
             <ShieldCheck size={13} aria-hidden="true" />
-            Sans mot de passe — vos infos restent sur cet appareil.
+            Vos informations restent privées et sécurisées.
           </p>
 
           <button
