@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Inbox } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { getMessagesParTelephone, marquerMessageLu } from "@/lib/moi/actions";
-import { PhoneLookupForm } from "@/components/moi/phone-lookup-form";
+import { IdentitePrompt } from "@/components/moi/identite-prompt";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Message } from "@/lib/supabase/types";
 
@@ -43,7 +43,7 @@ export default function MessagesPage() {
       <h1 className="font-heading text-xl font-bold text-ink">Boîte de réception</h1>
 
       {!identite ? (
-        <PhoneLookupForm />
+        <IdentitePrompt contexte="vos messages" />
       ) : loading ? (
         <p className="text-sm text-ink/50">Chargement…</p>
       ) : messages.length === 0 ? (

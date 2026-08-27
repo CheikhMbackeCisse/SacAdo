@@ -25,24 +25,24 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-brand: #6aa0e6;
-    --color-surface: #02296c;
-    --color-elevated: #123f86;
+    --color-brand: #7ba3e8;
+    --color-surface: #0e0843;
+    --color-elevated: #1c1656;
     --color-ink: #eef2f8;
     --color-action: #e88a4f;
     --color-success: #34d17a;
-    --color-on-brand: #02296c;
+    --color-on-brand: #0e0843;
   }
 }
 
 [data-theme="dark"] {
-  --color-brand: #6aa0e6;
-  --color-surface: #02296c;
-  --color-elevated: #123f86;
+  --color-brand: #7ba3e8;
+  --color-surface: #0e0843;
+  --color-elevated: #1c1656;
   --color-ink: #eef2f8;
   --color-action: #e88a4f;
   --color-success: #34d17a;
-  --color-on-brand: #02296c;
+  --color-on-brand: #0e0843;
 }
 
 @theme inline {

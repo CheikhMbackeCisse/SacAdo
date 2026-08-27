@@ -6,7 +6,7 @@ import { ClipboardList } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { getCommandesParTelephone } from "@/lib/moi/actions";
 import { formatPrice } from "@/lib/format";
-import { PhoneLookupForm } from "@/components/moi/phone-lookup-form";
+import { IdentitePrompt } from "@/components/moi/identite-prompt";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Commande, StatutCommande } from "@/lib/supabase/types";
 
@@ -42,7 +42,7 @@ export default function MesCommandesPage() {
       <h1 className="font-heading text-xl font-bold text-ink">Mes commandes</h1>
 
       {!identite ? (
-        <PhoneLookupForm />
+        <IdentitePrompt contexte="vos commandes" />
       ) : loading ? (
         <p className="text-sm text-ink/50">Chargement…</p>
       ) : commandes.length === 0 ? (
