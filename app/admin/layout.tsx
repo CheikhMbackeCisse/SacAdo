@@ -19,7 +19,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   } = await supabase.auth.getUser();
 
   return (
-    <html lang="fr" className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}>
+    <html
+      lang="fr"
+      data-theme="light"
+      className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}
+    >
       <body className="min-h-full bg-ink/[0.03] text-ink">
         {user ? (
           <div className="flex min-h-screen w-full">

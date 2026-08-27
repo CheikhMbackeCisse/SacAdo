@@ -12,7 +12,7 @@ export function FreeShippingProgress({ sousTotal }: { sousTotal: number }) {
   const pourcentage = Math.min((sousTotal / SEUIL_GRATUITE) * 100, 100);
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-white p-3">
+    <div className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-elevated p-3">
       <p className={`text-xs font-medium ${atteint ? "text-success" : "text-ink/70"}`}>
         {atteint
           ? "Livraison gratuite débloquée !"

@@ -99,7 +99,7 @@ export function ProductDetail({ produit, variantes }: ProductDetailProps) {
                       disabled
                         ? "cursor-not-allowed border-ink/10 text-ink/25 line-through"
                         : active
-                          ? "border-brand bg-brand text-surface"
+                          ? "border-brand bg-brand text-on-brand"
                           : "border-ink/15 text-ink/70"
                     }`}
                   >
@@ -143,7 +143,7 @@ export function ProductDetail({ produit, variantes }: ProductDetailProps) {
           type="button"
           disabled={!peutAjouter}
           onClick={handleAjouter}
-          className="mt-1 flex h-12 items-center justify-center rounded-full bg-action text-sm font-semibold text-ink transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+          className="mt-1 flex h-12 items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
           {produitEpuise || varianteEpuisee
             ? "Épuisé"

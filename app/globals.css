@@ -3,23 +3,58 @@
 /*
  * Palette de marque SacAdo (voir CLAUDE.md section 4).
  * Rôle unique par couleur : ne pas réutiliser une couleur hors de son rôle.
+ *
+ * Mode sombre (storefront uniquement) : le fond dominant devient le bleu nuit
+ * du logo (#02296C), pas du noir. On ne fait pas une simple inversion : les
+ * variables sont redéfinies sous [data-theme="dark"] (choix explicite) et sous
+ * la media query prefers-color-scheme (mode "système").
+ * `--color-on-brand` / `--color-on-action` restent STATIQUES : ce sont des
+ * couleurs de texte posées sur un aplat coloré, elles ne suivent pas le thème.
  */
 :root {
   --color-brand: #0b3d91; /* marque / primaire */
   --color-surface: #fefdff; /* fond général, header, bottom nav */
+  --color-elevated: #ffffff; /* cartes / surfaces au-dessus du fond */
   --color-ink: #001314; /* texte */
   --color-action: #e07b39; /* achat uniquement */
   --color-success: #16a34a; /* statuts positifs uniquement */
   --color-decorative: #64b6ac; /* touches décoratives rares */
+  --color-on-brand: #fefdff; /* texte/icône sur aplat bleu/vert/ink */
+  --color-on-action: #001314; /* texte sur aplat orange (CLAUDE.md : noir sur orange) */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-brand: #6aa0e6;
+    --color-surface: #02296c;
+    --color-elevated: #123f86;
+    --color-ink: #eef2f8;
+    --color-action: #e88a4f;
+    --color-success: #34d17a;
+    --color-on-brand: #02296c;
+  }
+}
+
+[data-theme="dark"] {
+  --color-brand: #6aa0e6;
+  --color-surface: #02296c;
+  --color-elevated: #123f86;
+  --color-ink: #eef2f8;
+  --color-action: #e88a4f;
+  --color-success: #34d17a;
+  --color-on-brand: #02296c;
 }
 
 @theme inline {
   --color-brand: var(--color-brand);
   --color-surface: var(--color-surface);
+  --color-elevated: var(--color-elevated);
   --color-ink: var(--color-ink);
   --color-action: var(--color-action);
   --color-success: var(--color-success);
   --color-decorative: var(--color-decorative);
+  --color-on-brand: var(--color-on-brand);
+  --color-on-action: var(--color-on-action);
   --font-sans: var(--font-body);
   --font-heading: var(--font-heading);
 }

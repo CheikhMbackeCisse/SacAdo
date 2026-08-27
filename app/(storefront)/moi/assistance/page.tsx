@@ -22,7 +22,7 @@ export default function AssistancePage() {
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-4">
       <h1 className="font-heading text-xl font-bold text-ink">Assistance</h1>
 
-      <section className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white">
+      <section className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated">
         {FAQ.map((item) => (
           <details key={item.q} className="px-4 py-3">
             <summary className="cursor-pointer text-sm font-medium text-ink marker:text-ink/40">
@@ -33,7 +33,7 @@ export default function AssistancePage() {
         ))}
       </section>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4">
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <span className="text-xs font-medium text-ink/60">Nous contacter</span>
         <p className="text-sm text-ink">WhatsApp : 77 000 00 00</p>
         <p className="text-sm text-ink">Email : contact@sacado.sn</p>

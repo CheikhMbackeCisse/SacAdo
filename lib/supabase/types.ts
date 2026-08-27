@@ -2,6 +2,7 @@ export type Delai = "24h" | "5j";
 export type StatutProduit = "dispo" | "sur_commande" | "epuise";
 export type StatutVariante = "dispo" | "epuise";
 export type Cycle = "prescolaire" | "elementaire" | "college" | "lycee";
+export type Gamme = "essentiel" | "confort" | "complet";
 
 export type Produit = {
   id: number;
@@ -32,6 +33,7 @@ export type Kit = {
   id: number;
   cycle: Cycle;
   niveau: string;
+  gamme: Gamme;
   nom: string;
   created_at: string;
 };

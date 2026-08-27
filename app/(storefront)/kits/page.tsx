@@ -25,12 +25,12 @@ export default function KitsPage() {
               aria-pressed={active}
               onClick={() => setSelected(cycle)}
               className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition-colors active:scale-95 ${
-                active ? "border-brand bg-brand/5" : "border-ink/10 bg-white"
+                active ? "border-brand bg-brand/5" : "border-ink/10 bg-elevated"
               }`}
             >
               <span
                 className={`flex size-12 items-center justify-center rounded-2xl ${
-                  active ? "bg-brand text-surface" : "bg-brand/10 text-brand"
+                  active ? "bg-brand text-on-brand" : "bg-brand/10 text-brand"
                 }`}
               >
                 <GraduationCap size={22} aria-hidden="true" />
@@ -49,7 +49,7 @@ export default function KitsPage() {
               <Link
                 key={niveau}
                 href={`/kits/${selected.value}/${encodeURIComponent(niveau)}`}
-                className="rounded-full border border-ink/15 bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-brand hover:text-brand active:scale-95"
+                className="rounded-full border border-ink/15 bg-elevated px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-brand hover:text-brand active:scale-95"
               >
                 {niveau}
               </Link>

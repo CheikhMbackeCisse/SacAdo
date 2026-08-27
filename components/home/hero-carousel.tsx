@@ -11,10 +11,6 @@ type Slide = {
   href: string;
   // absent -> pas encore de vraie photo, on retombe sur un dégradé de marque.
   image?: string;
-  // "dark" = photo à fond clair -> texte foncé + voile clair. Défaut "light"
-  // = photo chargée/sombre -> texte blanc + voile sombre (voir CLAUDE.md
-  // section 5 : jamais de texte clair sur fond clair sans voile).
-  theme?: "light" | "dark";
 };
 
 const SLIDES: Slide[] = [
@@ -24,7 +20,6 @@ const SLIDES: Slide[] = [
     cta: "Découvrir",
     href: "/categories",
     image: "/images/hero-marque.jpg",
-    theme: "dark",
   },
   {
     title: "Sa classe, son kit prêt à commander, ebook offert",
@@ -32,7 +27,6 @@ const SLIDES: Slide[] = [
     cta: "Composer mon kit",
     href: "/kits",
     image: "/images/cat-kits.png",
-    theme: "dark",
   },
   {
     title: "Vous commandez, on vous l'apporte",
@@ -54,7 +48,6 @@ const SLIDES: Slide[] = [
     cta: "Voir le matériel",
     href: "/categorie/ordinateurs",
     image: "/images/hero-informatique.jpg",
-    theme: "dark",
   },
 ];
 
@@ -113,49 +106,41 @@ export function HeroCarousel() {
         }}
         className="flex snap-x snap-mandatory overflow-x-auto rounded-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {LOOP_SLIDES.map((slide, i) => {
-          const isDark = slide.theme === "dark";
-          return (
-            <div
-              key={i}
-              className="relative flex min-h-56 w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-ink sm:min-h-64"
-            >
-              {slide.image ? (
-                <Image
-                  src={slide.image}
-                  alt={slide.title}
-                  fill
-                  priority={i < SLIDES.length}
-                  sizes="100vw"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-brand to-ink" />
-              )}
-              {/* Voile : garantit un texte toujours lisible, quelle que soit la photo. */}
-              <div
-                className={`absolute inset-0 bg-gradient-to-t ${
-                  isDark ? "from-surface/95 via-surface/55 to-transparent" : "from-ink/80 via-ink/25 to-transparent"
-                }`}
+        {LOOP_SLIDES.map((slide, i) => (
+          <div
+            key={i}
+            className="relative flex min-h-60 w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-black sm:min-h-72"
+          >
+            {slide.image ? (
+              <Image
+                src={slide.image}
+                alt={slide.title}
+                fill
+                priority={i < SLIDES.length}
+                sizes="100vw"
+                className="object-cover"
               />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-brand to-ink" />
+            )}
+            {/* Voile sombre : le titre reste lisible quelle que soit la photo
+                (zone claire ou chargée), sans dépendre de l'illustration. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
 
-              <div
-                className={`relative flex flex-col gap-2 px-6 py-6 ${isDark ? "text-ink" : "text-surface"}`}
+            <div className="relative flex flex-col gap-2 px-6 py-7 text-white">
+              <h2 className="max-w-[24ch] font-heading text-xl font-extrabold leading-tight drop-shadow-sm sm:max-w-md sm:text-2xl">
+                {slide.title}
+              </h2>
+              <p className="text-sm text-white/85">{slide.subtitle}</p>
+              <Link
+                href={slide.href}
+                className="mt-1 inline-flex w-fit items-center rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-transform active:scale-95"
               >
-                <h2 className="font-heading text-base font-bold leading-tight sm:text-lg">
-                  {slide.title}
-                </h2>
-                <p className={`text-sm ${isDark ? "text-ink/70" : "text-surface/90"}`}>{slide.subtitle}</p>
-                <Link
-                  href={slide.href}
-                  className="mt-1 inline-flex w-fit items-center rounded-full bg-action px-4 py-2 text-sm font-semibold text-ink transition-transform active:scale-95"
-                >
-                  {slide.cta}
-                </Link>
-              </div>
+                {slide.cta}
+              </Link>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

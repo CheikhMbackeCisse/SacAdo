@@ -63,7 +63,7 @@ export function CategoryProductList({
             onClick={() => setSousCategorie(null)}
             className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
               sousCategorie === null
-                ? "border-brand bg-brand text-surface"
+                ? "border-brand bg-brand text-on-brand"
                 : "border-ink/15 text-ink/70"
             }`}
           >
@@ -76,7 +76,7 @@ export function CategoryProductList({
               onClick={() => setSousCategorie(sc)}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                 sousCategorie?.label === sc.label
-                  ? "border-brand bg-brand text-surface"
+                  ? "border-brand bg-brand text-on-brand"
                   : "border-ink/15 text-ink/70"
               }`}
             >
@@ -94,7 +94,7 @@ export function CategoryProductList({
           value={tri}
           onChange={(event) => setTri(event.target.value as Tri)}
           aria-label="Trier les produits"
-          className="rounded-full border border-ink/15 bg-white px-3 py-1.5 text-xs text-ink"
+          className="rounded-full border border-ink/15 bg-elevated px-3 py-1.5 text-xs text-ink"
         >
           <option value="defaut">Trier</option>
           <option value="prix-asc">Prix croissant</option>

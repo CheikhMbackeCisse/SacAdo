@@ -3,19 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav-items";
+import { useNavVisible } from "@/lib/local/use-scroll-direction";
 
 // Cachée en desktop (lg+) : la nav y vit dans la barre du header à la place
 // (voir components/layout/header.tsx), conformément à CLAUDE.md section 6.
+// En mobile : ancrée en bas sur TOUTES les pages (position fixe), avec masquage
+// au scroll vers le bas et réapparition au scroll vers le haut.
 export function BottomNav() {
   const pathname = usePathname();
-  // Sur la page Moi (contenu long, sections en scroll), la nav défile avec la
-  // page au lieu de rester fixe en bas de l'écran.
-  const fixe = pathname !== "/moi";
+  const visible = useNavVisible();
 
   return (
     <nav
       aria-label="Navigation principale"
-      className={`${fixe ? "sticky bottom-0" : "relative"} z-40 border-t border-ink/10 bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_8px_rgba(0,19,20,0.04)] backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:hidden`}
+      className={`fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_8px_rgba(0,19,20,0.04)] backdrop-blur transition-transform duration-300 supports-[backdrop-filter]:bg-surface/80 lg:hidden ${
+        visible ? "translate-y-0" : "translate-y-full"
+      }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-stretch justify-around px-2">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {

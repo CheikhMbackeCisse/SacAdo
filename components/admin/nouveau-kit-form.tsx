@@ -3,11 +3,13 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { creerKit } from "@/lib/admin/kits-actions";
-import type { Cycle } from "@/lib/supabase/types";
+import { GAMMES } from "@/lib/gammes";
+import type { Cycle, Gamme } from "@/lib/supabase/types";
 
 export function NouveauKitForm() {
   const router = useRouter();
   const [cycle, setCycle] = useState<Cycle>("elementaire");
+  const [gamme, setGamme] = useState<Gamme>("essentiel");
   const [niveau, setNiveau] = useState("");
   const [nom, setNom] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +19,7 @@ export function NouveauKitForm() {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
-    const result = await creerKit({ cycle, niveau: niveau.trim(), nom: nom.trim() });
+    const result = await creerKit({ cycle, gamme, niveau: niveau.trim(), nom: nom.trim() });
     setSubmitting(false);
     if (!result.ok) {
       setError(result.error);
@@ -44,6 +46,21 @@ export function NouveauKitForm() {
           <option value="elementaire">Élémentaire</option>
           <option value="college">Collège</option>
           <option value="lycee">Lycée</option>
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1 text-xs">
+        <span className="text-ink/60">Gamme</span>
+        <select
+          value={gamme}
+          onChange={(event) => setGamme(event.target.value as Gamme)}
+          className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+        >
+          {GAMMES.map((g) => (
+            <option key={g.value} value={g.value}>
+              {g.label}
+            </option>
+          ))}
         </select>
       </label>
 

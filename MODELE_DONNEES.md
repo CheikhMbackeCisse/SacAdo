@@ -23,8 +23,15 @@ client identifié par le **numéro de téléphone WhatsApp**.
 | champ | type | note |
 |---|---|---|
 | id | id | |
+| cycle | enum | prescolaire / elementaire / college / lycee (ajout v2) |
 | niveau | texte | CI, CP, CE1 ... Tle |
-| nom | texte | ex. "Kit CE2" |
+| gamme | enum | essentiel / confort / complet (ajout Lot 3 — migration 0007) |
+| nom | texte | ex. "Kit CE2 Confort" |
+
+> Unicité : (cycle, niveau, gamme). Chaque classe expose 2–3 gammes, chacune
+> avec ses propres kit_items. Le parcours devient cycle → classe → **gamme** → kit.
+> L'ebook de la classe est offert à l'achat du kit complet quelle que soit la
+> gamme (affichage seulement en v1, pas de ligne en base).
 
 ### kit_items
 | champ | type | note |

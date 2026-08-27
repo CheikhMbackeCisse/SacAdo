@@ -1,5 +1,6 @@
 import { supabase } from "./client";
-import type { Kit, Produit, ProduitVariante, Zone } from "./types";
+import { GAMME_ORDER } from "@/lib/gammes";
+import type { Gamme, Kit, Produit, ProduitVariante, Zone } from "./types";
 
 export async function getPopulaires(limit = 8): Promise<Produit[]> {
   const { data, error } = await supabase
@@ -102,12 +103,28 @@ export async function searchProduits(
   return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
 }
 
-export async function getKitByCycleNiveau(cycle: string, niveau: string): Promise<Kit | null> {
+// Les gammes disponibles pour une classe, triées Essentiel -> Confort -> Complet.
+export async function getKitsByCycleNiveau(cycle: string, niveau: string): Promise<Kit[]> {
+  const { data, error } = await supabase
+    .from("kits")
+    .select("*")
+    .eq("cycle", cycle)
+    .eq("niveau", niveau);
+  if (error) throw error;
+  return (data ?? []).sort((a, b) => GAMME_ORDER[a.gamme as Gamme] - GAMME_ORDER[b.gamme as Gamme]);
+}
+
+export async function getKitByCycleNiveauGamme(
+  cycle: string,
+  niveau: string,
+  gamme: Gamme,
+): Promise<Kit | null> {
   const { data, error } = await supabase
     .from("kits")
     .select("*")
     .eq("cycle", cycle)
     .eq("niveau", niveau)
+    .eq("gamme", gamme)
     .maybeSingle();
   if (error) throw error;
   return data;

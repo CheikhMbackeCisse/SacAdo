@@ -135,7 +135,7 @@ export function KitBuilder({ kitNom, items }: KitBuilderProps) {
             type="button"
             disabled={nbArticles === 0}
             onClick={handleAjouter}
-            className="flex h-11 items-center justify-center rounded-full bg-action px-5 text-sm font-semibold text-ink transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+            className="flex h-11 items-center justify-center rounded-full bg-action px-5 text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
           >
             {added ? "Ajouté ✓" : `Ajouter le kit ${kitNom}`}
           </button>

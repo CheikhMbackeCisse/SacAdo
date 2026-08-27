@@ -24,7 +24,7 @@ export function FavoriteButton({ produitId, size = 18 }: FavoriteButtonProps) {
         event.stopPropagation();
         toggleFavori(produitId);
       }}
-      className="flex items-center justify-center rounded-full bg-white/90 p-1.5 text-ink/50 shadow-sm backdrop-blur transition-transform active:scale-90"
+      className="flex items-center justify-center rounded-full bg-elevated/90 p-1.5 text-ink/50 shadow-sm backdrop-blur transition-transform active:scale-90"
     >
       <Heart size={size} className={active ? "fill-ink text-ink" : ""} />
     </button>

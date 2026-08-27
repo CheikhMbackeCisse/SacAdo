@@ -17,14 +17,14 @@ export function ProductCard({ produit }: { produit: Produit }) {
   return (
     <Link
       href={`/produit/${produit.id}`}
-      className={`group flex flex-col overflow-hidden rounded-2xl border border-ink/10 bg-white transition-shadow hover:shadow-md ${
+      className={`group flex flex-col overflow-hidden rounded-2xl border border-ink/10 bg-elevated transition-shadow hover:shadow-md ${
         epuise ? "opacity-60" : ""
       }`}
     >
       <div className="relative aspect-square w-full">
         <ProductImage src={produit.photo} alt={produit.nom} className="h-full w-full" />
 
-        <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-ink/70 shadow-sm">
+        <span className="absolute left-2 top-2 rounded-full bg-elevated/90 px-2 py-0.5 text-[10px] font-medium text-ink/70 shadow-sm">
           {produit.delai}
         </span>
 
@@ -33,8 +33,8 @@ export function ProductCard({ produit }: { produit: Produit }) {
         </div>
 
         {epuise && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-            <span className="rounded-full bg-ink/80 px-3 py-1 text-xs font-semibold text-surface">
+          <div className="absolute inset-0 flex items-center justify-center bg-elevated/70">
+            <span className="rounded-full bg-ink/80 px-3 py-1 text-xs font-semibold text-on-brand">
               Épuisé
             </span>
           </div>
@@ -57,7 +57,7 @@ export function ProductCard({ produit }: { produit: Produit }) {
               setAdded(true);
               setTimeout(() => setAdded(false), 1200);
             }}
-            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-action text-ink transition-transform active:scale-90 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-action text-on-action transition-transform active:scale-90 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
           >
             {added ? (
               <span className="text-xs leading-none">✓</span>

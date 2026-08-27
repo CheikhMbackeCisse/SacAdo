@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Heart, History, Inbox, LifeBuoy, Settings, User } from "lucide-react";
+import { ClipboardList, Heart, History, Inbox, LifeBuoy, Settings, User } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { useFavoris } from "@/lib/local/favoris";
 import { useConsultes } from "@/lib/local/consultes";
@@ -13,6 +13,7 @@ import type { Produit } from "@/lib/supabase/types";
 
 const ONGLETS = [
   { href: "/moi/assistance", label: "Assistance", icon: LifeBuoy },
+  { href: "/commandes", label: "Mes commandes", icon: ClipboardList },
   { href: "/moi/messages", label: "Boîte de réception", icon: Inbox },
   { href: "/favoris", label: "Favoris", icon: Heart },
   { href: "/moi/consultes", label: "Déjà consultés", icon: History },
@@ -82,7 +83,7 @@ export default function MoiPage() {
 
   return (
     <div className="flex flex-col gap-5 px-4 py-4">
-      <div className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white p-4">
+      <div className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-elevated p-4">
         <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
           <User size={26} aria-hidden="true" />
         </span>
@@ -99,15 +100,15 @@ export default function MoiPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-4 gap-1 rounded-2xl border border-ink/10 bg-white p-3">
+      <div className="grid grid-cols-5 gap-1 rounded-2xl border border-ink/10 bg-elevated p-3">
         {ONGLETS.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} className="relative flex flex-col items-center gap-1.5 text-center">
-            <span className="flex size-11 items-center justify-center rounded-full bg-brand/10 text-brand">
-              <Icon size={18} aria-hidden="true" />
+            <span className="flex size-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+              <Icon size={17} aria-hidden="true" />
             </span>
             <span className="line-clamp-2 text-[11px] leading-tight text-ink/70">{label}</span>
             {label === "Boîte de réception" && nonLusAffiches > 0 && (
-              <span className="absolute -top-0.5 right-3 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold leading-none text-surface">
+              <span className="absolute -top-0.5 right-3 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold leading-none text-on-brand">
                 {nonLusAffiches}
               </span>
             )}

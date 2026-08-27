@@ -11,7 +11,7 @@ export default function CategoriesPage() {
           <Link
             key={categorie.slug}
             href={categorie.href}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-ink/10 bg-white p-4 text-center transition-shadow hover:shadow-md active:scale-95"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-ink/10 bg-elevated p-4 text-center transition-shadow hover:shadow-md active:scale-95"
           >
             <CategoryTile categorie={categorie} tileClassName="size-14" iconSize={26} />
             <span className="text-sm font-medium text-ink">{categorie.nom}</span>

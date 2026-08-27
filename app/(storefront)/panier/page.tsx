@@ -28,7 +28,7 @@ export default function PanierPage() {
         </p>
         <Link
           href="/"
-          className="mt-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-surface active:scale-95"
+          className="mt-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand active:scale-95"
         >
           Voir le catalogue
         </Link>
@@ -42,7 +42,7 @@ export default function PanierPage() {
 
       <FreeShippingProgress sousTotal={sousTotal} />
 
-      <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white px-3">
+      <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated px-3">
         {detail.map((ligne) => (
           <PanierLine
             key={`${ligne.produit.id}-${ligne.variante?.id ?? "base"}`}
@@ -62,7 +62,7 @@ export default function PanierPage() {
           <button
             type="button"
             onClick={() => router.push("/checkout")}
-            className="flex h-11 items-center justify-center rounded-full bg-action px-6 text-sm font-semibold text-ink transition-transform active:scale-95"
+            className="flex h-11 items-center justify-center rounded-full bg-action px-6 text-sm font-semibold text-on-action transition-transform active:scale-95"
           >
             Commander
           </button>

@@ -3,7 +3,8 @@
 import { requireAdmin } from "./guard";
 import { texteNonVide } from "./validation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import type { Cycle, Kit } from "@/lib/supabase/types";
+import { GAMME_ORDER, isGamme } from "@/lib/gammes";
+import type { Cycle, Gamme, Kit } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
 export type KitAvecCompte = Kit & { nb_items: number };
@@ -16,6 +17,13 @@ export async function getKitsAdmin(): Promise<KitAvecCompte[]> {
     .order("cycle", { ascending: true })
     .order("niveau", { ascending: true });
   if (!kits) return [];
+
+  kits.sort(
+    (a, b) =>
+      a.cycle.localeCompare(b.cycle) ||
+      a.niveau.localeCompare(b.niveau) ||
+      GAMME_ORDER[a.gamme as Gamme] - GAMME_ORDER[b.gamme as Gamme],
+  );
 
   const { data: items } = await supabaseAdmin.from("kit_items").select("kit_id");
   const comptes = new Map<number, number>();
@@ -30,17 +38,20 @@ export async function getKitAdmin(id: number): Promise<Kit | null> {
   return data;
 }
 
-export type KitInput = { cycle: Cycle; niveau: string; nom: string };
+export type KitInput = { cycle: Cycle; gamme: Gamme; niveau: string; nom: string };
 
 export async function creerKit(input: KitInput): Promise<ActionResult & { id?: number }> {
   await requireAdmin();
   if (!texteNonVide(input.niveau, 50) || !texteNonVide(input.nom, 200)) {
     return { ok: false, error: "Niveau et nom sont requis." };
   }
+  if (!isGamme(input.gamme)) {
+    return { ok: false, error: "Gamme invalide." };
+  }
 
   const { data, error } = await supabaseAdmin.from("kits").insert(input).select().single();
   if (error || !data) {
-    return { ok: false, error: "Impossible de créer ce kit (cycle + niveau déjà utilisé ?)." };
+    return { ok: false, error: "Impossible de créer ce kit (cycle + niveau + gamme déjà utilisé ?)." };
   }
   return { ok: true, id: data.id };
 }

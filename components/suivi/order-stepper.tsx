@@ -24,9 +24,9 @@ export function OrderStepper({ statut }: { statut: StatutCommande }) {
               <span
                 className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                   estLivree
-                    ? "bg-success text-surface"
+                    ? "bg-success text-on-brand"
                     : atteinte
-                      ? "bg-brand text-surface"
+                      ? "bg-brand text-on-brand"
                       : "bg-ink/10 text-ink/40"
                 }`}
               >

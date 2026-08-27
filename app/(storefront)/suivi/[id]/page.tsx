@@ -28,7 +28,7 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
 
       <OrderStepper statut={commande.statut} />
 
-      <section className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-white p-3 text-sm">
+      <section className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">
         <div className="flex justify-between text-ink/70">
           <span>Sous-total</span>
           <span>{formatPrice(commande.sous_total)}</span>

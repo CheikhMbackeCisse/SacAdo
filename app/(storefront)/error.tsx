@@ -22,7 +22,7 @@ export default function StorefrontError({ error, reset }: { error: Error & { dig
       <button
         type="button"
         onClick={() => reset()}
-        className="mt-2 flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-surface active:scale-95"
+        className="mt-2 flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand active:scale-95"
       >
         <RefreshCw size={16} aria-hidden="true" />
         Réessayer

@@ -52,7 +52,7 @@ export function RegionPicker({ zones, zoneId, onChange }: RegionPickerProps) {
             fermetureDifferee.current = setTimeout(() => setOuvert(false), 120);
           }}
           placeholder="Rechercher une région…"
-          className="w-full rounded-xl border border-ink/15 bg-white py-2.5 pl-9 pr-3 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          className="w-full rounded-xl border border-ink/15 bg-elevated py-2.5 pl-9 pr-3 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
         />
       </div>
 
@@ -60,7 +60,7 @@ export function RegionPicker({ zones, zoneId, onChange }: RegionPickerProps) {
         <div
           id="region-listbox"
           role="listbox"
-          className="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-xl border border-ink/10 bg-white py-1 shadow-lg"
+          className="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-xl border border-ink/10 bg-elevated py-1 shadow-lg"
         >
           {zonesFiltrees.length === 0 && (
             <p className="px-3 py-3 text-center text-sm text-ink/50">Aucune région ne correspond.</p>

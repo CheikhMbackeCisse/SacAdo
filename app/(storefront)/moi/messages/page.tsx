@@ -53,7 +53,7 @@ export default function MessagesPage() {
           description="Les mises à jour de tes commandes apparaîtront ici."
         />
       ) : (
-        <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white">
+        <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated">
           {messages.map((message) => (
             <button
               key={message.id}

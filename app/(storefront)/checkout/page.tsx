@@ -35,15 +35,19 @@ function genererReference(): string {
 export default function CheckoutPage() {
   const router = useRouter();
   const { detail, sousTotal, loading: loadingPanier, vider } = usePanierDetaille();
-  const { setIdentite } = useIdentite();
+  const { identite, setIdentite } = useIdentite();
 
   // Générée une seule fois par visite du checkout (pas à chaque re-render) :
   // permet au serveur de reconnaître un clic double ou une requête retentée
   // et de renvoyer la même commande au lieu d'en créer une deuxième.
   const [reference] = useState(genererReference);
   const [zones, setZones] = useState<Zone[]>([]);
-  const [nom, setNom] = useState("");
-  const [telephone, setTelephone] = useState("");
+  // Pré-remplis depuis l'identité mémorisée (onboarding / commande passée) tant
+  // que l'utilisateur n'a rien saisi ; sa frappe (même vide) prend le dessus.
+  const [nomSaisi, setNomSaisi] = useState<string | null>(null);
+  const [telephoneSaisi, setTelephoneSaisi] = useState<string | null>(null);
+  const nom = nomSaisi ?? identite?.nom ?? "";
+  const telephone = telephoneSaisi ?? identite?.telephone ?? "";
   const [zoneId, setZoneId] = useState<number | null>(null);
   const [adresse, setAdresse] = useState("");
   const [modeLivraison, setModeLivraison] = useState<ModeLivraison>("5j");
@@ -156,8 +160,8 @@ export default function CheckoutPage() {
           <input
             required
             value={nom}
-            onChange={(event) => setNom(event.target.value)}
-            className="rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+            onChange={(event) => setNomSaisi(event.target.value)}
+            className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>
 
@@ -168,9 +172,9 @@ export default function CheckoutPage() {
             type="tel"
             inputMode="tel"
             value={telephone}
-            onChange={(event) => setTelephone(event.target.value)}
+            onChange={(event) => setTelephoneSaisi(event.target.value)}
             placeholder="77 123 45 67"
-            className="rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+            className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>
 
@@ -193,7 +197,7 @@ export default function CheckoutPage() {
               rows={2}
               value={adresse}
               onChange={(event) => setAdresse(event.target.value)}
-              className="rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+              className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
             />
           </label>
           <div className="mt-1 flex flex-wrap gap-2">
@@ -227,7 +231,7 @@ export default function CheckoutPage() {
             value={lienMapsManuel}
             onChange={(event) => setLienMapsManuel(event.target.value)}
             placeholder="Colle ici le lien Google Maps de ta position (optionnel)"
-            className="mt-1 rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+            className="mt-1 rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </div>
       </section>
@@ -251,7 +255,7 @@ export default function CheckoutPage() {
                 aria-pressed={active}
                 onClick={() => setModeLivraison(mode)}
                 className={`flex flex-col items-center gap-1 rounded-2xl border p-3 text-center transition-colors ${
-                  active ? "border-brand bg-brand/5" : "border-ink/10 bg-white"
+                  active ? "border-brand bg-brand/5" : "border-ink/10 bg-elevated"
                 }`}
               >
                 <span className="text-sm font-semibold text-ink">
@@ -266,7 +270,7 @@ export default function CheckoutPage() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-3">
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3">
         <span className="text-xs font-medium text-ink/60">Paiement</span>
         <p className="text-sm text-ink">Paiement à la livraison</p>
         <div className="flex items-center gap-3">
@@ -288,7 +292,7 @@ export default function CheckoutPage() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-white p-3 text-sm">
+      <section className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">
         <div className="flex justify-between text-ink/70">
           <span>Sous-total</span>
           <span>{formatPrice(sousTotal)}</span>
@@ -309,7 +313,7 @@ export default function CheckoutPage() {
         <button
           type="submit"
           disabled={submitting || !zoneId}
-          className="flex h-12 w-full items-center justify-center rounded-full bg-action text-sm font-semibold text-ink transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+          className="flex h-12 w-full items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
           {submitting ? "Confirmation…" : "Confirmer la commande"}
         </button>

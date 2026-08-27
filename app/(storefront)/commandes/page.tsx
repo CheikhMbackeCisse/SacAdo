@@ -48,8 +48,8 @@ export default function MesCommandesPage() {
       ) : commandes.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="Aucune commande pour l'instant"
-          description="Tes commandes apparaîtront ici une fois passées."
+          title="Vous n'avez pas encore de commande"
+          description="Vos commandes apparaîtront ici une fois passées."
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -57,7 +57,7 @@ export default function MesCommandesPage() {
             <Link
               key={commande.id}
               href={`/suivi/${commande.id}`}
-              className="flex flex-col gap-1 rounded-2xl border border-ink/10 bg-white p-3 active:bg-ink/5"
+              className="flex flex-col gap-1 rounded-2xl border border-ink/10 bg-elevated p-3 active:bg-ink/5"
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-ink">Commande #{commande.id}</span>

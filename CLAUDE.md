@@ -114,7 +114,11 @@ Tant que les vraies images ne sont pas là, utiliser des placeholders.
 - **Accueil** : carrousel pub → grille catégories (2 rangées × 5 colonnes, scroll
   horizontal, 3 colonnes visibles + amorce de la 4e) → produits populaires.
 - **Kits** : catégorie Kits → écran cycle (Préscolaire/Élémentaire/Collège/Lycée) →
-  classe → écran du kit (liste pré-cochée, on décoche, on ajuste, on ajoute).
+  classe → **écran des gammes** (Essentiel / Confort / Complet — noms verrouillés,
+  pas de "premium") → écran du kit de la gamme (liste pré-cochée, on décoche, on
+  ajuste, on ajoute). L'ebook de la classe est offert avec l'achat du kit complet,
+  quelle que soit la gamme (affichage seulement en v1). Voir `kits.gamme` dans
+  MODELE_DONNEES.md.
 - **Catégorie** : rangée de sous-catégories illustrées (façon SHEIN) → grille produits.
 - **Produit** : galerie photos → variantes (couleur/taille, stock par variante) →
   ajouter au panier.

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getKitsAdmin } from "@/lib/admin/kits-actions";
+import { getGammeDef } from "@/lib/gammes";
 import { NouveauKitForm } from "@/components/admin/nouveau-kit-form";
 
 const LABELS_CYCLE: Record<string, string> = {
@@ -25,6 +26,7 @@ export default async function AdminKitsPage() {
               <th className="px-4 py-3 font-medium">Nom</th>
               <th className="px-4 py-3 font-medium">Cycle</th>
               <th className="px-4 py-3 font-medium">Niveau</th>
+              <th className="px-4 py-3 font-medium">Gamme</th>
               <th className="px-4 py-3 font-medium">Articles</th>
               <th className="px-4 py-3" />
             </tr>
@@ -35,6 +37,7 @@ export default async function AdminKitsPage() {
                 <td className="px-4 py-3 text-ink">{kit.nom}</td>
                 <td className="px-4 py-3 text-ink/60">{LABELS_CYCLE[kit.cycle]}</td>
                 <td className="px-4 py-3 text-ink/60">{kit.niveau}</td>
+                <td className="px-4 py-3 text-ink/60">{getGammeDef(kit.gamme)?.label ?? kit.gamme}</td>
                 <td className="px-4 py-3 text-ink/60">{kit.nb_items}</td>
                 <td className="px-4 py-3 text-right">
                   <Link href={`/admin/kits/${kit.id}`} className="text-brand hover:underline">

@@ -6,7 +6,7 @@ export default function PolitiqueConfidentialitePage() {
         <p className="mt-1 text-xs text-ink/50">Dernière mise à jour : 2026.</p>
       </div>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4">
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Ce que nous collectons</h2>
         <p className="text-sm text-ink/70">
           Uniquement ce qui est nécessaire pour traiter une commande : ton nom, ton numéro de
@@ -16,7 +16,7 @@ export default function PolitiqueConfidentialitePage() {
         </p>
       </section>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4">
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Pourquoi</h2>
         <p className="text-sm text-ink/70">
           Ton numéro de téléphone sert d&apos;identifiant pour retrouver tes commandes et tes
@@ -25,7 +25,7 @@ export default function PolitiqueConfidentialitePage() {
         </p>
       </section>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4">
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Ce qui reste sur ton appareil</h2>
         <p className="text-sm text-ink/70">
           Tes favoris, les produits déjà consultés et le contenu de ton panier sont gardés
@@ -34,7 +34,7 @@ export default function PolitiqueConfidentialitePage() {
         </p>
       </section>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4">
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Qui y a accès</h2>
         <p className="text-sm text-ink/70">
           Seul l&apos;administrateur de SacAdo peut consulter tes informations, pour préparer et
@@ -42,7 +42,7 @@ export default function PolitiqueConfidentialitePage() {
         </p>
       </section>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4">
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Tes droits</h2>
         <p className="text-sm text-ink/70">
           Tu peux demander à tout moment la suppression de tes données (nom, adresse, historique

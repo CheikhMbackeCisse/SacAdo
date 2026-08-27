@@ -74,7 +74,7 @@ export function Header() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder={placeholders[placeholderIndex % placeholders.length]}
               aria-label="Rechercher un produit"
-              className="w-full rounded-lg border border-ink/10 bg-white py-2 pl-4 pr-9 text-base text-ink placeholder:text-ink/40 transition-colors duration-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 sm:text-sm"
+              className="w-full rounded-lg border border-ink/10 bg-elevated py-2 pl-4 pr-9 text-base text-ink placeholder:text-ink/40 transition-colors duration-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 sm:text-sm"
             />
             <Search
               size={16}

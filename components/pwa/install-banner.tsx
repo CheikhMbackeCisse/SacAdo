@@ -46,7 +46,7 @@ export function InstallBanner() {
 
   return (
     <div className="fixed inset-x-0 bottom-16 z-40 px-4 pb-2 lg:bottom-0">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 rounded-2xl border border-ink/10 bg-white p-3 shadow-lg">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 rounded-2xl border border-ink/10 bg-elevated p-3 shadow-lg">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
           <Download size={18} aria-hidden="true" />
         </span>
@@ -54,7 +54,7 @@ export function InstallBanner() {
         <button
           type="button"
           onClick={installer}
-          className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-surface active:scale-95"
+          className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand active:scale-95"
         >
           Installer
         </button>
