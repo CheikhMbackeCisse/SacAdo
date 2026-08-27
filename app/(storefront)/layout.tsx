@@ -3,7 +3,7 @@ import "../globals.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
 import { Header } from "@/components/layout/header";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { WelcomeDialog } from "@/components/onboarding/welcome-dialog";
+import { WelcomeScreen } from "@/components/onboarding/welcome-screen";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { SplashScreen } from "@/components/pwa/splash-screen";
@@ -63,7 +63,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
           {children}
         </main>
         <BottomNav />
-        <WelcomeDialog />
+        <WelcomeScreen />
         <InstallBanner />
         <ServiceWorkerRegister />
       </body>
