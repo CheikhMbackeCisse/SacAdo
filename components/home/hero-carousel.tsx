@@ -63,17 +63,31 @@ const LAST_INDEX = LOOP_SLIDES.length - 1;
 // ce qui bloquait l'auto-rotation.
 const SCROLL_SETTLE_MS = 120;
 
-export function HeroCarousel() {
+// `active` = l'accueil est à l'écran. Le composant reste monté en permanence
+// (rendu dans le layout, masqué en `display:none` ailleurs) pour que les images
+// ne soient JAMAIS rechargées ni re-animées au retour sur l'accueil. Quand il
+// est masqué, on coupe l'auto-rotation et on remet la 1re slide sans animation.
+export function HeroCarousel({ active = true }: { active?: boolean }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [trackIndex, setTrackIndex] = useState(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!active) return;
+    // Le nœud du carrousel ne change pas de toute la vie du composant.
+    const track = trackRef.current;
     const id = setInterval(() => {
       setTrackIndex((current) => Math.min(current + 1, LAST_INDEX));
     }, AUTO_SLIDE_MS);
-    return () => clearInterval(id);
-  }, []);
+    return () => {
+      clearInterval(id);
+      // En quittant l'accueil (le composant reste monté, juste masqué) : retour
+      // instantané à la 1re slide, sans scroll animé. Au prochain affichage le
+      // carrousel repart proprement du début, images déjà en cache.
+      setTrackIndex(0);
+      track?.scrollTo({ left: 0, behavior: "auto" });
+    };
+  }, [active]);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -109,14 +123,17 @@ export function HeroCarousel() {
         {LOOP_SLIDES.map((slide, i) => (
           <div
             key={i}
-            className="relative flex min-h-60 w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-black sm:min-h-72"
+            className="relative flex min-h-[18rem] w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-black sm:min-h-[22rem] lg:min-h-[26rem]"
           >
             {slide.image ? (
               <Image
                 src={slide.image}
                 alt={slide.title}
                 fill
-                priority={i < SLIDES.length}
+                // Seule la 1re slide est prioritaire (LCP), et seulement quand
+                // l'accueil est affiché — sinon on préchargerait cette image sur
+                // toutes les pages du site.
+                priority={active && i === 0}
                 sizes="100vw"
                 className="object-cover"
               />
@@ -128,10 +145,14 @@ export function HeroCarousel() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
 
             <div className="relative flex flex-col gap-2 px-6 py-7 text-white">
-              <h2 className="max-w-[24ch] font-heading text-xl font-extrabold leading-tight drop-shadow-sm sm:max-w-md sm:text-2xl">
+              {/* clamp() : le texte rétrécit avec l'écran au lieu d'être tronqué
+                  — titre et sous-titre restent toujours affichés en entier. */}
+              <h2 className="max-w-[34ch] font-heading text-[clamp(1.05rem,4.5vw,1.9rem)] font-extrabold leading-tight drop-shadow-sm sm:max-w-lg">
                 {slide.title}
               </h2>
-              <p className="text-sm text-white/85">{slide.subtitle}</p>
+              <p className="max-w-[40ch] text-[clamp(0.8rem,3vw,1rem)] text-white/85">
+                {slide.subtitle}
+              </p>
               <Link
                 href={slide.href}
                 className="mt-1 inline-flex w-fit items-center rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-transform active:scale-95"

@@ -176,13 +176,18 @@ Règles :
 > | variante_id | ref produit_variantes | nullable (null si produit sans variante) |
 
 ### Parcours Kits (écran intermédiaire)
-La catégorie "Kits" ouvre un écran **cycle -> classe** avant le kit lui-même :
+La catégorie "Kits" ouvre un parcours **cycle -> classe** avant le kit lui-même
+(écran cycle `/kits` avec photo par cycle -> page classes `/kits/[cycle]` ->
+gammes `/kits/[cycle]/[niveau]`) :
 - **cycles** : Préscolaire, Élémentaire, Collège, Lycée.
 - chaque cycle contient ses **classes** :
   - Préscolaire : Petite / Moyenne / Grande section
   - Élémentaire : CI, CP, CE1, CE2, CM1, CM2
   - Collège : 6e, 5e, 4e, 3e
-  - Lycée : 2nde, 1ère, Tle
+  - Lycée : Seconde L, Seconde S, Première L1, Première L2, Première S1,
+    Première S2, Terminale L1, Terminale L2, Terminale S1, Terminale S2,
+    Terminale T, Terminale G (niveaux en toutes lettres ; séries à partir de
+    la Première ; l'écran /kits/[cycle] regroupe par Seconde/Première/Terminale)
 - La table **kits** gagne un champ `cycle` (enum) en plus de `niveau`.
 
 > Mettre à jour kits :

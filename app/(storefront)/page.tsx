@@ -1,4 +1,3 @@
-import { HeroCarousel } from "@/components/home/hero-carousel";
 import { CategoryScroll } from "@/components/home/category-scroll";
 import { ProductGrid } from "@/components/product/product-grid";
 import { getPopulaires } from "@/lib/supabase/queries";
@@ -12,7 +11,6 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col pb-6">
-      <HeroCarousel />
       <CategoryScroll />
       <section className="mt-4">
         <h2 className="px-4 pb-3 font-heading text-base font-semibold text-ink">Populaires</h2>

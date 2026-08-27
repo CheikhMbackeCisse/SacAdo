@@ -16,6 +16,11 @@ const REPORTE_KEY = "sacado_onboarding_reporte";
 // Si l'utilisateur choisit "Plus tard", on ne le re-sollicite pas avant ce délai.
 const RAPPEL_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Écran de couverture : palette de marque figée en clair (le fond illustré est
+// clair quel que soit le thème), donc couleurs en dur plutôt que tokens.
+const INK = "#001314";
+const ACTION = "#E07B39";
+
 function reporteRecemment(): boolean {
   try {
     const raw = window.localStorage.getItem(REPORTE_KEY);
@@ -90,44 +95,59 @@ export function WelcomeScreen() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-titre"
-      className="animate-fade-in-up fixed inset-0 z-[120] flex flex-col overflow-y-auto bg-surface"
+      className="animate-fade-in-up fixed inset-0 z-[120] overflow-hidden bg-[#FEFDFF]"
     >
-      {/* Halos décoratifs (palette marque, très diffus) */}
+      {/* Fond illustré (fournitures scolaires, palette SacAdo). */}
+      <Image
+        src="/images/bg-page-form.jpg"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
+      />
+      {/* Voile radial : centre très clair pour que le texte reste lisible,
+          bords plus transparents pour laisser voir l'illustration. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -left-24 -top-24 size-72 rounded-full bg-brand/25 blur-[90px]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-28 -right-20 size-72 rounded-full bg-action/20 blur-[90px]"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(254,253,255,0.94)_0%,rgba(254,253,255,0.72)_48%,rgba(254,253,255,0.4)_100%)]"
       />
 
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-7 px-6 py-10">
-        <header className="flex flex-col items-center text-center">
-          <span className="flex size-16 items-center justify-center rounded-3xl bg-elevated shadow-sm ring-1 ring-ink/10">
-            <Image
-              src="/images/logo.jpg"
-              alt="SacAdo"
-              width={44}
-              height={44}
-              className="rounded-2xl object-cover"
-              priority
-            />
-          </span>
-          <p className="mt-3 font-heading text-lg font-bold tracking-tight text-brand">SacAdo</p>
-          <h1
-            id="welcome-titre"
-            className="mt-4 font-heading text-2xl font-extrabold leading-snug text-ink"
-          >
-            On prépare votre rentrée
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-ink/60">
-            Votre nom et votre numéro, une seule fois. Ils pré-remplissent vos commandes
-            et gardent votre historique à portée.
-          </p>
-        </header>
+      <div className="relative mx-auto flex h-full max-w-sm flex-col items-center justify-center gap-6 px-6 py-8 text-center">
+        {/* Logo seul, sans cadre blanc — style icône d'app, flottement léger. */}
+        <div className="animate-rise-in">
+          <Image
+            src="/images/logo.jpg"
+            alt="SacAdo"
+            width={200}
+            height={200}
+            priority
+            className="animate-float-soft size-[84px] rounded-[26px] object-cover shadow-xl shadow-[#0B3D91]/25"
+          />
+        </div>
 
-        <form onSubmit={commencer} noValidate className="flex flex-col gap-3">
+        <h1
+          id="welcome-titre"
+          style={{ color: INK, animationDelay: "80ms" }}
+          className="animate-rise-in text-balance font-heading text-[1.55rem] font-extrabold leading-[1.2] sm:text-[1.7rem]"
+        >
+          Tout pour apprendre, en un seul endroit et livré chez vous.
+        </h1>
+
+        <p
+          style={{ color: INK, animationDelay: "140ms" }}
+          className="animate-rise-in -mt-1 text-balance text-sm leading-relaxed opacity-70"
+        >
+          SacAdo, la boutique scolaire de Dakar : kits prêts par classe,
+          fournitures et livres, livrés partout au Sénégal.
+        </p>
+
+        <form
+          onSubmit={commencer}
+          noValidate
+          style={{ animationDelay: "200ms" }}
+          className="animate-rise-in flex w-full flex-col gap-3 text-left"
+        >
           <Champ
             label="Nom complet"
             icon={<User size={16} aria-hidden="true" />}
@@ -140,7 +160,8 @@ export function WelcomeScreen() {
               placeholder="Awa Diop"
               autoComplete="name"
               enterKeyHint="next"
-              className="w-full bg-transparent text-base text-ink outline-none placeholder:text-ink/35"
+              className="w-full bg-transparent text-base outline-none placeholder:text-[#001314]/35"
+              style={{ color: INK }}
             />
           </Champ>
 
@@ -158,19 +179,21 @@ export function WelcomeScreen() {
               onChange={(e) => setTelephone(e.target.value)}
               placeholder="77 123 45 67"
               enterKeyHint="go"
-              className="w-full bg-transparent text-base text-ink outline-none placeholder:text-ink/35"
+              className="w-full bg-transparent text-base outline-none placeholder:text-[#001314]/35"
+              style={{ color: INK }}
             />
           </Champ>
 
-          <p className="mt-1 flex items-center justify-center gap-1.5 text-xs text-ink/45">
+          <p className="flex items-center justify-center gap-1.5 text-xs text-[#001314]/50">
             <ShieldCheck size={13} aria-hidden="true" />
-            Pas de mot de passe. Vos infos restent sur cet appareil.
+            Sans mot de passe — vos infos restent sur cet appareil.
           </p>
 
           <button
             type="submit"
             disabled={envoi}
-            className="mt-2 flex h-13 items-center justify-center gap-2 rounded-full bg-action text-sm font-semibold text-on-action shadow-sm transition-transform active:scale-[0.98] disabled:opacity-80"
+            style={{ backgroundColor: ACTION, color: INK }}
+            className="mt-1 flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold shadow-lg shadow-[#E07B39]/25 transition-transform active:scale-[0.98] disabled:opacity-80"
           >
             {envoi ? (
               <Loader2 size={17} className="animate-spin" aria-hidden="true" />
@@ -185,7 +208,7 @@ export function WelcomeScreen() {
             type="button"
             onClick={reporter}
             disabled={envoi}
-            className="h-11 rounded-full text-sm font-medium text-ink/50 transition-colors hover:text-ink/80 disabled:opacity-50"
+            className="h-11 rounded-full text-sm font-medium text-[#001314]/55 transition-colors hover:text-[#001314]/85 disabled:opacity-50"
           >
             Plus tard
           </button>
@@ -210,13 +233,13 @@ function Champ({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium text-ink/55">{label}</span>
+      <span className="text-xs font-medium text-[#001314]/55">{label}</span>
       <span
-        className={`flex items-center gap-2.5 rounded-2xl border bg-elevated px-3.5 transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 ${
-          invalid ? "border-red-400" : "border-ink/12"
+        className={`flex items-center gap-2.5 rounded-2xl border bg-white/85 px-3.5 backdrop-blur-sm transition-colors focus-within:border-[#0B3D91] focus-within:ring-2 focus-within:ring-[#0B3D91]/25 ${
+          invalid ? "border-red-400" : "border-[#001314]/12"
         }`}
       >
-        <span className="text-ink/40">{icon}</span>
+        <span className="text-[#001314]/40">{icon}</span>
         <span className="flex-1 py-3">{children}</span>
       </span>
       {invalid && <span className="text-xs text-red-500">{erreur}</span>}
