@@ -3,11 +3,11 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-const DUREE_MS = 900;
+const DUREE_MS = 3000;
 
 // Habillage du tout début de chargement, PAS un préchargement du catalogue :
-// disparaît tout seul après une durée courte et fixe, avant même que les
-// données du catalogue n'aient besoin d'être prêtes.
+// disparaît tout seul après une durée fixe (min. 3 s, choix produit), avant
+// même que les données du catalogue n'aient besoin d'être prêtes.
 export function SplashScreen() {
   const [visible, setVisible] = useState(true);
   const [sortie, setSortie] = useState(false);

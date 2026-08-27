@@ -4,6 +4,7 @@ import Image from "next/image";
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type FormEvent,
@@ -20,6 +21,46 @@ const RAPPEL_MS = 7 * 24 * 60 * 60 * 1000;
 // clair quel que soit le thème), donc couleurs en dur plutôt que tokens.
 const INK = "#001314";
 const ACTION = "#E07B39";
+
+const SLOGAN = "Tout pour apprendre, en un seul endroit et livré chez vous.";
+
+// Effet machine à écrire : révèle le slogan caractère par caractère. Respecte
+// prefers-reduced-motion (affichage immédiat). Aucun setState synchrone dans le
+// corps de l'effet — tout passe par les callbacks de timers.
+function useTypewriter(text: string, active: boolean) {
+  const [count, setCount] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (reduce) {
+      const id = setTimeout(() => setCount(text.length), 0);
+      return () => clearTimeout(id);
+    }
+
+    let i = 0;
+    const startId = setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        i += 1;
+        setCount(i);
+        if (i >= text.length && intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      }, 42);
+    }, 350);
+
+    return () => {
+      clearTimeout(startId);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [text, active]);
+
+  return count;
+}
 
 function reporteRecemment(): boolean {
   try {
@@ -48,6 +89,7 @@ export function WelcomeScreen() {
   const [envoi, setEnvoi] = useState(false);
 
   const ouvert = monte && !ferme && identite === null && !reporteRecemment();
+  const typed = useTypewriter(SLOGAN, ouvert);
 
   const reporter = useCallback(() => {
     try {
@@ -113,7 +155,8 @@ export function WelcomeScreen() {
         className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(254,253,255,0.94)_0%,rgba(254,253,255,0.72)_48%,rgba(254,253,255,0.4)_100%)]"
       />
 
-      <div className="relative mx-auto flex h-full max-w-sm flex-col items-center justify-center gap-6 px-6 py-8 text-center">
+      {/* pb-[14vh] : remonte le bloc (centré) vers le haut de l'écran. */}
+      <div className="relative mx-auto flex h-full max-w-sm flex-col items-center justify-center gap-6 px-6 pt-8 pb-[14vh] text-center">
         {/* Logo seul, sans cadre blanc — style icône d'app, flottement léger. */}
         <div className="animate-rise-in">
           <Image
@@ -126,26 +169,32 @@ export function WelcomeScreen() {
           />
         </div>
 
+        {/* Slogan en machine à écrire. La copie invisible fige la hauteur pour
+            qu'aucune ligne ne saute pendant la frappe. */}
         <h1
           id="welcome-titre"
+          aria-label={SLOGAN}
           style={{ color: INK, animationDelay: "80ms" }}
-          className="animate-rise-in text-balance font-heading text-[1.55rem] font-extrabold leading-[1.2] sm:text-[1.7rem]"
+          className="animate-rise-in relative font-heading text-[1.55rem] font-extrabold leading-[1.2] sm:text-[1.7rem]"
         >
-          Tout pour apprendre, en un seul endroit et livré chez vous.
+          <span aria-hidden="true" className="invisible">
+            {SLOGAN}
+          </span>
+          <span aria-hidden="true" className="absolute inset-0">
+            {SLOGAN.slice(0, typed)}
+            <span
+              className={typed >= SLOGAN.length ? "opacity-0" : "caret-blink"}
+              style={{ color: "#0B3D91" }}
+            >
+              |
+            </span>
+          </span>
         </h1>
-
-        <p
-          style={{ color: INK, animationDelay: "140ms" }}
-          className="animate-rise-in -mt-1 text-balance text-sm leading-relaxed opacity-70"
-        >
-          SacAdo, la boutique scolaire de Dakar : kits prêts par classe,
-          fournitures et livres, livrés partout au Sénégal.
-        </p>
 
         <form
           onSubmit={commencer}
           noValidate
-          style={{ animationDelay: "200ms" }}
+          style={{ animationDelay: "160ms" }}
           className="animate-rise-in flex w-full flex-col gap-3 text-left"
         >
           <Champ
