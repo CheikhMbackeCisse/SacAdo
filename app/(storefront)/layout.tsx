@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "../globals.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
 import { Header } from "@/components/layout/header";
-import { HeroCarouselSlot } from "@/components/home/hero-carousel-slot";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { WelcomeScreen } from "@/components/onboarding/welcome-screen";
 import { InstallBanner } from "@/components/pwa/install-banner";
@@ -61,7 +60,6 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
           id="main-content"
           className="mx-auto flex w-full max-w-6xl flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
         >
-          <HeroCarouselSlot />
           {children}
         </main>
         <BottomNav />

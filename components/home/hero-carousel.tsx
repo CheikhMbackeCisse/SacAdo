@@ -63,31 +63,17 @@ const LAST_INDEX = LOOP_SLIDES.length - 1;
 // ce qui bloquait l'auto-rotation.
 const SCROLL_SETTLE_MS = 120;
 
-// `active` = l'accueil est à l'écran. Le composant reste monté en permanence
-// (rendu dans le layout, masqué en `display:none` ailleurs) pour que les images
-// ne soient JAMAIS rechargées ni re-animées au retour sur l'accueil. Quand il
-// est masqué, on coupe l'auto-rotation et on remet la 1re slide sans animation.
-export function HeroCarousel({ active = true }: { active?: boolean }) {
+export function HeroCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
   const [trackIndex, setTrackIndex] = useState(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!active) return;
-    // Le nœud du carrousel ne change pas de toute la vie du composant.
-    const track = trackRef.current;
     const id = setInterval(() => {
       setTrackIndex((current) => Math.min(current + 1, LAST_INDEX));
     }, AUTO_SLIDE_MS);
-    return () => {
-      clearInterval(id);
-      // En quittant l'accueil (le composant reste monté, juste masqué) : retour
-      // instantané à la 1re slide, sans scroll animé. Au prochain affichage le
-      // carrousel repart proprement du début, images déjà en cache.
-      setTrackIndex(0);
-      track?.scrollTo({ left: 0, behavior: "auto" });
-    };
-  }, [active]);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -130,10 +116,9 @@ export function HeroCarousel({ active = true }: { active?: boolean }) {
                 src={slide.image}
                 alt={slide.title}
                 fill
-                // Seule la 1re slide est prioritaire (LCP), et seulement quand
-                // l'accueil est affiché — sinon on préchargerait cette image sur
-                // toutes les pages du site.
-                priority={active && i === 0}
+                // Seule la 1re slide est prioritaire (LCP) ; les suivantes se
+                // chargent à l'approche.
+                priority={i === 0}
                 sizes="100vw"
                 className="object-cover"
               />
