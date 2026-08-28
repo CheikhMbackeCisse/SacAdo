@@ -5,13 +5,21 @@ import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav-items";
 import { useNavVisible } from "@/lib/local/use-scroll-direction";
 
+// Pages où la nav du bas reste TOUJOURS visible (pas de masquage au scroll) :
+// écrans de choix / d'action, pas des flux d'articles. Ailleurs (accueil,
+// catégorie de produits, fiche produit, recherche, Moi...) elle se masque au
+// scroll vers le bas pour dégager la lecture.
+const NAV_TOUJOURS_VISIBLE = ["/categories", "/kits", "/panier"];
+
 // Cachée en desktop (lg+) : la nav y vit dans la barre du header à la place
 // (voir components/layout/header.tsx), conformément à CLAUDE.md section 6.
-// En mobile : ancrée en bas sur TOUTES les pages (position fixe), avec masquage
-// au scroll vers le bas et réapparition au scroll vers le haut.
 export function BottomNav() {
   const pathname = usePathname();
-  const visible = useNavVisible();
+  const navFixe = NAV_TOUJOURS_VISIBLE.some(
+    (base) => pathname === base || pathname.startsWith(`${base}/`),
+  );
+  const scrollVisible = useNavVisible();
+  const visible = navFixe || scrollVisible;
 
   return (
     <nav
