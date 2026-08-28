@@ -77,6 +77,8 @@ export type Commande = {
   statut: StatutCommande;
   date: string;
   client_reference: string | null;
+  // Prénom(s) d'enfant pour la personnalisation de l'ebook offert avec un kit.
+  enfants_ebook: string | null;
 };
 
 export type CommandeItem = {

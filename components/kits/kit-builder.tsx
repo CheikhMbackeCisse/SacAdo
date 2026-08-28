@@ -5,6 +5,7 @@ import { Minus, Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
+import { useKitEnfants } from "@/lib/local/kit-enfants";
 import type { KitItemAvecProduit } from "@/lib/supabase/queries";
 
 type ItemState = { checked: boolean; quantite: number };
@@ -16,6 +17,8 @@ type KitBuilderProps = {
 
 export function KitBuilder({ kitNom, items }: KitBuilderProps) {
   const { ajouter } = usePanier();
+  const { enregistrer: enregistrerEnfant } = useKitEnfants();
+  const [prenomEnfant, setPrenomEnfant] = useState("");
   const [added, setAdded] = useState(false);
   const [etats, setEtats] = useState<Record<number, ItemState>>(() =>
     Object.fromEntries(
@@ -59,6 +62,7 @@ export function KitBuilder({ kitNom, items }: KitBuilderProps) {
       const etat = etats[item.id];
       if (etat?.checked) ajouter(item.produit.id, null, etat.quantite);
     });
+    enregistrerEnfant(`Kit ${kitNom}`, prenomEnfant);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -124,6 +128,28 @@ export function KitBuilder({ kitNom, items }: KitBuilderProps) {
       </ul>
 
       <div className="sticky bottom-16 z-30 mt-4 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:bottom-0">
+        <label
+          htmlFor="prenom-enfant"
+          className="mx-auto mb-2.5 flex max-w-6xl flex-col gap-1"
+        >
+          <span className="text-xs font-medium text-ink/60">
+            Prénom de l&apos;enfant <span className="text-ink/40">(facultatif)</span>
+          </span>
+          <input
+            id="prenom-enfant"
+            type="text"
+            value={prenomEnfant}
+            onChange={(event) => setPrenomEnfant(event.target.value)}
+            placeholder="Ex. : Awa"
+            autoComplete="off"
+            maxLength={60}
+            className="w-full rounded-lg border border-ink/15 bg-elevated px-3 py-2 text-sm text-ink placeholder:text-ink/35 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 sm:max-w-xs"
+          />
+          <span className="text-xs text-ink/45">
+            Il sera inscrit sur l&apos;ebook offert avec ce kit.
+          </span>
+        </label>
+
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <div className="flex flex-col">
             <span className="text-xs text-ink/50">

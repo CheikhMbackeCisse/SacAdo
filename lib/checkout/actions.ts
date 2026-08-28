@@ -15,6 +15,8 @@ const ADRESSE_MAX = 500;
 const LIGNES_MAX = 50;
 const QUANTITE_MAX = 999;
 
+export type EnfantEbook = { kit: string; prenom: string };
+
 export type CheckoutInput = {
   nom: string;
   telephone: string;
@@ -25,7 +27,27 @@ export type CheckoutInput = {
   // checkout : permet à creer_commande() de rejouer un clic double ou une
   // requête retentée sans créer deux commandes (voir 0004_performance.sql).
   reference: string;
+  // Prénom(s) d'enfant saisis à l'ajout d'un kit, pour personnaliser l'ebook.
+  enfantsEbook?: EnfantEbook[];
 };
+
+const ENFANTS_MAX = 20;
+const ENFANT_CHAMP_MAX = 80;
+
+// "Awa — Kit CP Confort ; Momar — Kit 6e Essentiel" (ou null si rien de saisi).
+function formaterEnfantsEbook(entrees: EnfantEbook[] | undefined): string | null {
+  if (!entrees?.length) return null;
+  const texte = entrees
+    .slice(0, ENFANTS_MAX)
+    .map((e) => ({
+      kit: String(e.kit ?? "").trim().slice(0, ENFANT_CHAMP_MAX),
+      prenom: String(e.prenom ?? "").trim().slice(0, ENFANT_CHAMP_MAX),
+    }))
+    .filter((e) => e.prenom)
+    .map((e) => (e.kit ? `${e.prenom} — ${e.kit}` : e.prenom))
+    .join(" ; ");
+  return texte || null;
+}
 
 export type CheckoutResult = { ok: true; commandeId: number } | { ok: false; error: string };
 
@@ -195,6 +217,17 @@ export async function passerCommande(
       };
     }
     return { ok: false, error: "Impossible de créer la commande." };
+  }
+
+  // Annotation non critique (perso ebook) : posée après coup pour ne pas
+  // toucher à la fonction atomique creer_commande. Idempotent si la requête
+  // est rejouée (même valeur réécrite).
+  const enfantsEbook = formaterEnfantsEbook(input.enfantsEbook);
+  if (enfantsEbook) {
+    await supabaseAdmin
+      .from("commandes")
+      .update({ enfants_ebook: enfantsEbook })
+      .eq("id", commandeId as number);
   }
 
   return { ok: true, commandeId: commandeId as number };

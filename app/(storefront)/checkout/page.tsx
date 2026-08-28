@@ -3,9 +3,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { LocateFixed, MapPinned } from "lucide-react";
+import { BookOpen, LocateFixed, MapPinned } from "lucide-react";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
+import { useKitEnfants } from "@/lib/local/kit-enfants";
 import { getZones } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import { passerCommande } from "@/lib/checkout/actions";
@@ -36,6 +37,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { detail, sousTotal, loading: loadingPanier, vider } = usePanierDetaille();
   const { identite, setIdentite } = useIdentite();
+  const { lignes: enfantsEbook, vider: viderEnfantsEbook } = useKitEnfants();
 
   // Générée une seule fois par visite du checkout (pas à chaque re-render) :
   // permet au serveur de reconnaître un clic double ou une requête retentée
@@ -127,6 +129,7 @@ export default function CheckoutPage() {
         adresse: adresseAvecPosition,
         modeLivraison,
         reference,
+        enfantsEbook: enfantsEbook.map((e) => ({ kit: e.kit, prenom: e.prenom })),
       });
 
       if (!result.ok) {
@@ -137,6 +140,7 @@ export default function CheckoutPage() {
 
       setIdentite({ nom, telephone });
       vider();
+      viderEnfantsEbook();
       router.push(`/suivi/${result.commandeId}`);
     } catch {
       // Coupure réseau / erreur inattendue : ne jamais laisser le bouton
@@ -269,6 +273,23 @@ export default function CheckoutPage() {
           })}
         </div>
       </section>
+
+      {enfantsEbook.length > 0 && (
+        <section className="flex flex-col gap-2 rounded-2xl border border-decorative/30 bg-decorative/10 p-3">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-ink/70">
+            <BookOpen size={14} aria-hidden="true" />
+            Personnalisation de l&apos;ebook
+          </span>
+          <ul className="flex flex-col gap-0.5 text-sm text-ink/80">
+            {enfantsEbook.map((e) => (
+              <li key={e.id}>
+                <span className="font-medium text-ink">{e.prenom}</span>
+                <span className="text-ink/50"> — {e.kit}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3">
         <span className="text-xs font-medium text-ink/60">Paiement</span>

@@ -31,6 +31,12 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
         <p className="text-ink/50">{commande.client_telephone}</p>
         <p className="mt-2 text-ink/70">{commande.adresse}</p>
         <p className="text-ink/50">Livraison {commande.mode_livraison}</p>
+        {commande.enfants_ebook && (
+          <p className="mt-2 rounded-lg bg-brand/5 px-2 py-1.5 text-xs text-ink/80">
+            <span className="font-semibold text-ink">Ebook à personnaliser :</span>{" "}
+            {commande.enfants_ebook}
+          </p>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-ink/10 bg-white">
