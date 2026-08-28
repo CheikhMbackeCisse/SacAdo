@@ -1,11 +1,14 @@
-const CACHE_NAME = "sacado-v2";
+const CACHE_NAME = "sacado-v3";
 const APP_SHELL = ["/", "/manifest.webmanifest"];
 
+// Pas de skipWaiting / clients.claim : un nouveau service worker ne prend PAS
+// le contrôle en pleine session. Il attend que toutes les pages de l'app
+// soient fermées, puis s'active au prochain démarrage. Ça évite les
+// rechargements brutaux (retour au splash) pendant qu'on navigue.
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -18,7 +21,6 @@ self.addEventListener("activate", (event) => {
         )
       )
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
@@ -27,7 +29,15 @@ self.addEventListener("fetch", (event) => {
   // Ne jamais mettre en cache les appels vers Supabase (prix, stock, statut de
   // commande...) : ces données doivent toujours venir du réseau, pas d'un
   // cache local qui pourrait servir un prix ou un stock périmé.
-  if (new URL(event.request.url).origin !== self.location.origin) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Requêtes RSC de Next (navigation côté client) : toujours réseau, jamais de
+  // cache. Un payload périmé fait croire à un build différent et déclenche un
+  // rechargement complet de la page (retour au splash) à chaque navigation.
+  if (url.searchParams.has("_rsc") || event.request.headers.get("RSC") === "1") {
+    return;
+  }
 
   // Navigations (le document HTML) : RÉSEAU D'ABORD. Sans ça, un déploiement ne
   // se voit qu'à la visite suivante (le vieux HTML servi du cache référence les
