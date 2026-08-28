@@ -4,6 +4,9 @@ import { useCallback, useSyncExternalStore } from "react";
 
 const KEY = "sacado_identite";
 const EVENT = "sacado:identite";
+// Flag "Plus tard" de l'écran de bienvenue (voir welcome-screen.tsx) : on
+// l'efface aussi à la déconnexion pour que le formulaire de départ revienne.
+const ONBOARDING_REPORTE_KEY = "sacado_onboarding_reporte";
 
 export type Identite = { nom: string; telephone: string };
 
@@ -52,6 +55,11 @@ export function useIdentite() {
   const oublier = useCallback(() => {
     cache = null;
     window.localStorage.removeItem(KEY);
+    try {
+      window.localStorage.removeItem(ONBOARDING_REPORTE_KEY);
+    } catch {
+      // stockage indisponible : sans effet
+    }
     window.dispatchEvent(new CustomEvent(EVENT));
   }, []);
 

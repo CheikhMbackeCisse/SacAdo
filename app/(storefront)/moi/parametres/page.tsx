@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Moon, Smartphone, Sun } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { useTheme, type Theme } from "@/lib/local/theme";
@@ -14,7 +13,6 @@ const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
 ];
 
 export default function ParametresPage() {
-  const router = useRouter();
   const { identite, oublier } = useIdentite();
   const { theme, setTheme } = useTheme();
 
@@ -70,7 +68,10 @@ export default function ParametresPage() {
           type="button"
           onClick={() => {
             oublier();
-            router.push("/moi");
+            // Rechargement COMPLET voulu : on repart du tout début de l'app
+            // (splash + écran de bienvenue), sans état résiduel de session.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+            window.location.href = "/";
           }}
           className="self-start rounded-full border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition-colors active:scale-95"
         >
