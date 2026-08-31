@@ -114,6 +114,22 @@ export type CommandeItem = {
   prix_unitaire: number;
 };
 
+// Marketplace V2 — comptes back-office et vendeurs (id = auth.users.id).
+export type Admin = {
+  user_id: string;
+  email: string | null;
+  created_at: string;
+};
+
+export type Vendeur = {
+  id: string;
+  nom_boutique: string;
+  contact_nom: string | null;
+  contact_telephone: string | null;
+  infos_reversement: string | null;
+  date_creation: string;
+};
+
 export type TypeMessage = "commande" | "info" | "promo";
 
 export type Message = {

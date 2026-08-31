@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getClientIp, verifierLimite } from "@/lib/security/rate-limit";
 
 export type SignInResult = { ok: true } | { ok: false; error: string };
@@ -17,8 +18,22 @@ export async function signIn(email: string, password: string): Promise<SignInRes
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, error: "Email ou mot de passe incorrect." };
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.user) return { ok: false, error: "Email ou mot de passe incorrect." };
+
+  // Un compte vendeur (même méthode d'auth) ne doit jamais ouvrir l'admin.
+  const { data: admin, error: adminError } = await supabaseAdmin
+    .from("admins")
+    .select("user_id")
+    .eq("user_id", data.user.id)
+    .maybeSingle();
+
+  // Repli tant que la migration 0012 n'est pas passée (table `admins` absente).
+  if (!admin && adminError?.code !== "42P01") {
+    await supabase.auth.signOut();
+    return { ok: false, error: "Ce compte n'est pas autorisé à accéder à l'administration." };
+  }
+
   return { ok: true };
 }
 

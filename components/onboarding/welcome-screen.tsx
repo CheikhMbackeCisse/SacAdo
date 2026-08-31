@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -262,6 +263,20 @@ export function WelcomeScreen() {
             Plus tard
           </button>
         </form>
+
+        <p
+          style={{ animationDelay: "220ms" }}
+          className="animate-rise-in text-xs text-[#001314]/50"
+        >
+          Vous êtes vendeur ?{" "}
+          <Link
+            href="/vendeur/connexion"
+            className="font-semibold underline underline-offset-2"
+            style={{ color: "#0B3D91" }}
+          >
+            Accéder à l&apos;espace vendeur
+          </Link>
+        </p>
       </div>
     </div>
   );
