@@ -1,5 +1,14 @@
 import type { NextConfig } from "next";
 
+// Hôte du projet Supabase (Storage sert les photos uploadées par les vendeurs).
+const SUPABASE_HOST = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname;
+  } catch {
+    return "";
+  }
+})();
+
 // CSP "raisonnable" : bloque les scripts/styles/images/connexions venant d'un
 // domaine tiers non listé (protège contre l'injection de scripts malveillants
 // même si une faille XSS apparaissait ailleurs). 'unsafe-inline' reste
@@ -10,7 +19,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://*.supabase.co",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co",
   "worker-src 'self'",
@@ -24,6 +33,10 @@ const nextConfig: NextConfig = {
   images: {
     // AVIF avant WebP : Next choisit le plus léger que le navigateur supporte.
     formats: ["image/avif", "image/webp"],
+    // Photos produits des vendeurs, stockées dans Supabase Storage (bucket public).
+    remotePatterns: SUPABASE_HOST
+      ? [{ protocol: "https", hostname: SUPABASE_HOST, pathname: "/storage/v1/object/public/**" }]
+      : [],
     // 1 an : les photos produits/catégories changent rarement, inutile de
     // les redemander/reconvertir toutes les 60s (défaut Next).
     minimumCacheTTL: 31536000,

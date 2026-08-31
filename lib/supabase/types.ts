@@ -1,5 +1,7 @@
 export type Delai = "24h" | "5j";
 export type StatutProduit = "dispo" | "sur_commande" | "epuise";
+// Marketplace : circuit de modération d'un produit vendeur.
+export type StatutPublication = "en_attente" | "publie" | "refuse";
 export type StatutVariante = "dispo" | "epuise";
 export type Cycle = "prescolaire" | "elementaire" | "college" | "lycee";
 export type Gamme = "essentiel" | "confort" | "complet";
@@ -18,6 +20,11 @@ export type Produit = {
   seuil_alerte: number;
   statut: StatutProduit;
   created_at: string;
+  description: string | null;
+  // Marketplace : null = produit SacAdo en propre ; sinon = produit d'un vendeur.
+  vendeur_id: string | null;
+  statut_publication: StatutPublication;
+  motif_refus: string | null;
 };
 
 // Catégories : source de vérité en base (table `categories`). Les icônes Lucide
