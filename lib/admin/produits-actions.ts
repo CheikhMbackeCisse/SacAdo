@@ -43,7 +43,8 @@ export async function getProduitAdmin(id: number): Promise<Produit | null> {
 
 export type ProduitInput = {
   nom: string;
-  categorie: string;
+  categorie_id: number;
+  sous_categorie_id: number | null;
   prix: number;
   delai: Delai;
   photo: string | null;
@@ -54,7 +55,10 @@ export type ProduitInput = {
 
 function validerProduitInput(input: ProduitInput): string | null {
   if (!texteNonVide(input.nom, 200)) return "Le nom est requis.";
-  if (!texteNonVide(input.categorie, 100)) return "La catégorie est requise.";
+  if (!Number.isInteger(input.categorie_id)) return "La catégorie est requise.";
+  if (input.sous_categorie_id !== null && !Number.isInteger(input.sous_categorie_id)) {
+    return "Sous-catégorie invalide.";
+  }
   if (!estNombrePositifValide(input.prix)) return "Le prix doit être un nombre positif.";
   if (!estNombrePositifValide(input.stock)) return "Le stock doit être un nombre positif.";
   if (!estNombrePositifValide(input.seuil_alerte)) return "Le seuil d'alerte doit être un nombre positif.";

@@ -1,6 +1,45 @@
 import { supabase } from "./client";
 import { GAMME_ORDER } from "@/lib/gammes";
-import type { Gamme, Kit, Produit, ProduitVariante, Zone } from "./types";
+import type {
+  Categorie,
+  Gamme,
+  Kit,
+  Produit,
+  ProduitVariante,
+  SousCategorie,
+  Zone,
+} from "./types";
+
+export async function getCategories(): Promise<Categorie[]> {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("actif", true)
+    .order("ordre", { ascending: true })
+    .order("nom", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getCategorieBySlug(slug: string): Promise<Categorie | null> {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function getCategorieById(id: number): Promise<Categorie | null> {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
 
 export async function getPopulaires(limit = 8): Promise<Produit[]> {
   const { data, error } = await supabase
@@ -17,21 +56,41 @@ export type PageResultat<T> = { items: T[]; hasMore: boolean };
 export const TAILLE_PAGE_CATALOGUE = 24;
 
 export async function getProduitsByCategorie(
-  categorie: string,
-  { offset = 0, limit = TAILLE_PAGE_CATALOGUE }: { offset?: number; limit?: number } = {},
+  categorieId: number,
+  {
+    offset = 0,
+    limit = TAILLE_PAGE_CATALOGUE,
+    sousCategorieId,
+  }: { offset?: number; limit?: number; sousCategorieId?: number | null } = {},
 ): Promise<PageResultat<Produit>> {
   // .range() est inclusif : on demande une ligne de plus que "limit" pour
   // savoir s'il reste une page suivante, sans requête de comptage séparée.
-  const { data, error } = await supabase
-    .from("produits")
-    .select("*")
-    .eq("categorie", categorie)
+  let requete = supabase.from("produits").select("*").eq("categorie_id", categorieId);
+  if (sousCategorieId != null) requete = requete.eq("sous_categorie_id", sousCategorieId);
+
+  const { data, error } = await requete
     .order("nom", { ascending: true })
     .range(offset, offset + limit);
   if (error) throw error;
   const rows = data ?? [];
   const hasMore = rows.length > limit;
   return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
+}
+
+export async function getSousCategoriesByCategorie(
+  categorieId: number,
+): Promise<SousCategorie[]> {
+  const { data, error } = await supabase
+    .from("sous_categories")
+    .select("*")
+    .eq("categorie_id", categorieId)
+    .order("ordre", { ascending: true })
+    .order("nom", { ascending: true });
+  if (error) {
+    console.warn("sous_categories indisponible :", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getProduitById(id: number): Promise<Produit | null> {
@@ -71,14 +130,14 @@ export async function getZones(): Promise<Zone[]> {
 }
 
 export async function getProduitsSimilaires(
-  categorie: string,
+  categorieId: number,
   excludeId: number,
   limit = 4,
 ): Promise<Produit[]> {
   const { data, error } = await supabase
     .from("produits")
     .select("*")
-    .eq("categorie", categorie)
+    .eq("categorie_id", categorieId)
     .neq("id", excludeId)
     .limit(limit);
   if (error) throw error;
@@ -91,16 +150,58 @@ export async function searchProduits(
 ): Promise<PageResultat<Produit>> {
   const trimmed = query.trim();
   if (!trimmed) return { items: [], hasMore: false };
-  const { data, error } = await supabase
-    .from("produits")
-    .select("*")
-    .ilike("nom", `%${trimmed}%`)
-    .order("nom", { ascending: true })
-    .range(offset, offset + limit);
-  if (error) throw error;
-  const rows = data ?? [];
+  // RPC tolérante aux fautes (word_similarity pg_trgm) — voir migration 0010.
+  // On demande une ligne de plus que "limit" pour détecter la page suivante.
+  const { data, error } = await supabase.rpc("rechercher_produits", {
+    p_terme: trimmed,
+    p_offset: offset,
+    p_limit: limit + 1,
+  });
+  if (error) {
+    // Repli sur une recherche simple tant que la migration 0010 n'est pas passée.
+    console.warn("rechercher_produits indisponible, repli ilike :", error.message);
+    const repli = await supabase
+      .from("produits")
+      .select("*")
+      .ilike("nom", `%${trimmed}%`)
+      .order("nom", { ascending: true })
+      .range(offset, offset + limit);
+    if (repli.error) throw repli.error;
+    const lignes = repli.data ?? [];
+    const encore = lignes.length > limit;
+    return { items: encore ? lignes.slice(0, limit) : lignes, hasMore: encore };
+  }
+  const rows = (data ?? []) as Produit[];
   const hasMore = rows.length > limit;
   return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
+}
+
+export type SuggestionProduit = Pick<Produit, "id" | "nom" | "photo" | "prix" | "statut">;
+export type SuggestionSousCategorie = Pick<SousCategorie, "id" | "nom" | "slug"> & {
+  categorie_slug: string;
+  categorie_nom: string;
+};
+export type SuggestionsRecherche = {
+  produits: SuggestionProduit[];
+  sousCategories: SuggestionSousCategorie[];
+};
+
+export async function getSuggestionsRecherche(query: string): Promise<SuggestionsRecherche> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return { produits: [], sousCategories: [] };
+  const { data, error } = await supabase.rpc("suggestions_recherche", { p_terme: trimmed });
+  if (error) {
+    console.warn("suggestions_recherche indisponible :", error.message);
+    return { produits: [], sousCategories: [] };
+  }
+  const brut = (data ?? {}) as {
+    produits?: SuggestionProduit[];
+    sous_categories?: SuggestionSousCategorie[];
+  };
+  return {
+    produits: brut.produits ?? [],
+    sousCategories: brut.sous_categories ?? [],
+  };
 }
 
 // Les gammes disponibles pour une classe, triées Essentiel -> Confort -> Complet.

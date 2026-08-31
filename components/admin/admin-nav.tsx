@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   ClipboardList,
+  FolderTree,
   GraduationCap,
   LayoutDashboard,
   LogOut,
   MapPin,
   Package,
+  Tags,
   Users,
 } from "lucide-react";
 import { signOut } from "@/lib/admin/auth-actions";
@@ -17,6 +19,8 @@ import { signOut } from "@/lib/admin/auth-actions";
 const LIENS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/produits", label: "Produits", icon: Package },
+  { href: "/admin/categories", label: "Catégories", icon: FolderTree },
+  { href: "/admin/sous-categories", label: "Sous-catégories", icon: Tags },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
   { href: "/admin/zones", label: "Zones", icon: MapPin },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },

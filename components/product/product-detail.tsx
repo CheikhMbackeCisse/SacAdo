@@ -12,9 +12,10 @@ import type { Produit, ProduitVariante } from "@/lib/supabase/types";
 type ProductDetailProps = {
   produit: Produit;
   variantes: ProduitVariante[];
+  categorieNom: string | null;
 };
 
-export function ProductDetail({ produit, variantes }: ProductDetailProps) {
+export function ProductDetail({ produit, variantes, categorieNom }: ProductDetailProps) {
   const { ajouter } = usePanier();
   const { recordConsulte } = useConsultes();
   const [selectedId, setSelectedId] = useState<number | null>(
@@ -66,9 +67,11 @@ export function ProductDetail({ produit, variantes }: ProductDetailProps) {
 
       <div className="flex flex-col gap-3 px-4">
         <div>
-          <span className="text-[11px] font-medium uppercase tracking-wide text-ink/40">
-            {produit.categorie}
-          </span>
+          {categorieNom && (
+            <span className="text-[11px] font-medium uppercase tracking-wide text-ink/40">
+              {categorieNom}
+            </span>
+          )}
           <h1 className="font-heading text-lg font-bold text-ink">{produit.nom}</h1>
         </div>
 

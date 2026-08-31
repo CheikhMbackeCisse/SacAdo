@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
-import { getProduitById, getProduitsSimilaires, getVariantesByProduit } from "@/lib/supabase/queries";
+import {
+  getCategorieById,
+  getProduitById,
+  getProduitsSimilaires,
+  getVariantesByProduit,
+} from "@/lib/supabase/queries";
 import { ProductDetail } from "@/components/product/product-detail";
 import { ProductGrid } from "@/components/product/product-grid";
 
@@ -15,14 +20,19 @@ export default async function ProduitPage(props: PageProps<"/produit/[id]">) {
   const produit = await getProduitById(produitId);
   if (!produit) notFound();
 
-  const [variantes, similaires] = await Promise.all([
+  const [variantes, similaires, categorie] = await Promise.all([
     getVariantesByProduit(produit.id),
-    getProduitsSimilaires(produit.categorie, produit.id),
+    getProduitsSimilaires(produit.categorie_id, produit.id),
+    getCategorieById(produit.categorie_id),
   ]);
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-6 pb-8">
-      <ProductDetail produit={produit} variantes={variantes} />
+      <ProductDetail
+        produit={produit}
+        variantes={variantes}
+        categorieNom={categorie?.nom ?? null}
+      />
 
       {similaires.length > 0 && (
         <section>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getProduitsAdminPage } from "@/lib/admin/produits-actions";
+import { getCategoriesAdmin } from "@/lib/admin/categories-actions";
 import { formatPrice } from "@/lib/format";
 import { DeleteProduitButton } from "@/components/admin/delete-produit-button";
 
@@ -11,7 +12,11 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
   const page = Math.max(1, Number(pageParam) || 1);
   const offset = (page - 1) * TAILLE_PAGE;
 
-  const { items: produits, hasMore } = await getProduitsAdminPage({ offset, limit: TAILLE_PAGE });
+  const [{ items: produits, hasMore }, categories] = await Promise.all([
+    getProduitsAdminPage({ offset, limit: TAILLE_PAGE }),
+    getCategoriesAdmin(),
+  ]);
+  const nomCategorie = new Map(categories.map((c) => [c.id, c.nom]));
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,7 +50,9 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
               return (
                 <tr key={produit.id} className="border-b border-ink/5 last:border-0">
                   <td className="px-4 py-3 text-ink">{produit.nom}</td>
-                  <td className="px-4 py-3 text-ink/60">{produit.categorie}</td>
+                  <td className="px-4 py-3 text-ink/60">
+                    {nomCategorie.get(produit.categorie_id) ?? "—"}
+                  </td>
                   <td className="px-4 py-3 text-ink/60">{formatPrice(produit.prix)}</td>
                   <td className="px-4 py-3 text-ink/60">{produit.delai}</td>
                   <td className={`px-4 py-3 font-medium ${stockBas ? "text-red-600" : "text-ink/60"}`}>

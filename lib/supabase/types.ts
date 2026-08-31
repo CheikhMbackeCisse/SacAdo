@@ -7,13 +7,37 @@ export type Gamme = "essentiel" | "confort" | "complet";
 export type Produit = {
   id: number;
   nom: string;
-  categorie: string;
+  // FK vers categories (obligatoire)
+  categorie_id: number;
+  // FK vers sous_categories ; null = produit sans sous-catégorie
+  sous_categorie_id: number | null;
   prix: number;
   delai: Delai;
   photo: string | null;
   stock: number;
   seuil_alerte: number;
   statut: StatutProduit;
+  created_at: string;
+};
+
+// Catégories : source de vérité en base (table `categories`). Les icônes Lucide
+// et les placeholders de recherche restent en code (lib/category-presentation.ts).
+export type Categorie = {
+  id: number;
+  nom: string;
+  slug: string;
+  ordre: number;
+  image: string | null;
+  actif: boolean;
+  created_at: string;
+};
+
+export type SousCategorie = {
+  id: number;
+  nom: string;
+  categorie_id: number;
+  slug: string;
+  ordre: number;
   created_at: string;
 };
 

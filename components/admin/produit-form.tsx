@@ -1,17 +1,33 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { creerProduit, modifierProduit, type ProduitInput } from "@/lib/admin/produits-actions";
-import { CATEGORIES } from "@/lib/categories";
-import type { Produit } from "@/lib/supabase/types";
+import { creerSousCategorie } from "@/lib/admin/sous-categories-actions";
+import type { Categorie, Produit, SousCategorie } from "@/lib/supabase/types";
 
-const CATEGORIES_PRODUIT = CATEGORIES.filter((c) => c.categorieDb).map((c) => c.categorieDb as string);
+type Props = {
+  produit?: Produit;
+  categories: Categorie[];
+  sousCategories: SousCategorie[];
+};
 
-export function ProduitForm({ produit }: { produit?: Produit }) {
+export function ProduitForm({ produit, categories, sousCategories }: Props) {
   const router = useRouter();
+
+  // "Kits scolaires" ne porte pas de produits (ils vivent dans la table kits).
+  const categoriesUtilisables = useMemo(
+    () => categories.filter((c) => c.slug !== "kits"),
+    [categories],
+  );
+
   const [nom, setNom] = useState(produit?.nom ?? "");
-  const [categorie, setCategorie] = useState(produit?.categorie ?? CATEGORIES_PRODUIT[0]);
+  const [categorieId, setCategorieId] = useState<number>(
+    produit?.categorie_id ?? categoriesUtilisables[0]?.id ?? 0,
+  );
+  const [sousCategorieId, setSousCategorieId] = useState<number | null>(
+    produit?.sous_categorie_id ?? null,
+  );
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
   const [delai, setDelai] = useState<ProduitInput["delai"]>(produit?.delai ?? "24h");
   const [photo, setPhoto] = useState(produit?.photo ?? "");
@@ -21,6 +37,60 @@ export function ProduitForm({ produit }: { produit?: Produit }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Sous-catégories créées à la volée depuis ce formulaire, fusionnées à la liste.
+  const [sousCatsAjoutees, setSousCatsAjoutees] = useState<SousCategorie[]>([]);
+  const [nouvelleSousCat, setNouvelleSousCat] = useState("");
+  const [creationEnCours, setCreationEnCours] = useState(false);
+
+  const toutesSousCats = useMemo(
+    () => [...sousCategories, ...sousCatsAjoutees],
+    [sousCategories, sousCatsAjoutees],
+  );
+
+  const sousCatsDeLaCategorie = useMemo(
+    () =>
+      toutesSousCats
+        .filter((sc) => sc.categorie_id === categorieId)
+        .sort((a, b) => a.ordre - b.ordre || a.nom.localeCompare(b.nom)),
+    [toutesSousCats, categorieId],
+  );
+
+  const changerCategorie = (valeur: number) => {
+    setCategorieId(valeur);
+    const encoreValide = toutesSousCats.some(
+      (sc) => sc.id === sousCategorieId && sc.categorie_id === valeur,
+    );
+    if (!encoreValide) setSousCategorieId(null);
+  };
+
+  const ajouterSousCat = async () => {
+    const nomSC = nouvelleSousCat.trim();
+    if (!nomSC || !categorieId) return;
+    setCreationEnCours(true);
+    setError(null);
+    const result = await creerSousCategorie({
+      nom: nomSC,
+      categorie_id: categorieId,
+      ordre: 0,
+    });
+    setCreationEnCours(false);
+    if (!result.ok || !result.id) {
+      setError(result.ok ? "Création impossible." : result.error);
+      return;
+    }
+    const creee: SousCategorie = {
+      id: result.id,
+      nom: nomSC,
+      categorie_id: categorieId,
+      slug: "",
+      ordre: 0,
+      created_at: new Date().toISOString(),
+    };
+    setSousCatsAjoutees((current) => [...current, creee]);
+    setSousCategorieId(result.id);
+    setNouvelleSousCat("");
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitting(true);
@@ -28,7 +98,8 @@ export function ProduitForm({ produit }: { produit?: Produit }) {
 
     const input: ProduitInput = {
       nom: nom.trim(),
-      categorie,
+      categorie_id: categorieId,
+      sous_categorie_id: sousCategorieId,
       prix: Number(prix),
       delai,
       photo: photo.trim() || null,
@@ -68,13 +139,13 @@ export function ProduitForm({ produit }: { produit?: Produit }) {
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-ink/60">Catégorie</span>
           <select
-            value={categorie}
-            onChange={(event) => setCategorie(event.target.value)}
+            value={categorieId}
+            onChange={(event) => changerCategorie(Number(event.target.value))}
             className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           >
-            {CATEGORIES_PRODUIT.map((c) => (
-              <option key={c} value={c}>
-                {c}
+            {categoriesUtilisables.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nom}
               </option>
             ))}
           </select>
@@ -92,6 +163,40 @@ export function ProduitForm({ produit }: { produit?: Produit }) {
           </select>
         </label>
       </div>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs font-medium text-ink/60">Sous-catégorie</span>
+        <select
+          value={sousCategorieId ?? ""}
+          onChange={(event) =>
+            setSousCategorieId(event.target.value ? Number(event.target.value) : null)
+          }
+          className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+        >
+          <option value="">— Aucune —</option>
+          {sousCatsDeLaCategorie.map((sc) => (
+            <option key={sc.id} value={sc.id}>
+              {sc.nom}
+            </option>
+          ))}
+        </select>
+        <span className="flex flex-wrap items-center gap-2 pt-1">
+          <input
+            value={nouvelleSousCat}
+            onChange={(event) => setNouvelleSousCat(event.target.value)}
+            placeholder="Nouvelle sous-catégorie"
+            className="flex-1 rounded-lg border border-ink/15 px-2 py-1 text-xs focus:border-brand focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={ajouterSousCat}
+            disabled={creationEnCours || !nouvelleSousCat.trim()}
+            className="rounded-full border border-brand/40 px-3 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand/5 disabled:opacity-40"
+          >
+            Créer
+          </button>
+        </span>
+      </label>
 
       <div className="grid grid-cols-3 gap-4">
         <label className="flex flex-col gap-1 text-sm">

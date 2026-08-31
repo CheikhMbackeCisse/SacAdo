@@ -3,38 +3,53 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Heart, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { CATEGORIES } from "@/lib/categories";
+import { Heart, Search, Tag } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ProductImage } from "@/components/ui/product-image";
+import { formatPrice } from "@/lib/format";
+import {
+  placeholdersPourCategorie,
+  slugCategorieDepuisPath,
+} from "@/lib/category-presentation";
 import { NAV_ITEMS } from "@/lib/nav-items";
-
-const DEFAULT_PLACEHOLDERS = [
-  "Cahier 200 pages",
-  "Cahier Prestige",
-  "Calculatrice scientifique",
-  "Cartable",
-];
+import {
+  getSuggestionsRecherche,
+  type SuggestionsRecherche,
+} from "@/lib/supabase/queries";
 
 const PLACEHOLDER_INTERVAL_MS = 15000;
+const SUGGESTIONS_DEBOUNCE_MS = 250;
+
+const SUGGESTIONS_VIDES: SuggestionsRecherche = { produits: [], sousCategories: [] };
 
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<SuggestionsRecherche>(SUGGESTIONS_VIDES);
+  const [ouvert, setOuvert] = useState(false);
+  const rechercheRef = useRef<HTMLDivElement>(null);
 
-  const placeholders = useMemo(() => {
-    const categorieActive = CATEGORIES.find((categorie) => pathname.startsWith(categorie.href));
-    return categorieActive?.placeholders ?? DEFAULT_PLACEHOLDERS;
-  }, [pathname]);
+  const placeholders = useMemo(
+    () => placeholdersPourCategorie(slugCategorieDepuisPath(pathname)),
+    [pathname],
+  );
 
   const placeholderActuel = placeholders[placeholderIndex % placeholders.length];
 
   const lancerRecherche = (terme: string) => {
     const nettoye = terme.trim();
     if (!nettoye) return;
-    router.push(`/recherche?q=${encodeURIComponent(nettoye)}`);
+    setOuvert(false);
     setQuery("");
+    router.push(`/recherche?q=${encodeURIComponent(nettoye)}`);
+  };
+
+  const allerVers = (href: string) => {
+    setOuvert(false);
+    setQuery("");
+    router.push(href);
   };
 
   useEffect(() => {
@@ -43,6 +58,48 @@ export function Header() {
     }, PLACEHOLDER_INTERVAL_MS);
     return () => clearInterval(id);
   }, [placeholders]);
+
+  // Fermer au clic en dehors et à la touche Échap.
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rechercheRef.current?.contains(event.target as Node)) setOuvert(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOuvert(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  // Suggestions live (produits + sous-catégories), tolérantes aux fautes,
+  // rafraîchies à chaque frappe avec un léger debounce. Le panneau n'est de
+  // toute façon affiché qu'à partir de 2 caractères (afficherPanneau).
+  useEffect(() => {
+    const terme = query.trim();
+    if (terme.length < 2) return;
+    let annule = false;
+    const id = setTimeout(() => {
+      getSuggestionsRecherche(terme)
+        .then((res) => {
+          if (!annule) setSuggestions(res);
+        })
+        .catch(() => {
+          if (!annule) setSuggestions(SUGGESTIONS_VIDES);
+        });
+    }, SUGGESTIONS_DEBOUNCE_MS);
+    return () => {
+      annule = true;
+      clearTimeout(id);
+    };
+  }, [query]);
+
+  const aDesSuggestions =
+    suggestions.produits.length > 0 || suggestions.sousCategories.length > 0;
+  const afficherPanneau = ouvert && query.trim().length >= 2;
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-surface/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface/80">
@@ -64,38 +121,103 @@ export function Header() {
           </span>
         </Link>
 
-        <form
-          className="min-w-0 flex-1"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            // Clavier (touche "rechercher") : uniquement si l'utilisateur a
-            // tapé quelque chose. Le clic sur l'icône, lui, retombe sur le
-            // placeholder (voir le bouton ci-dessous).
-            lancerRecherche(query);
-          }}
-        >
-          <div className="relative">
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={placeholderActuel}
-              aria-label="Rechercher un produit"
-              className="w-full rounded-lg border border-ink/10 bg-elevated py-2 pl-4 pr-11 text-base text-ink placeholder:text-ink/40 transition-colors duration-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 sm:text-sm"
-            />
-            <button
-              type="button"
-              // Icône cliquée sans rien taper -> on recherche l'article affiché
-              // dans le placeholder.
-              onClick={() => lancerRecherche(query || placeholderActuel)}
-              aria-label={query.trim() ? "Rechercher" : `Rechercher : ${placeholderActuel}`}
-              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-2.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-90"
-            >
-              <Search size={16} aria-hidden="true" />
-            </button>
-          </div>
-        </form>
+        <div ref={rechercheRef} className="relative min-w-0 flex-1">
+          <form
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              lancerRecherche(query);
+            }}
+          >
+            <div className="relative">
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setOuvert(true);
+                }}
+                onFocus={() => setOuvert(true)}
+                placeholder={placeholderActuel}
+                aria-label="Rechercher un produit"
+                autoComplete="off"
+                className="w-full rounded-lg border border-ink/10 bg-elevated py-2 pl-4 pr-11 text-base text-ink placeholder:text-ink/40 transition-colors duration-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 sm:text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => lancerRecherche(query || placeholderActuel)}
+                aria-label={query.trim() ? "Rechercher" : `Rechercher : ${placeholderActuel}`}
+                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-2.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-90"
+              >
+                <Search size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </form>
+
+          {afficherPanneau && (
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-ink/10 bg-elevated shadow-lg">
+              {!aDesSuggestions ? (
+                <p className="px-4 py-3 text-sm text-ink/50">Aucune suggestion.</p>
+              ) : (
+                <div className="max-h-[70vh] overflow-y-auto py-1">
+                  {suggestions.sousCategories.map((sc) => (
+                    <button
+                      key={`sc-${sc.id}`}
+                      type="button"
+                      onClick={() =>
+                        allerVers(`/categorie/${sc.categorie_slug}?sc=${sc.slug}`)
+                      }
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-ink/5"
+                    >
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                        <Tag size={16} aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm text-ink">{sc.nom}</span>
+                        <span className="block truncate text-xs text-ink/45">
+                          dans {sc.categorie_nom}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+
+                  {suggestions.produits.map((produit) => (
+                    <button
+                      key={`p-${produit.id}`}
+                      type="button"
+                      onClick={() => allerVers(`/produit/${produit.id}`)}
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-ink/5"
+                    >
+                      <span className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-ink/5">
+                        <ProductImage
+                          src={produit.photo}
+                          alt={produit.nom}
+                          className="h-full w-full"
+                          sizes="40px"
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-ink">{produit.nom}</span>
+                        <span className="block text-xs text-ink/45">
+                          {formatPrice(produit.prix)}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => lancerRecherche(query)}
+                className="flex w-full items-center gap-2 border-t border-ink/10 px-4 py-2.5 text-left text-sm font-medium text-brand transition-colors hover:bg-brand/5"
+              >
+                <Search size={15} aria-hidden="true" />
+                Voir tous les résultats pour «&nbsp;{query.trim()}&nbsp;»
+              </button>
+            </div>
+          )}
+        </div>
 
         <Link
           href="/favoris"
