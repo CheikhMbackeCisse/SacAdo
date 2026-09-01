@@ -1,23 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight } from "lucide-react";
-import { CYCLES, getCycleByValue } from "@/lib/cycles";
+import { ArrowRight, ChevronDown } from "lucide-react";
+import {
+  CYCLES,
+  decouperClasseLycee,
+  getCycleByValue,
+  structurerLycee,
+} from "@/lib/cycles";
 
 export function generateStaticParams() {
   return CYCLES.map((c) => ({ cycle: c.value }));
-}
-
-// Pour le Lycée : regroupe les classes par niveau (Seconde / Première /
-// Terminale) au lieu d'une liste plate de 12 séries.
-const LYCEE_GROUPES = ["Seconde", "Première", "Terminale"];
-
-function grouperClasses(cycle: string, classes: string[]) {
-  if (cycle !== "lycee") return [{ titre: null as string | null, classes }];
-  return LYCEE_GROUPES.map((titre) => ({
-    titre,
-    classes: classes.filter((c) => c.startsWith(`${titre} `)),
-  })).filter((g) => g.classes.length > 0);
 }
 
 export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">) {
@@ -25,7 +18,7 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
   const cycleDef = getCycleByValue(cycle);
   if (!cycleDef) notFound();
 
-  const groupes = grouperClasses(cycle, cycleDef.classes);
+  const estLycee = cycleDef.value === "lycee";
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
@@ -42,35 +35,102 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
         <div className="flex flex-col gap-0.5">
           <span className="text-xs font-medium text-brand">Kits scolaires</span>
           <h1 className="font-heading text-xl font-bold text-ink">{cycleDef.label}</h1>
-          <p className="text-sm text-ink/60">Choisis la classe.</p>
+          <p className="text-sm text-ink/60">
+            {estLycee ? "Choisis la classe, puis la série." : "Choisis la classe."}
+          </p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-5">
-        {groupes.map((groupe) => (
-          <div key={groupe.titre ?? "classes"} className="flex flex-col gap-2">
-            {groupe.titre && (
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink/45">
-                {groupe.titre}
-              </span>
-            )}
-            <div className="flex flex-col gap-2">
-              {groupe.classes.map((niveau) => (
-                <Link
-                  key={niveau}
-                  href={`/kits/${cycleDef.value}/${encodeURIComponent(niveau)}`}
-                  className="group flex items-center justify-between gap-2 rounded-2xl border border-ink/10 bg-elevated px-4 py-3.5 transition-colors hover:border-brand active:scale-[0.99]"
-                >
-                  <span className="text-sm font-medium text-ink">{niveau}</span>
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition-transform group-hover:translate-x-0.5">
-                    <ArrowRight size={15} aria-hidden="true" />
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      {estLycee ? (
+        <div className="flex flex-col gap-2.5">
+          {structurerLycee(cycleDef.classes).map((niv) => (
+            <details key={niv.niveau} className="group rounded-2xl border border-ink/10 bg-elevated">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
+                <span className="text-sm font-semibold text-ink">{niv.niveau}</span>
+                <ChevronDown
+                  size={16}
+                  aria-hidden="true"
+                  className="shrink-0 text-ink/40 transition-transform group-open:rotate-180"
+                />
+              </summary>
+
+              <div className="flex flex-col gap-2 border-t border-ink/10 px-3 py-3">
+                {niv.directes.map((classe) => (
+                  <ClasseLien
+                    key={classe}
+                    href={`/kits/${cycleDef.value}/${encodeURIComponent(classe)}`}
+                    label={classe}
+                  />
+                ))}
+
+                {niv.groupes.map((groupe) => (
+                  <details
+                    key={groupe.type}
+                    className="group/serie rounded-xl border border-ink/10 bg-surface"
+                  >
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2.5 [&::-webkit-details-marker]:hidden">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-ink/55">
+                        {groupe.label}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        aria-hidden="true"
+                        className="shrink-0 text-ink/40 transition-transform group-open/serie:rotate-180"
+                      />
+                    </summary>
+                    <div className="flex flex-col gap-2 px-2.5 pb-2.5 pt-1">
+                      {groupe.classes.map((classe) => {
+                        const { serie } = decouperClasseLycee(classe);
+                        return (
+                          <ClasseLien
+                            key={classe}
+                            href={`/kits/${cycleDef.value}/${encodeURIComponent(classe)}`}
+                            label={`Série ${serie}`}
+                            ariaLabel={classe}
+                          />
+                        );
+                      })}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </details>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {cycleDef.classes.map((niveau) => (
+            <ClasseLien
+              key={niveau}
+              href={`/kits/${cycleDef.value}/${encodeURIComponent(niveau)}`}
+              label={niveau}
+            />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function ClasseLien({
+  href,
+  label,
+  ariaLabel,
+}: {
+  href: string;
+  label: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      className="group/lien flex items-center justify-between gap-2 rounded-2xl border border-ink/10 bg-elevated px-4 py-3.5 transition-colors hover:border-brand active:scale-[0.99]"
+    >
+      <span className="text-sm font-medium text-ink">{label}</span>
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition-transform group-hover/lien:translate-x-0.5">
+        <ArrowRight size={15} aria-hidden="true" />
+      </span>
+    </Link>
   );
 }
