@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getMonProduit, getReferentiel } from "@/lib/vendeur/produits-actions";
 import { ProduitVendeurForm } from "@/components/vendeur/produit-vendeur-form";
+import { VendeurVariantesManager } from "@/components/vendeur/vendeur-variantes-manager";
 
 export default async function ModifierProduitVendeurPage({
   params,
@@ -35,6 +36,8 @@ export default async function ModifierProduitVendeurPage({
         sousCategories={sousCategories}
         commissions={commissions}
       />
+
+      <VendeurVariantesManager produitId={produit.id} />
     </div>
   );
 }
