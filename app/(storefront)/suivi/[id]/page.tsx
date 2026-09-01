@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/format";
 import { OrderStepper } from "@/components/suivi/order-stepper";
+import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
 import type { Commande } from "@/lib/supabase/types";
 
 export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
@@ -27,6 +28,17 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
       </div>
 
       <OrderStepper statut={commande.statut} />
+
+      {commande.lat != null && commande.lng != null && (
+        <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">
+          <span className="text-xs font-medium text-ink/60">Lieu de livraison</span>
+          <CommandeLocalisation
+            lat={commande.lat}
+            lng={commande.lng}
+            precision={commande.precision_livreur}
+          />
+        </section>
+      )}
 
       <section className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">
         <div className="flex justify-between text-ink/70">

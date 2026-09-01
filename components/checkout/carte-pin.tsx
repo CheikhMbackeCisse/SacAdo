@@ -23,9 +23,12 @@ const EPINGLE_HTML = `
 type Props = {
   position: Coordonnees | null;
   onChange: (position: Coordonnees) => void;
+  // Lecture seule : l'épingle est figée (affichage d'une position déjà validée,
+  // ex. fiche commande admin). Pas de drag, pas de clic, pas de bouton géoloc.
+  readOnly?: boolean;
 };
 
-export function CartePin({ position, onChange }: Props) {
+export function CartePin({ position, onChange, readOnly = false }: Props) {
   const conteneurRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
@@ -36,8 +39,9 @@ export function CartePin({ position, onChange }: Props) {
   // Vrai quand la position vient d'un geste sur la carte (clic / drag) : dans ce
   // cas l'épingle est déjà bien placée, inutile de recadrer/zoomer la vue.
   const gesteInterne = useRef(false);
-  // Position au montage : figée pour l'init (l'effet ne dépend pas de `position`).
+  // Figés pour l'init (l'effet a des deps vides et ne doit pas se relancer).
   const positionInitiale = useRef(position);
+  const readOnlyRef = useRef(readOnly);
 
   const [pretePourInteraction, setPretePourInteraction] = useState(false);
   const [geoloc, setGeoloc] = useState<"idle" | "chargement" | "refus" | "indispo">("idle");
@@ -67,22 +71,25 @@ export function CartePin({ position, onChange }: Props) {
         iconSize: [30, 40],
         iconAnchor: [15, 40],
       });
+      const modifiable = !readOnlyRef.current;
       const marker = L.marker([depart.lat, depart.lng], {
-        draggable: true,
-        autoPan: true,
+        draggable: modifiable,
+        autoPan: modifiable,
         icon: icone,
       }).addTo(map);
 
-      marker.on("dragend", () => {
-        const { lat, lng } = marker.getLatLng();
-        gesteInterne.current = true;
-        onChangeRef.current({ lat, lng });
-      });
-      map.on("click", (event) => {
-        marker.setLatLng(event.latlng);
-        gesteInterne.current = true;
-        onChangeRef.current({ lat: event.latlng.lat, lng: event.latlng.lng });
-      });
+      if (modifiable) {
+        marker.on("dragend", () => {
+          const { lat, lng } = marker.getLatLng();
+          gesteInterne.current = true;
+          onChangeRef.current({ lat, lng });
+        });
+        map.on("click", (event) => {
+          marker.setLatLng(event.latlng);
+          gesteInterne.current = true;
+          onChangeRef.current({ lat: event.latlng.lat, lng: event.latlng.lng });
+        });
+      }
 
       mapRef.current = map;
       markerRef.current = marker;
@@ -144,36 +151,40 @@ export function CartePin({ position, onChange }: Props) {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={localiser}
-          disabled={geoloc === "chargement"}
-          className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 transition-transform active:scale-95 disabled:opacity-50"
-        >
-          {geoloc === "chargement" ? (
-            <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-          ) : (
-            <LocateFixed size={14} aria-hidden="true" />
-          )}
-          {geoloc === "chargement" ? "Localisation…" : "Utiliser ma position"}
-        </button>
-        <span className="text-[11px] text-ink/50">
-          {position
-            ? "Déplace l’épingle jusqu’à ta porte."
-            : "Place l’épingle sur la carte, ou utilise ta position."}
-        </span>
-      </div>
+      {!readOnly && (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={localiser}
+              disabled={geoloc === "chargement"}
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 transition-transform active:scale-95 disabled:opacity-50"
+            >
+              {geoloc === "chargement" ? (
+                <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+              ) : (
+                <LocateFixed size={14} aria-hidden="true" />
+              )}
+              {geoloc === "chargement" ? "Localisation…" : "Utiliser ma position"}
+            </button>
+            <span className="text-[11px] text-ink/50">
+              {position
+                ? "Déplace l’épingle jusqu’à ta porte."
+                : "Place l’épingle sur la carte, ou utilise ta position."}
+            </span>
+          </div>
 
-      {geoloc === "refus" && (
-        <p className="text-[11px] text-ink/60">
-          Localisation refusée. Place l’épingle à la main sur la carte, c’est suffisant.
-        </p>
-      )}
-      {geoloc === "indispo" && (
-        <p className="text-[11px] text-ink/60">
-          La localisation n’est pas disponible sur cet appareil. Place l’épingle à la main.
-        </p>
+          {geoloc === "refus" && (
+            <p className="text-[11px] text-ink/60">
+              Localisation refusée. Place l’épingle à la main sur la carte, c’est suffisant.
+            </p>
+          )}
+          {geoloc === "indispo" && (
+            <p className="text-[11px] text-ink/60">
+              La localisation n’est pas disponible sur cet appareil. Place l’épingle à la main.
+            </p>
+          )}
+        </>
       )}
     </div>
   );
