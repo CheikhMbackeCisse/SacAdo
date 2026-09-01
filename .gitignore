@@ -51,3 +51,7 @@ next-env.d.ts
 /accueil.png
 /categorie.png
 /sac-decole.png
+
+# worker MapLibre copié depuis node_modules par scripts/copier-worker-maplibre.mjs
+# (regénéré à chaque predev/prebuild — inutile de le versionner)
+/public/vendor/

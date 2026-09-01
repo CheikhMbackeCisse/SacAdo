@@ -7,6 +7,12 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 export type Coordonnees = { lat: number; lng: number };
 
+// MapLibre v6 charge son web worker depuis un fichier séparé. Turbopack ne
+// ré-émet pas le module partagé à côté du worker hashé → le worker plante et
+// aucune tuile ne se charge. On pointe donc vers la copie statique de
+// public/vendor/maplibre/ (générée par scripts/copier-worker-maplibre.mjs).
+maplibregl.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.mjs");
+
 // Centre par défaut : Place de l'Indépendance, Dakar.
 const DAKAR: Coordonnees = { lat: 14.6928, lng: -17.4467 };
 const ZOOM_VILLE = 12;
