@@ -11,6 +11,9 @@ type Slide = {
   href: string;
   // absent -> pas encore de vraie photo, on retombe sur un dégradé de marque.
   image?: string;
+  // Miniature floue en base64 (générée avec sharp) : affichée pendant le
+  // chargement de la vraie image, plus d'à-coup visuel.
+  blur?: string;
 };
 
 const SLIDES: Slide[] = [
@@ -20,6 +23,7 @@ const SLIDES: Slide[] = [
     cta: "Découvrir",
     href: "/categories",
     image: "/images/hero-marque.jpg",
+    blur: "data:image/webp;base64,UklGRkQAAABXRUJQVlA4IDgAAADwAQCdASoMAAwAA4BaJbACdAELz4SBaYAA/vPIifajCzd3NzQnnTdUL/7XnNJqPoKhGy0h7XEwAA==",
   },
   {
     title: "Sa classe, son kit prêt à commander, ebook offert",
@@ -27,6 +31,7 @@ const SLIDES: Slide[] = [
     cta: "Composer mon kit",
     href: "/kits",
     image: "/images/cat-kits.png",
+    blur: "data:image/webp;base64,UklGRj4AAABXRUJQVlA4IDIAAADQAQCdASoMAAoAA4BaJYgCdAD0dnQ9AAD+7lf5cLg8/AOmW/3kXPx1q+qNDT+N7/oAAA==",
   },
   {
     title: "Vous commandez, on vous l'apporte",
@@ -34,6 +39,7 @@ const SLIDES: Slide[] = [
     cta: "Commander",
     href: "/categories",
     image: "/images/hero-livraison.jpg",
+    blur: "data:image/webp;base64,UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoMAAgAA4BaJYgCdACRpiZ4AAD9+X8xX/Ht9OCqxPQZ+MUQhVEqTCQgwAA=",
   },
   {
     title: "Un endroit rien qu'à lui pour apprendre",
@@ -41,6 +47,7 @@ const SLIDES: Slide[] = [
     cta: "Aménager son espace",
     href: "/categorie/mobilier",
     image: "/images/hero-coin-etude.jpg",
+    blur: "data:image/webp;base64,UklGRj4AAABXRUJQVlA4IDIAAADwAQCdASoMAAwAA4BaJQBOgBuKByxGGAAA/uc/GVE9IjhUEjVZ0PyNy5wtubrZO/WAAA==",
   },
   {
     title: "Les outils du numérique à votre portée",
@@ -48,6 +55,7 @@ const SLIDES: Slide[] = [
     cta: "Voir le matériel",
     href: "/categorie/ordinateurs",
     image: "/images/hero-informatique.jpg",
+    blur: "data:image/webp;base64,UklGRkQAAABXRUJQVlA4IDgAAADwAQCdASoMAAcAA4BaJQBOgBuEXyQ24AAA/vCugYXuDrm2HYrgN1yXXbhcVSoKNMl5bS08KQAAAA==",
   },
 ];
 
@@ -116,10 +124,12 @@ export function HeroCarousel() {
                 src={slide.image}
                 alt={slide.title}
                 fill
-                // Seule la 1re slide est prioritaire (LCP) ; les suivantes se
-                // chargent à l'approche.
-                priority={i === 0}
+                // Les 5 vraies slides sont préchargées (vues tout de suite au
+                // défilement auto). La 6e est le clone de la 1re, déjà chargée.
+                priority={i < SLIDES.length}
                 sizes="100vw"
+                placeholder={slide.blur ? "blur" : "empty"}
+                blurDataURL={slide.blur}
                 className="object-cover"
               />
             ) : (

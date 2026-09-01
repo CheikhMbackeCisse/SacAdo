@@ -1,4 +1,4 @@
-const CACHE_NAME = "sacado-v3";
+const CACHE_NAME = "sacado-v4";
 const APP_SHELL = ["/", "/manifest.webmanifest"];
 
 // Pas de skipWaiting / clients.claim : un nouveau service worker ne prend PAS
@@ -61,8 +61,32 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Autres ressources same-origin (JS/CSS à nom haché, images) :
-  // stale-while-revalidate.
+  // Images (optimisées via /_next/image ou fichiers statiques) : CACHE D'ABORD.
+  // Une image a une URL immuable pour un contenu donné (le hash ou les
+  // paramètres de taille changent si l'image change). Une fois en cache, on la
+  // sert sans jamais retoucher au réseau -> affichage instantané, zéro data.
+  const estImage =
+    url.pathname.startsWith("/_next/image") ||
+    /\.(?:png|jpe?g|webp|avif|gif|svg)$/i.test(url.pathname);
+
+  if (estImage) {
+    event.respondWith(
+      caches.match(event.request).then(
+        (cached) =>
+          cached ||
+          fetch(event.request).then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            }
+            return response;
+          })
+      )
+    );
+    return;
+  }
+
+  // Autres ressources same-origin (JS/CSS à nom haché) : stale-while-revalidate.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const network = fetch(event.request)
