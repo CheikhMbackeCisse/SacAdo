@@ -81,15 +81,6 @@ body {
   }
 }
 
-@keyframes splash-bar {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(300%);
-  }
-}
-
 /* Écran de démarrage : pulsation douce du logo (ECRAN_DEMARRAGE.md). */
 @keyframes splash-pulse {
   0%,

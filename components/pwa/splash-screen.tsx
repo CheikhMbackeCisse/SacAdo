@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-// Durée d'affichage : COURT. L'écran masque l'initialisation, il ne la rallonge
-// pas (ECRAN_DEMARRAGE.md « garde-fou »). Il n'attend pas le catalogue.
-const DUREE_MS = 1600;
-const DUREE_MS_MOUVEMENT_REDUIT = 500;
+// Écran de démarrage : le logo SacAdo (le sac) sur le bleu foncé de la marque —
+// exactement le même visuel que le splash natif de la PWA (manifest
+// background_color + icônes), pour un enchaînement sans rupture.
+// COURT : masque l'initialisation, ne la rallonge pas. N'attend pas le catalogue.
+const DUREE_MS = 1400;
+const DUREE_MS_MOUVEMENT_REDUIT = 450;
 // Une seule apparition par session (= par lancement de l'app). Un refresh dans
 // le même onglet ne re-déclenche pas le splash ; relancer l'app installée oui.
 const CLE_SESSION = "sacado_splash_vu";
 
-const BLEU_NUIT = "#02296C"; // = manifest background_color → enchaînement sans coupure
+const BLEU_NUIT = "#02296C"; // = manifest background_color
 
 export function SplashScreen() {
   // Visible dès le premier rendu (serveur + client) : aucun flash de page nue.
@@ -28,16 +30,12 @@ export function SplashScreen() {
     const mouvementReduit =
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // Déjà vu cette session → on retire immédiatement (setState via timer, pas
-    // dans le corps de l'effet).
+    // Déjà vu cette session → retrait immédiat (setState via timer, pas dans le
+    // corps de l'effet).
     const duree = dejaVu ? 0 : mouvementReduit ? DUREE_MS_MOUVEMENT_REDUIT : DUREE_MS;
 
     const versSortie = setTimeout(() => setPhase("sortie"), duree);
     const versFini = setTimeout(() => setPhase("fini"), duree + (dejaVu ? 0 : 320));
-    return () => {
-      clearTimeout(versSortie);
-      clearTimeout(versFini);
-    };
     return () => {
       clearTimeout(versSortie);
       clearTimeout(versFini);
@@ -50,19 +48,20 @@ export function SplashScreen() {
     <div
       aria-hidden="true"
       style={{ backgroundColor: BLEU_NUIT }}
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 px-8 transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-300 ${
         phase === "sortie" ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >
-      <span className="font-heading text-[2.75rem] font-extrabold tracking-tight text-white motion-safe:animate-[splash-pulse_1400ms_ease-in-out_infinite]">
-        SacAdo
-      </span>
-      <p className="max-w-[240px] text-center text-sm text-white/70">
-        Tout pour apprendre, en un seul endroit et livré chez vous.
-      </p>
-      <span className="h-1 w-24 overflow-hidden rounded-full bg-white/15">
-        <span className="block h-full w-1/3 rounded-full bg-white/80 motion-safe:animate-[splash-bar_900ms_ease-in-out_infinite]" />
-      </span>
+      {/* Le splash doit peindre le logo AU PLUS TÔT : on sert le fichier brut,
+          sans passer par le pipeline d'optimisation next/image (roundtrip). */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/logo.jpg"
+        alt="SacAdo"
+        width={128}
+        height={128}
+        className="size-32 rounded-[28px] object-cover shadow-2xl shadow-black/30 motion-safe:animate-[splash-pulse_1400ms_ease-in-out_infinite]"
+      />
     </div>
   );
 }
