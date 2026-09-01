@@ -127,11 +127,12 @@ function CarteNegociation({ item }: { item: MaNegociation }) {
             Re-proposer
             <input
               type="number"
+              inputMode="numeric"
               min={1}
               value={contrePrix}
               onChange={(e) => setContrePrix(e.target.value)}
               disabled={busy || limiteAtteinte}
-              className="w-32 rounded-lg border border-[#001314]/15 px-2 py-1.5 text-sm text-[#001314] focus:border-[#0B3D91] focus:outline-none disabled:opacity-50"
+              className="no-spinner w-32 rounded-lg border border-[#001314]/15 px-2 py-1.5 text-sm text-[#001314] focus:border-[#0B3D91] focus:outline-none disabled:opacity-50"
             />
           </label>
           <button

@@ -157,6 +157,22 @@ body {
   }
 }
 
+/*
+ * Champs de MONTANT : pas de flèches d'incrémentation (spinners). On saisit le
+ * prix directement au clavier. À réserver aux montants — les steppers de
+ * quantité du panier/kits ("– 2 +") sont des boutons, pas des inputs number,
+ * et ne sont donc pas concernés.
+ */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

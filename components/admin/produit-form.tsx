@@ -238,10 +238,11 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
           <input
             required
             type="number"
+            inputMode="numeric"
             min={0}
             value={prix}
             onChange={(event) => setPrix(event.target.value)}
-            className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+            className="no-spinner rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>
 

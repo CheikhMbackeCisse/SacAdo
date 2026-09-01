@@ -235,10 +235,11 @@ export function ProduitVendeurForm({
           <input
             required
             type="number"
+            inputMode="numeric"
             min={1}
             value={prix}
             onChange={(e) => setPrix(e.target.value)}
-            className={CHAMP}
+            className={`${CHAMP} no-spinner`}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
