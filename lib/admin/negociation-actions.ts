@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/format";
 import { tauxCommission } from "@/lib/commissions";
 import { balleCote, etatNegociation, limiteAtteinte, prixEnJeu } from "@/lib/negociation";
+import { getToursMax, setToursMax } from "@/lib/parametres";
 import type {
   Commission,
   NegociationProposition,
@@ -47,18 +48,24 @@ async function chargerFils(produitIds: number[]): Promise<Map<number, Negociatio
 export async function getFileNegociation(): Promise<ProduitAModererer[]> {
   await requireAdmin();
 
-  const [{ data: produitsData }, { data: vendeursData }, { data: categoriesData }, { data: commissionsData }] =
-    await Promise.all([
-      supabaseAdmin
-        .from("produits")
-        .select("*")
-        .not("vendeur_id", "is", null)
-        .in("statut_publication", ["en_attente", "negociation"])
-        .order("created_at", { ascending: true }),
-      supabaseAdmin.from("vendeurs").select("id, nom_boutique"),
-      supabaseAdmin.from("categories").select("id, nom"),
-      supabaseAdmin.from("commissions").select("*"),
-    ]);
+  const [
+    { data: produitsData },
+    { data: vendeursData },
+    { data: categoriesData },
+    { data: commissionsData },
+    toursMax,
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("produits")
+      .select("*")
+      .not("vendeur_id", "is", null)
+      .in("statut_publication", ["en_attente", "negociation"])
+      .order("created_at", { ascending: true }),
+    supabaseAdmin.from("vendeurs").select("id, nom_boutique"),
+    supabaseAdmin.from("categories").select("id, nom"),
+    supabaseAdmin.from("commissions").select("*"),
+    getToursMax(),
+  ]);
 
   const produits = (produitsData ?? []) as Produit[];
   const fils = await chargerFils(produits.map((p) => p.id));
@@ -78,7 +85,7 @@ export async function getFileNegociation(): Promise<ProduitAModererer[]> {
         prixEnJeu: prixEnJeu(produit.prix, fil),
         tauxCommission: tauxCommission(commissions, produit.categorie_id, produit.sous_categorie_id),
         tours,
-        limiteAtteinte: limiteAtteinte(tours),
+        limiteAtteinte: limiteAtteinte(tours, toursMax),
       };
     })
     .filter((item) => balleCote(item.produit.statut_publication, item.fil) === "admin");
@@ -185,7 +192,7 @@ export async function contreProposer(produitId: number, prix: number): Promise<A
   }
 
   const { tours } = etatNegociation(fil);
-  if (limiteAtteinte(tours)) {
+  if (limiteAtteinte(tours, await getToursMax())) {
     return {
       ok: false,
       error: "Limite d'allers-retours atteinte : accepter le dernier prix ou refuser le produit.",
@@ -245,4 +252,17 @@ export async function refuserProduit(produitId: number, motif: string): Promise<
     produitId,
   );
   return { ok: true };
+}
+
+// ============================================================================
+// Réglage : limite d'allers-retours d'une négociation.
+// ============================================================================
+export async function getToursMaxActuel(): Promise<number> {
+  await requireAdmin();
+  return getToursMax();
+}
+
+export async function reglerToursMax(valeur: number): Promise<ActionResult> {
+  await requireAdmin();
+  return setToursMax(valeur);
 }

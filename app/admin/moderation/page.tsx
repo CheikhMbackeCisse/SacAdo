@@ -1,8 +1,9 @@
-import { getFileNegociation } from "@/lib/admin/negociation-actions";
+import { getFileNegociation, getToursMaxActuel } from "@/lib/admin/negociation-actions";
 import { FileModeration } from "@/components/admin/file-moderation";
+import { ReglageToursMax } from "@/components/admin/reglage-tours-max";
 
 export default async function AdminModerationPage() {
-  const items = await getFileNegociation();
+  const [items, toursMax] = await Promise.all([getFileNegociation(), getToursMaxActuel()]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -13,6 +14,9 @@ export default async function AdminModerationPage() {
           contre-proposer un autre prix, ou refuser.
         </p>
       </div>
+
+      <ReglageToursMax valeur={toursMax} />
+
       <FileModeration items={items} />
     </div>
   );

@@ -2,20 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogOut, Package, TrendingUp } from "lucide-react";
+import { Inbox, LayoutDashboard, LogOut, Package, TrendingUp } from "lucide-react";
 import { signOutVendeur } from "@/lib/vendeur/auth-actions";
 
 const LIENS = [
   { href: "/vendeur", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
   { href: "/vendeur/produits", label: "Mes produits", icon: Package, exact: false },
   { href: "/vendeur/ventes", label: "Mes ventes", icon: TrendingUp, exact: false },
+  { href: "/vendeur/messages", label: "Boîte de réception", icon: Inbox, exact: false },
 ] as const;
 
 export function VendeurShell({
   nomBoutique,
+  nbMessagesNonLus = 0,
   children,
 }: {
   nomBoutique: string;
+  nbMessagesNonLus?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -54,6 +57,11 @@ export function VendeurShell({
               >
                 <Icon size={16} aria-hidden="true" />
                 {label}
+                {href === "/vendeur/messages" && nbMessagesNonLus > 0 && (
+                  <span className="ml-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-[#E07B39] px-1 text-[10px] font-bold text-[#001314]">
+                    {nbMessagesNonLus}
+                  </span>
+                )}
               </Link>
             );
           })}

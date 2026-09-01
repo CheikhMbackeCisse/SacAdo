@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getMesProduits, getReferentiel } from "@/lib/vendeur/produits-actions";
+import { getMesNegociations } from "@/lib/vendeur/negociation-actions";
 import { MesProduits } from "@/components/vendeur/mes-produits";
+import { MesNegociations } from "@/components/vendeur/mes-negociations";
 
 export default async function MesProduitsPage() {
-  const [produits, { categories }] = await Promise.all([getMesProduits(), getReferentiel()]);
+  const [produits, { categories }, negociations] = await Promise.all([
+    getMesProduits(),
+    getReferentiel(),
+    getMesNegociations(),
+  ]);
   const categoriesNom = Object.fromEntries(categories.map((c) => [c.id, c.nom]));
 
   return (
@@ -24,6 +30,8 @@ export default async function MesProduitsPage() {
         Chaque produit ajouté ou modifié passe en validation SacAdo avant d&apos;être visible
         des clients. La mise à jour du stock, elle, est immédiate.
       </p>
+
+      <MesNegociations items={negociations} />
 
       <MesProduits produits={produits} categoriesNom={categoriesNom} />
     </div>

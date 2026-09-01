@@ -1,4 +1,5 @@
 import { requireVendeur } from "@/lib/vendeur/guard";
+import { getNbMessagesNonLus } from "@/lib/vendeur/messages-actions";
 import { VendeurShell } from "@/components/vendeur/vendeur-shell";
 
 // Layout de l'espace vendeur connecté (tableau de bord, produits, ventes).
@@ -10,5 +11,10 @@ export default async function EspaceVendeurLayout({
   children: React.ReactNode;
 }) {
   const { vendeur } = await requireVendeur();
-  return <VendeurShell nomBoutique={vendeur.nom_boutique}>{children}</VendeurShell>;
+  const nbMessagesNonLus = await getNbMessagesNonLus();
+  return (
+    <VendeurShell nomBoutique={vendeur.nom_boutique} nbMessagesNonLus={nbMessagesNonLus}>
+      {children}
+    </VendeurShell>
+  );
 }
