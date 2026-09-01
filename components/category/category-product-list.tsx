@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProductGrid } from "@/components/product/product-grid";
+import { ChampSelect } from "@/components/ui/champ-select";
 import { getProduitsByCategorie, TAILLE_PAGE_CATALOGUE } from "@/lib/supabase/queries";
 import type { Produit, SousCategorie } from "@/lib/supabase/types";
 
@@ -131,16 +132,19 @@ export function CategoryProductList({
           {resultats.length} article{resultats.length > 1 ? "s" : ""}
           {hasMore ? "+" : ""}
         </span>
-        <select
-          value={tri}
-          onChange={(event) => setTri(event.target.value as Tri)}
-          aria-label="Trier les produits"
-          className="rounded-full border border-ink/15 bg-elevated px-3 py-1.5 text-xs text-ink"
-        >
-          <option value="defaut">Trier</option>
-          <option value="prix-asc">Prix croissant</option>
-          <option value="prix-desc">Prix décroissant</option>
-        </select>
+        <ChampSelect
+          ariaLabel="Trier les produits"
+          placeholder="Trier"
+          align="end"
+          wrapperClassName="w-44 shrink-0"
+          className="rounded-full border border-ink/15 bg-elevated px-3 py-1.5 text-xs"
+          value={tri === "defaut" ? "" : tri}
+          onChange={(v) => setTri(v === "" ? "defaut" : (v as Tri))}
+          options={[
+            { value: "prix-asc", label: "Prix croissant" },
+            { value: "prix-desc", label: "Prix décroissant" },
+          ]}
+        />
       </div>
 
       <ProductGrid

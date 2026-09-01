@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Inbox, LayoutDashboard, LogOut, Package, TrendingUp } from "lucide-react";
+import { ArrowLeft, Inbox, LayoutDashboard, LogOut, Package, TrendingUp } from "lucide-react";
 import { signOutVendeur } from "@/lib/vendeur/auth-actions";
 
 const LIENS = [
@@ -31,15 +31,24 @@ export function VendeurShell({
             <p className="text-[11px] font-medium text-[#001314]/45">Espace vendeur SacAdo</p>
             <p className="truncate font-heading text-sm font-bold text-[#001314]">{nomBoutique}</p>
           </div>
-          <form action={signOutVendeur}>
-            <button
-              type="submit"
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/"
               className="flex items-center gap-1.5 rounded-full border border-[#001314]/15 px-3 py-1.5 text-xs font-medium text-[#001314]/70 transition-colors hover:bg-[#001314]/[0.04]"
             >
-              <LogOut size={14} aria-hidden="true" />
-              Déconnexion
-            </button>
-          </form>
+              <ArrowLeft size={14} aria-hidden="true" />
+              Espace client
+            </Link>
+            <form action={signOutVendeur}>
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 rounded-full border border-[#001314]/15 px-3 py-1.5 text-xs font-medium text-[#001314]/70 transition-colors hover:bg-[#001314]/[0.04]"
+              >
+                <LogOut size={14} aria-hidden="true" />
+                Déconnexion
+              </button>
+            </form>
+          </div>
         </div>
 
         <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-2 pb-1">
