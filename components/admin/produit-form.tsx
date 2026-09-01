@@ -22,14 +22,14 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
   );
 
   const [nom, setNom] = useState(produit?.nom ?? "");
-  const [categorieId, setCategorieId] = useState<number>(
-    produit?.categorie_id ?? categoriesUtilisables[0]?.id ?? 0,
-  );
+  // Selects sans valeur par défaut : forcer un choix explicite (sinon un produit
+  // est rangé dans la première catégorie sans que l'admin l'ait décidé).
+  const [categorieId, setCategorieId] = useState<number | "">(produit?.categorie_id ?? "");
   const [sousCategorieId, setSousCategorieId] = useState<number | null>(
     produit?.sous_categorie_id ?? null,
   );
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
-  const [delai, setDelai] = useState<ProduitInput["delai"]>(produit?.delai ?? "24h");
+  const [delai, setDelai] = useState<ProduitInput["delai"] | "">(produit?.delai ?? "");
   const [photo, setPhoto] = useState(produit?.photo ?? "");
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
   const [seuilAlerte, setSeuilAlerte] = useState(produit?.seuil_alerte?.toString() ?? "5");
@@ -55,7 +55,9 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
     [toutesSousCats, categorieId],
   );
 
-  const changerCategorie = (valeur: number) => {
+  const sousCategorieRequise = categorieId !== "" && sousCatsDeLaCategorie.length > 0;
+
+  const changerCategorie = (valeur: number | "") => {
     setCategorieId(valeur);
     const encoreValide = toutesSousCats.some(
       (sc) => sc.id === sousCategorieId && sc.categorie_id === valeur,
@@ -93,8 +95,22 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+
+    if (categorieId === "") {
+      setError("Veuillez choisir une catégorie.");
+      return;
+    }
+    if (sousCategorieRequise && sousCategorieId == null) {
+      setError("Veuillez choisir une sous-catégorie.");
+      return;
+    }
+    if (delai === "") {
+      setError("Veuillez choisir un délai.");
+      return;
+    }
+
+    setSubmitting(true);
 
     const input: ProduitInput = {
       nom: nom.trim(),
@@ -139,10 +155,16 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-ink/60">Catégorie</span>
           <select
+            required
             value={categorieId}
-            onChange={(event) => changerCategorie(Number(event.target.value))}
+            onChange={(event) =>
+              changerCategorie(event.target.value === "" ? "" : Number(event.target.value))
+            }
             className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           >
+            <option value="" disabled>
+              Choisir une catégorie…
+            </option>
             {categoriesUtilisables.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nom}
@@ -154,10 +176,14 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-ink/60">Délai</span>
           <select
+            required
             value={delai}
-            onChange={(event) => setDelai(event.target.value as ProduitInput["delai"])}
+            onChange={(event) => setDelai(event.target.value as ProduitInput["delai"] | "")}
             className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           >
+            <option value="" disabled>
+              Choisir un délai…
+            </option>
             <option value="24h">24h</option>
             <option value="5j">5 jours</option>
           </select>
@@ -167,13 +193,21 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-xs font-medium text-ink/60">Sous-catégorie</span>
         <select
+          required={sousCategorieRequise}
+          disabled={categorieId === "" || sousCatsDeLaCategorie.length === 0}
           value={sousCategorieId ?? ""}
           onChange={(event) =>
             setSousCategorieId(event.target.value ? Number(event.target.value) : null)
           }
-          className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 disabled:bg-ink/[0.04] disabled:text-ink/40"
         >
-          <option value="">— Aucune —</option>
+          <option value="" disabled>
+            {categorieId === ""
+              ? "Choisir d’abord une catégorie"
+              : sousCatsDeLaCategorie.length === 0
+                ? "Aucune sous-catégorie"
+                : "Choisir une sous-catégorie…"}
+          </option>
           {sousCatsDeLaCategorie.map((sc) => (
             <option key={sc.id} value={sc.id}>
               {sc.nom}

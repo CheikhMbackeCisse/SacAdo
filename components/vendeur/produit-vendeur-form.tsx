@@ -40,14 +40,14 @@ export function ProduitVendeurForm({
 
   const [nom, setNom] = useState(produit?.nom ?? "");
   const [description, setDescription] = useState(produit?.description ?? "");
-  const [categorieId, setCategorieId] = useState<number>(
-    produit?.categorie_id ?? categoriesUtilisables[0]?.id ?? 0,
-  );
+  // Selects sans valeur par défaut : le vendeur DOIT choisir activement, sinon
+  // des produits atterrissent dans la mauvaise catégorie sans qu'il l'ait voulu.
+  const [categorieId, setCategorieId] = useState<number | "">(produit?.categorie_id ?? "");
   const [sousCategorieId, setSousCategorieId] = useState<number | null>(
     produit?.sous_categorie_id ?? null,
   );
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
-  const [delai, setDelai] = useState<ProduitVendeurInput["delai"]>(produit?.delai ?? "5j");
+  const [delai, setDelai] = useState<ProduitVendeurInput["delai"] | "">(produit?.delai ?? "");
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
   const [photo, setPhoto] = useState(produit?.photo ?? "");
 
@@ -66,7 +66,8 @@ export function ProduitVendeurForm({
   // Taux applicable à la catégorie / sous-catégorie choisie — affiché en
   // permanence dès qu'une catégorie est sélectionnée, même sans prix.
   const tauxApplique = useMemo(
-    () => tauxCommission(commissions, categorieId, sousCategorieId),
+    () =>
+      categorieId === "" ? null : tauxCommission(commissions, categorieId, sousCategorieId),
     [commissions, categorieId, sousCategorieId],
   );
 
@@ -78,11 +79,14 @@ export function ProduitVendeurForm({
 
   const prixNombre = Number(prix);
   const apercuCommission = useMemo(() => {
-    if (!Number.isFinite(prixNombre) || prixNombre <= 0) return null;
+    if (categorieId === "" || !Number.isFinite(prixNombre) || prixNombre <= 0) return null;
     return calculerCommission(prixNombre, commissions, categorieId, sousCategorieId);
   }, [prixNombre, commissions, categorieId, sousCategorieId]);
 
-  const changerCategorie = (valeur: number) => {
+  // La sous-catégorie n'est demandée que si la catégorie en propose.
+  const sousCategorieRequise = categorieId !== "" && sousCatsDeLaCategorie.length > 0;
+
+  const changerCategorie = (valeur: number | "") => {
     setCategorieId(valeur);
     const encoreValide = sousCategories.some(
       (sc) => sc.id === sousCategorieId && sc.categorie_id === valeur,
@@ -106,8 +110,22 @@ export function ProduitVendeurForm({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+
+    if (categorieId === "") {
+      setError("Veuillez choisir une catégorie.");
+      return;
+    }
+    if (sousCategorieRequise && sousCategorieId == null) {
+      setError("Veuillez choisir une sous-catégorie.");
+      return;
+    }
+    if (delai === "") {
+      setError("Veuillez choisir un délai de livraison.");
+      return;
+    }
+
+    setSubmitting(true);
 
     const input: ProduitVendeurInput = {
       nom: nom.trim(),
@@ -160,10 +178,14 @@ export function ProduitVendeurForm({
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-[#001314]/60">Catégorie</span>
           <select
+            required
             value={categorieId}
-            onChange={(e) => changerCategorie(Number(e.target.value))}
+            onChange={(e) => changerCategorie(e.target.value === "" ? "" : Number(e.target.value))}
             className={CHAMP}
           >
+            <option value="" disabled>
+              Choisir une catégorie…
+            </option>
             {categoriesUtilisables.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nom}
@@ -175,11 +197,19 @@ export function ProduitVendeurForm({
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-[#001314]/60">Sous-catégorie</span>
           <select
+            required={sousCategorieRequise}
+            disabled={categorieId === "" || sousCatsDeLaCategorie.length === 0}
             value={sousCategorieId ?? ""}
             onChange={(e) => setSousCategorieId(e.target.value ? Number(e.target.value) : null)}
-            className={CHAMP}
+            className={`${CHAMP} disabled:bg-[#001314]/[0.04] disabled:text-[#001314]/40`}
           >
-            <option value="">— Aucune —</option>
+            <option value="" disabled>
+              {categorieId === ""
+                ? "Choisir d’abord une catégorie"
+                : sousCatsDeLaCategorie.length === 0
+                  ? "Aucune sous-catégorie"
+                  : "Choisir une sous-catégorie…"}
+            </option>
             {sousCatsDeLaCategorie.map((sc) => (
               <option key={sc.id} value={sc.id}>
                 {sc.nom}
@@ -225,10 +255,14 @@ export function ProduitVendeurForm({
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-[#001314]/60">Délai de livraison</span>
           <select
+            required
             value={delai}
-            onChange={(e) => setDelai(e.target.value as ProduitVendeurInput["delai"])}
+            onChange={(e) => setDelai(e.target.value as ProduitVendeurInput["delai"] | "")}
             className={CHAMP}
           >
+            <option value="" disabled>
+              Choisir un délai…
+            </option>
             <option value="24h">24h</option>
             <option value="5j">5 jours</option>
           </select>

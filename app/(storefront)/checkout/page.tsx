@@ -86,7 +86,8 @@ export default function CheckoutPage() {
     getZones()
       .then((data) => {
         setZones(data);
-        setZoneId((current) => current ?? data[0]?.id ?? null);
+        // Pas de zone pré-sélectionnée : le client doit choisir sa région
+        // (sinon la livraison serait calculée pour la mauvaise zone).
       })
       .catch(() => setErrorZones(true));
   }, []);
@@ -105,7 +106,7 @@ export default function CheckoutPage() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!zoneId) {
-      setError("Choisis une zone de livraison.");
+      setError("Veuillez choisir une région de livraison.");
       return;
     }
     setSubmitting(true);
