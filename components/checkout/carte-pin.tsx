@@ -2,20 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, LocateFixed } from "lucide-react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 export type Coordonnees = { lat: number; lng: number };
-
-const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 // Centre par défaut : Place de l'Indépendance, Dakar.
 const DAKAR: Coordonnees = { lat: 14.6928, lng: -17.4467 };
 const ZOOM_VILLE = 12;
 const ZOOM_RUE = 16;
 
-const STYLE_CLAIR = "mapbox://styles/mapbox/streets-v12";
-const STYLE_SOMBRE = "mapbox://styles/mapbox/dark-v11";
+// Fonds de carte OpenFreeMap : gratuits, sans compte ni clé, sans carte
+// bancaire (projet communautaire, tuiles + polices + sprites servis depuis
+// tiles.openfreemap.org).
+const STYLE_CLAIR = "https://tiles.openfreemap.org/styles/liberty";
+const STYLE_SOMBRE = "https://tiles.openfreemap.org/styles/dark";
 const BLEU_MARQUE = "#0B3D91";
 
 // Style selon le thème de l'app (attribut data-theme posé avant le paint) ou,
@@ -37,8 +38,8 @@ type Props = {
 
 export function CartePin({ position, onChange, readOnly = false }: Props) {
   const conteneurRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markerRef = useRef<mapboxgl.Marker | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markerRef = useRef<maplibregl.Marker | null>(null);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -48,25 +49,26 @@ export function CartePin({ position, onChange, readOnly = false }: Props) {
   const readOnlyRef = useRef(readOnly);
 
   const [pretePourInteraction, setPretePourInteraction] = useState(false);
+  const [carteHs, setCarteHs] = useState(false);
   const [geoloc, setGeoloc] = useState<"idle" | "chargement" | "refus" | "indispo">("idle");
 
   // Initialisation de la carte, une seule fois.
   useEffect(() => {
-    if (!TOKEN || !conteneurRef.current) return;
+    if (!conteneurRef.current) return;
     let annule = false;
-    mapboxgl.accessToken = TOKEN;
 
     const depart = positionInitiale.current ?? DAKAR;
     const modifiable = !readOnlyRef.current;
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: conteneurRef.current,
       style: styleSelonTheme(),
       center: [depart.lng, depart.lat],
       zoom: positionInitiale.current ? ZOOM_RUE : ZOOM_VILLE,
+      attributionControl: { compact: true },
     });
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-left");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
-    const marker = new mapboxgl.Marker({ color: BLEU_MARQUE, draggable: modifiable })
+    const marker = new maplibregl.Marker({ color: BLEU_MARQUE, draggable: modifiable })
       .setLngLat([depart.lng, depart.lat])
       .addTo(map);
 
@@ -86,6 +88,12 @@ export function CartePin({ position, onChange, readOnly = false }: Props) {
     map.on("load", () => {
       map.resize();
       if (!annule) setPretePourInteraction(true);
+    });
+    // Fond de carte injoignable (OpenFreeMap sans SLA) : on bascule sur le
+    // repli « placer l'épingle à la main » plutôt qu'une carte cassée.
+    map.on("error", (event) => {
+      const status = (event.error as unknown as { status?: number })?.status;
+      if (status && status >= 400 && !annule) setCarteHs(true);
     });
 
     mapRef.current = map;
@@ -134,14 +142,14 @@ export function CartePin({ position, onChange, readOnly = false }: Props) {
         role="application"
         aria-label="Carte de localisation de la livraison"
       >
-        {!TOKEN && (
-          <span className="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-ink/50">
+        {carteHs && (
+          <span className="absolute inset-0 z-10 flex items-center justify-center bg-ink/5 px-4 text-center text-xs text-ink/50">
             {readOnly
               ? "Carte momentanément indisponible."
               : "Carte momentanément indisponible. Utilise « Ma position » ci-dessous."}
           </span>
         )}
-        {TOKEN && !pretePourInteraction && (
+        {!carteHs && !pretePourInteraction && (
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-ink/40">
             Chargement de la carte…
           </span>

@@ -19,11 +19,11 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  // Mapbox : carte de localisation de livraison (checkout + admin).
-  "img-src 'self' data: blob: https://*.supabase.co https://api.mapbox.com https://*.tiles.mapbox.com",
+  // OpenFreeMap : carte de localisation de livraison (checkout + admin).
+  "img-src 'self' data: blob: https://*.supabase.co https://tiles.openfreemap.org",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com",
-  // Mapbox GL JS crée ses web workers depuis un blob.
+  "connect-src 'self' https://*.supabase.co https://tiles.openfreemap.org",
+  // MapLibre GL JS crée ses web workers depuis un blob.
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
