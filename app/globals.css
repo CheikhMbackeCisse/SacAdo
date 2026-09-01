@@ -90,6 +90,19 @@ body {
   }
 }
 
+/* Écran de démarrage : pulsation douce du logo (ECRAN_DEMARRAGE.md). */
+@keyframes splash-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
 /* Onboarding : logo qui flotte doucement + entrée décalée des blocs. */
 @keyframes float-soft {
   0%,
