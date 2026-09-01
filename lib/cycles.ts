@@ -33,15 +33,16 @@ export const CYCLES: CycleDef[] = [
     value: "lycee",
     label: "Lycée",
     // Niveaux écrits en toutes lettres, séries à partir de la Première
-    // (la Seconde n'est pas encore sérialisée en L1/L2/S1/S2).
     image: "/images/cycle-lycee.jpg",
     classes: [
       "Seconde L",
       "Seconde S",
+      "Seconde T",
       "Première L1",
       "Première L2",
       "Première S1",
       "Première S2",
+      "Première T",
       "Terminale L1",
       "Terminale L2",
       "Terminale S1",
@@ -104,7 +105,8 @@ export type LyceeNiveauStructure = {
 };
 
 // Au-delà de ce nombre de séries, on regroupe par type plutôt que lister à plat.
-const SEUIL_REGROUPEMENT = 2;
+// Seconde (L / S / T) reste à plat ; Première et Terminale sont regroupées.
+const SEUIL_REGROUPEMENT = 3;
 
 export function structurerLycee(classes: string[]): LyceeNiveauStructure[] {
   const parNiveau = new Map<string, string[]>();

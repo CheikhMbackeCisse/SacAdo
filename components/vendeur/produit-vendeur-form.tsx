@@ -49,8 +49,10 @@ export function ProduitVendeurForm({
     produit?.sous_categorie_id ?? null,
   );
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
-  const [delai, setDelai] = useState<ProduitVendeurInput["delai"] | "">(produit?.delai ?? "");
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
+  // Le délai de livraison n'est plus demandé au vendeur : c'est SacAdo qui livre
+  // et garantit le délai. Valeur conservée pour l'affichage storefront.
+  const delai: ProduitVendeurInput["delai"] = produit?.delai ?? "5j";
   const [photos, setPhotos] = useState<string[]>(
     produit?.photos?.length ? produit.photos : produit?.photo ? [produit.photo] : [],
   );
@@ -145,10 +147,6 @@ export function ProduitVendeurForm({
     }
     if (sousCategorieRequise && sousCategorieId == null) {
       setError("Veuillez choisir une sous-catégorie.");
-      return;
-    }
-    if (delai === "") {
-      setError("Veuillez choisir un délai de livraison.");
       return;
     }
 
@@ -256,7 +254,7 @@ export function ProduitVendeurForm({
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-[#001314]/60">Prix (FCFA)</span>
           <input
@@ -279,21 +277,6 @@ export function ProduitVendeurForm({
             onChange={(e) => setStock(e.target.value)}
             className={CHAMP}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs font-medium text-[#001314]/60">Délai de livraison</span>
-          <select
-            required
-            value={delai}
-            onChange={(e) => setDelai(e.target.value as ProduitVendeurInput["delai"] | "")}
-            className={CHAMP}
-          >
-            <option value="" disabled>
-              Choisir un délai…
-            </option>
-            <option value="24h">24h</option>
-            <option value="5j">5 jours</option>
-          </select>
         </label>
       </div>
 
