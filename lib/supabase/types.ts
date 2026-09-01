@@ -98,13 +98,34 @@ export type MessageVendeur = {
 export type ProduitVariante = {
   id: number;
   produit_id: number;
-  couleur: string | null;
-  taille: string | null;
   prix: number | null;
   stock: number;
   statut: StatutVariante;
   photo: string | null;
   created_at: string;
+};
+
+// Attributs de variante (Couleur, Taille, Poids...) — liste commune, un vendeur
+// peut en proposer un nouveau, l'admin valide (migration 0022).
+export type StatutAttribut = "propose" | "valide";
+
+export type Attribut = {
+  id: number;
+  nom: string;
+  statut: StatutAttribut;
+  propose_par: string | null;
+  created_at: string;
+};
+
+// Valeur d'un attribut portée par une variante, avec le nom de l'attribut joint.
+export type VarianteAttributValeur = {
+  attribut_id: number;
+  nom: string;
+  valeur: string;
+};
+
+export type VarianteAvecAttributs = ProduitVariante & {
+  attributs: VarianteAttributValeur[];
 };
 
 export type Kit = {

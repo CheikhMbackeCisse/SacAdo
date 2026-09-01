@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { usePanier } from "./panier";
 import { getProduitsByIds, getVariantesByIds } from "@/lib/supabase/queries";
-import type { Produit, ProduitVariante } from "@/lib/supabase/types";
+import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
 export type LigneDetaillee = {
   produit: Produit;
-  variante: ProduitVariante | null;
+  variante: VarianteAvecAttributs | null;
   quantite: number;
   prixUnitaire: number;
   totalLigne: number;
@@ -19,7 +19,7 @@ export type LigneDetaillee = {
 export function usePanierDetaille() {
   const { lignes, retirer, setQuantite, vider } = usePanier();
   const [produits, setProduits] = useState<Produit[]>([]);
-  const [variantes, setVariantes] = useState<ProduitVariante[]>([]);
+  const [variantes, setVariantes] = useState<VarianteAvecAttributs[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

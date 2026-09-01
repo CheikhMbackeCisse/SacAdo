@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Minus, Plus, X } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
+import { libelleVariante } from "@/lib/variantes";
 import type { LigneDetaillee } from "@/lib/local/use-panier-detaille";
 
 type PanierLineProps = {
@@ -12,7 +13,7 @@ type PanierLineProps = {
 
 export function PanierLine({ ligne, onQuantiteChange, onRetirer }: PanierLineProps) {
   const { produit, variante, quantite, prixUnitaire, totalLigne } = ligne;
-  const label = variante ? (variante.couleur ?? variante.taille) : null;
+  const label = variante ? libelleVariante(variante) || null : null;
 
   return (
     <div className="flex items-center gap-3 py-3">

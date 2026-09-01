@@ -1,26 +1,31 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
-import type { Produit, ProduitVariante } from "@/lib/supabase/types";
+import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
 type ProductDetailProps = {
   produit: Produit;
-  variantes: ProduitVariante[];
+  variantes: VarianteAvecAttributs[];
   categorieNom: string | null;
 };
 
 export function ProductDetail({ produit, variantes, categorieNom }: ProductDetailProps) {
   const { ajouter } = usePanier();
   const { recordConsulte } = useConsultes();
-  const [selectedId, setSelectedId] = useState<number | null>(
-    variantes.length === 1 ? variantes[0].id : null,
-  );
+  // Un choix par attribut (attribut_id -> valeur). Pré-rempli s'il n'y a qu'une
+  // seule variante.
+  const [choix, setChoix] = useState<Record<number, string>>(() => {
+    if (variantes.length !== 1) return {};
+    const initial: Record<number, string> = {};
+    for (const a of variantes[0].attributs) initial[a.attribut_id] = a.valeur;
+    return initial;
+  });
   const [quantite, setQuantite] = useState(1);
   const [added, setAdded] = useState(false);
   const [slide, setSlide] = useState(0);
@@ -32,15 +37,40 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produit.id]);
 
-  // Le modèle ne gère qu'une seule dimension de variante à la fois (couleur
-  // OU taille) — voir MODELE_DONNEES.md.
-  const dimension: "couleur" | "taille" | null = variantes[0]?.couleur
-    ? "couleur"
-    : variantes[0]?.taille
-      ? "taille"
+  // Attributs proposés par ce produit (déduits de ses variantes) + valeurs
+  // distinctes de chacun.
+  const attributsDuProduit = useMemo(() => {
+    const map = new Map<number, { id: number; nom: string; valeurs: string[] }>();
+    for (const v of variantes) {
+      for (const a of v.attributs) {
+        const entree = map.get(a.attribut_id) ?? { id: a.attribut_id, nom: a.nom, valeurs: [] };
+        if (!entree.valeurs.includes(a.valeur)) entree.valeurs.push(a.valeur);
+        map.set(a.attribut_id, entree);
+      }
+    }
+    return [...map.values()].sort((x, y) => x.nom.localeCompare(y.nom));
+  }, [variantes]);
+
+  // Pas d'attribut à choisir (produit sans variante, ou données pas encore
+  // migrées vers variante_attributs) → rien ne bloque l'ajout au panier.
+  const aDesOptions = attributsDuProduit.length > 0;
+  const tousChoisis = aDesOptions && attributsDuProduit.every((a) => choix[a.id]);
+
+  const selectedVariante = !aDesOptions
+    ? (variantes.length === 1 ? variantes[0] : null)
+    : tousChoisis
+      ? (variantes.find((v) =>
+          attributsDuProduit.every((a) =>
+            v.attributs.some((va) => va.attribut_id === a.id && va.valeur === choix[a.id]),
+          ),
+        ) ?? null)
       : null;
 
-  const selectedVariante = variantes.find((v) => v.id === selectedId) ?? null;
+  // Une valeur est barrée si toutes les variantes qui la portent sont épuisées.
+  const valeurEpuisee = (attributId: number, valeur: string) =>
+    variantes
+      .filter((v) => v.attributs.some((va) => va.attribut_id === attributId && va.valeur === valeur))
+      .every((v) => v.statut === "epuise");
   // Galerie : la photo de la variante choisie prime ; sinon la galerie du
   // produit (jusqu'à 4, vendeurs), avec repli sur la photo principale seule.
   // `?? []` : tolère les lignes pas encore migrées (colonne `photos` absente).
@@ -59,10 +89,10 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
     if (el && el.clientWidth > 0) setSlide(Math.round(el.scrollLeft / el.clientWidth));
   };
 
-  const varianteEpuisee = variantes.length > 0 && selectedVariante?.statut === "epuise";
+  const varianteEpuisee = selectedVariante?.statut === "epuise";
   const produitEpuise = produit.statut === "epuise";
   const peutAjouter =
-    !produitEpuise && !varianteEpuisee && (variantes.length === 0 || selectedVariante !== null);
+    !produitEpuise && !varianteEpuisee && (!aDesOptions || selectedVariante !== null);
 
   const handleAjouter = () => {
     if (!peutAjouter) return;
@@ -132,41 +162,39 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
           </span>
         </div>
 
-        {dimension && (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-ink/60">
-              {dimension === "couleur" ? "Couleur" : "Taille"}
-            </span>
+        {attributsDuProduit.map((attribut) => (
+          <div key={attribut.id} className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-ink/60">{attribut.nom}</span>
             <div className="flex flex-wrap gap-2">
-              {variantes.map((variante) => {
-                const label = dimension === "couleur" ? variante.couleur : variante.taille;
-                const disabled = variante.statut === "epuise";
-                const active = variante.id === selectedId;
+              {attribut.valeurs.map((valeur) => {
+                const epuisee = valeurEpuisee(attribut.id, valeur);
+                const active = choix[attribut.id] === valeur;
                 return (
                   <button
-                    key={variante.id}
+                    key={valeur}
                     type="button"
-                    disabled={disabled}
-                    onClick={() => setSelectedId(variante.id)}
+                    disabled={epuisee}
+                    onClick={() => setChoix((c) => ({ ...c, [attribut.id]: valeur }))}
                     className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      disabled
+                      epuisee
                         ? "cursor-not-allowed border-ink/10 text-ink/25 line-through"
                         : active
                           ? "border-brand bg-brand text-on-brand"
                           : "border-ink/15 text-ink/70"
                     }`}
                   >
-                    {label}
+                    {valeur}
                   </button>
                 );
               })}
             </div>
-            {!selectedVariante && (
-              <span className="text-[11px] text-ink/40">
-                Choisis une option avant d&apos;ajouter au panier.
-              </span>
-            )}
           </div>
+        ))}
+        {aDesOptions && !selectedVariante && (
+          <span className="text-[11px] text-ink/40">
+            Choisis {attributsDuProduit.length > 1 ? "les options" : "une option"} avant d&apos;ajouter
+            au panier.
+          </span>
         )}
 
         <div className="flex items-center gap-3">

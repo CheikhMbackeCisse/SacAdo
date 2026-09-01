@@ -1,14 +1,28 @@
 import { supabase } from "./client";
 import { GAMME_ORDER } from "@/lib/gammes";
+import { aplatirAttributs } from "@/lib/variantes";
 import type {
   Categorie,
   Gamme,
   Kit,
   Produit,
-  ProduitVariante,
   SousCategorie,
+  VarianteAvecAttributs,
   Zone,
 } from "./types";
+
+const SELECT_VARIANTE = "*, variante_attributs(attribut_id, valeur, attributs(nom))";
+
+// Aplatit une réponse Supabase (avec ou sans jointure) en VarianteAvecAttributs.
+function versVariantes(
+  rows: unknown[] | null,
+  avecJointure: boolean,
+): VarianteAvecAttributs[] {
+  return (rows ?? []).map((row) => ({
+    ...(row as VarianteAvecAttributs),
+    attributs: avecJointure ? aplatirAttributs(row as never) : [],
+  }));
+}
 
 export async function getCategories(): Promise<Categorie[]> {
   const { data, error } = await supabase
@@ -106,21 +120,37 @@ export async function getProduitsByIds(ids: number[]): Promise<Produit[]> {
   return data ?? [];
 }
 
-export async function getVariantesByProduit(produitId: number): Promise<ProduitVariante[]> {
-  const { data, error } = await supabase
+export async function getVariantesByProduit(
+  produitId: number,
+): Promise<VarianteAvecAttributs[]> {
+  const jointure = await supabase
+    .from("produit_variantes")
+    .select(SELECT_VARIANTE)
+    .eq("produit_id", produitId)
+    .order("id", { ascending: true });
+  if (!jointure.error) return versVariantes(jointure.data, true);
+
+  // Repli si `variante_attributs` n'existe pas encore (migration 0022).
+  const brut = await supabase
     .from("produit_variantes")
     .select("*")
     .eq("produit_id", produitId)
     .order("id", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  if (brut.error) throw brut.error;
+  return versVariantes(brut.data, false);
 }
 
-export async function getVariantesByIds(ids: number[]): Promise<ProduitVariante[]> {
+export async function getVariantesByIds(ids: number[]): Promise<VarianteAvecAttributs[]> {
   if (ids.length === 0) return [];
-  const { data, error } = await supabase.from("produit_variantes").select("*").in("id", ids);
-  if (error) throw error;
-  return data ?? [];
+  const jointure = await supabase
+    .from("produit_variantes")
+    .select(SELECT_VARIANTE)
+    .in("id", ids);
+  if (!jointure.error) return versVariantes(jointure.data, true);
+
+  const brut = await supabase.from("produit_variantes").select("*").in("id", ids);
+  if (brut.error) throw brut.error;
+  return versVariantes(brut.data, false);
 }
 
 export async function getZones(): Promise<Zone[]> {

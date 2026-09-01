@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   creerVariante,
   getVariantesAdmin,
@@ -8,19 +9,30 @@ import {
   supprimerVariante,
   type VarianteInput,
 } from "@/lib/admin/produits-actions";
-import type { ProduitVariante } from "@/lib/supabase/types";
+import { creerAttribut, getAttributsValides } from "@/lib/admin/attributs-actions";
+import { libelleVarianteDetaille } from "@/lib/variantes";
+import type { Attribut, VarianteAvecAttributs } from "@/lib/supabase/types";
+
+type LigneAttribut = { attributId: number; valeur: string };
 
 export function VariantesManager({ produitId }: { produitId: number }) {
-  const [variantes, setVariantes] = useState<ProduitVariante[]>([]);
+  const [variantes, setVariantes] = useState<VarianteAvecAttributs[]>([]);
+  const [attributs, setAttributs] = useState<Attribut[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dimension, setDimension] = useState<"couleur" | "taille">("couleur");
-  const [valeur, setValeur] = useState("");
+
+  const [lignes, setLignes] = useState<LigneAttribut[]>([{ attributId: 0, valeur: "" }]);
+  const [prix, setPrix] = useState("");
   const [stock, setStock] = useState("0");
   const [error, setError] = useState<string | null>(null);
 
+  const [nouvelAttribut, setNouvelAttribut] = useState("");
+
   const recharger = () => {
-    getVariantesAdmin(produitId)
-      .then(setVariantes)
+    Promise.all([getVariantesAdmin(produitId), getAttributsValides()])
+      .then(([v, a]) => {
+        setVariantes(v);
+        setAttributs(a);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -29,33 +41,57 @@ export function VariantesManager({ produitId }: { produitId: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produitId]);
 
-  const ajouter = async () => {
-    if (!valeur.trim()) return;
+  const ajouterLigne = () => setLignes((l) => [...l, { attributId: 0, valeur: "" }]);
+  const retirerLigne = (index: number) =>
+    setLignes((l) => (l.length === 1 ? l : l.filter((_, i) => i !== index)));
+  const majLigne = (index: number, patch: Partial<LigneAttribut>) =>
+    setLignes((l) => l.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+
+  const proposerAttribut = async () => {
+    const nom = nouvelAttribut.trim();
+    if (!nom) return;
+    setError(null);
+    const result = await creerAttribut(nom);
+    if (!result.ok || !result.id) {
+      setError(result.ok ? "Création impossible." : result.error);
+      return;
+    }
+    const ajoute: Attribut = {
+      id: result.id,
+      nom,
+      statut: "valide",
+      propose_par: null,
+      created_at: "",
+    };
+    setAttributs((a) => [...a, ajoute].sort((x, y) => x.nom.localeCompare(y.nom)));
+    setNouvelAttribut("");
+  };
+
+  const ajouterVariante = async () => {
     setError(null);
     const input: VarianteInput = {
-      couleur: dimension === "couleur" ? valeur.trim() : null,
-      taille: dimension === "taille" ? valeur.trim() : null,
-      prix: null,
+      prix: prix.trim() ? Number(prix) : null,
       stock: Number(stock),
       photo: null,
+      attributs: lignes.map((l) => ({ attributId: l.attributId, valeur: l.valeur })),
     };
     const result = await creerVariante(produitId, input);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    setValeur("");
+    setLignes([{ attributId: 0, valeur: "" }]);
+    setPrix("");
     setStock("0");
     recharger();
   };
 
-  const changerStock = async (variante: ProduitVariante, nouveauStock: number) => {
+  const changerStock = async (variante: VarianteAvecAttributs, nouveauStock: number) => {
     await modifierVariante(variante.id, {
-      couleur: variante.couleur,
-      taille: variante.taille,
       prix: variante.prix,
       stock: Math.max(0, nouveauStock),
       photo: variante.photo,
+      attributs: variante.attributs.map((a) => ({ attributId: a.attribut_id, valeur: a.valeur })),
     });
     recharger();
   };
@@ -70,19 +106,24 @@ export function VariantesManager({ produitId }: { produitId: number }) {
     recharger();
   };
 
+  const champ =
+    "rounded-lg border border-ink/15 px-2 py-1.5 text-sm focus:border-brand focus:outline-none";
+
   return (
     <section className="flex max-w-xl flex-col gap-3 rounded-2xl border border-ink/10 bg-white p-5">
-      <h2 className="text-sm font-semibold text-ink">Variantes (couleur / taille)</h2>
+      <h2 className="text-sm font-semibold text-ink">Variantes</h2>
 
       {loading ? (
         <p className="text-sm text-ink/50">Chargement…</p>
       ) : variantes.length === 0 ? (
-        <p className="text-sm text-ink/50">Aucune variante — ce produit utilise le stock du produit.</p>
+        <p className="text-sm text-ink/50">
+          Aucune variante — ce produit utilise le stock du produit.
+        </p>
       ) : (
         <ul className="flex flex-col divide-y divide-ink/10">
           {variantes.map((variante) => (
             <li key={variante.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-              <span className="text-ink">{variante.couleur ?? variante.taille}</span>
+              <span className="text-ink">{libelleVarianteDetaille(variante) || "—"}</span>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -91,15 +132,18 @@ export function VariantesManager({ produitId }: { produitId: number }) {
                   onBlur={(event) => changerStock(variante, Number(event.target.value))}
                   className="w-20 rounded-lg border border-ink/15 px-2 py-1 text-sm"
                 />
-                <span className={`text-xs ${variante.statut === "epuise" ? "text-red-600" : "text-ink/40"}`}>
+                <span
+                  className={`text-xs ${variante.statut === "epuise" ? "text-red-600" : "text-ink/40"}`}
+                >
                   {variante.statut}
                 </span>
                 <button
                   type="button"
                   onClick={() => supprimer(variante.id)}
-                  className="text-red-600 hover:underline"
+                  className="rounded-lg p-1.5 text-ink/40 transition-colors hover:bg-red-50 hover:text-red-600"
+                  aria-label="Retirer la variante"
                 >
-                  Retirer
+                  <Trash2 size={15} aria-hidden="true" />
                 </button>
               </div>
             </li>
@@ -107,44 +151,98 @@ export function VariantesManager({ produitId }: { produitId: number }) {
         </ul>
       )}
 
-      <div className="flex items-end gap-2 border-t border-ink/10 pt-3">
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-ink/60">Type</span>
-          <select
-            value={dimension}
-            onChange={(event) => setDimension(event.target.value as "couleur" | "taille")}
-            className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
-          >
-            <option value="couleur">Couleur</option>
-            <option value="taille">Taille</option>
-          </select>
-        </label>
-        <label className="flex flex-1 flex-col gap-1 text-xs">
-          <span className="text-ink/60">Valeur</span>
-          <input
-            value={valeur}
-            onChange={(event) => setValeur(event.target.value)}
-            placeholder={dimension === "couleur" ? "Bleu" : "M"}
-            className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-ink/60">Stock</span>
-          <input
-            type="number"
-            min={0}
-            value={stock}
-            onChange={(event) => setStock(event.target.value)}
-            className="w-20 rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
-          />
-        </label>
+      <div className="flex flex-col gap-3 border-t border-ink/10 pt-3">
+        <span className="text-xs font-medium text-ink/60">Nouvelle variante</span>
+
+        {lignes.map((ligne, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <select
+              value={ligne.attributId}
+              onChange={(event) => majLigne(index, { attributId: Number(event.target.value) })}
+              className={champ}
+            >
+              <option value={0} disabled>
+                Choisir un attribut…
+              </option>
+              {attributs.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nom}
+                </option>
+              ))}
+            </select>
+            <input
+              value={ligne.valeur}
+              onChange={(event) => majLigne(index, { valeur: event.target.value })}
+              placeholder="Valeur (ex. Bleu)"
+              className={`${champ} flex-1`}
+            />
+            <button
+              type="button"
+              onClick={() => retirerLigne(index)}
+              className="rounded-lg p-1.5 text-ink/40 hover:text-red-600 disabled:opacity-30"
+              disabled={lignes.length === 1}
+              aria-label="Retirer l'attribut"
+            >
+              <Trash2 size={14} aria-hidden="true" />
+            </button>
+          </div>
+        ))}
+
         <button
           type="button"
-          onClick={ajouter}
-          className="rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-surface active:scale-95"
+          onClick={ajouterLigne}
+          className="flex w-fit items-center gap-1 rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink/70 hover:bg-ink/[0.04]"
         >
-          Ajouter
+          <Plus size={13} aria-hidden="true" /> Ajouter un attribut
         </button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={nouvelAttribut}
+            onChange={(event) => setNouvelAttribut(event.target.value)}
+            placeholder="Nouvel attribut (ex. Contenance)"
+            className={`${champ} flex-1`}
+          />
+          <button
+            type="button"
+            onClick={proposerAttribut}
+            disabled={!nouvelAttribut.trim()}
+            className="rounded-full border border-brand/40 px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-brand/5 disabled:opacity-40"
+          >
+            Créer l&apos;attribut
+          </button>
+        </div>
+
+        <div className="flex items-end gap-2">
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-ink/60">Prix (facultatif)</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={prix}
+              onChange={(event) => setPrix(event.target.value)}
+              className={`no-spinner w-28 ${champ}`}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-ink/60">Stock</span>
+            <input
+              type="number"
+              min={0}
+              value={stock}
+              onChange={(event) => setStock(event.target.value)}
+              className={`w-20 ${champ}`}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={ajouterVariante}
+            className="rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-surface active:scale-95"
+          >
+            Ajouter
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
