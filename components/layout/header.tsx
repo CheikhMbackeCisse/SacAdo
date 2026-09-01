@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Heart, Search, Tag } from "lucide-react";
+import { Heart, Search, Settings, Tag, User } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProductImage } from "@/components/ui/product-image";
+import { useIdentite } from "@/lib/local/identite";
 import { formatPrice } from "@/lib/format";
 import {
   placeholdersPourCategorie,
@@ -25,6 +26,7 @@ const SUGGESTIONS_VIDES: SuggestionsRecherche = { produits: [], sousCategories: 
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const { identite } = useIdentite();
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SuggestionsRecherche>(SUGGESTIONS_VIDES);
@@ -100,6 +102,65 @@ export function Header() {
   const aDesSuggestions =
     suggestions.produits.length > 0 || suggestions.sousCategories.length > 0;
   const afficherPanneau = ouvert && query.trim().length >= 2;
+
+  // Nav horizontale desktop (lg+) : identique quel que soit l'écran, y compris
+  // sur la page Moi qui remplace pourtant la barre du haut.
+  const navDesktop = (
+    <nav aria-label="Navigation principale" className="hidden border-t border-ink/10 lg:block">
+      <div className="mx-auto flex max-w-6xl items-center gap-1 px-4">
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              prefetch
+              aria-current={isActive ? "page" : undefined}
+              className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm transition-colors ${
+                isActive
+                  ? "border-brand font-medium text-brand"
+                  : "border-transparent text-ink/60 hover:text-ink"
+              }`}
+            >
+              <Icon size={16} aria-hidden="true" />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+
+  // Page Moi : la barre du haut habituelle (logo + recherche + cœur) laisse la
+  // place à l'identité du client (avatar + nom + téléphone) et à l'accès
+  // Paramètres. Uniquement sur /moi ; les sous-pages gardent le header normal.
+  if (pathname === "/moi") {
+    return (
+      <header className="sticky top-0 z-40 border-b border-ink/10 bg-surface/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+            <User size={24} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-ink">
+              {identite?.nom || "Client SacAdo"}
+            </p>
+            {identite?.telephone && (
+              <p className="truncate text-xs text-ink/50">{identite.telephone}</p>
+            )}
+          </div>
+          <Link
+            href="/moi/parametres"
+            aria-label="Paramètres"
+            className="shrink-0 rounded-full p-2 text-ink/70 transition-colors duration-150 hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-90"
+          >
+            <Settings size={22} />
+          </Link>
+        </div>
+        {navDesktop}
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-surface/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface/80">
@@ -230,32 +291,7 @@ export function Header() {
 
       {/* Desktop (lg+) : la nav vit ici plutôt qu'en bottom nav fixe (voir
           CLAUDE.md section 6 et components/layout/bottom-nav.tsx). */}
-      <nav
-        aria-label="Navigation principale"
-        className="hidden border-t border-ink/10 lg:block"
-      >
-        <div className="mx-auto flex max-w-6xl items-center gap-1 px-4">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                prefetch
-                aria-current={isActive ? "page" : undefined}
-                className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm transition-colors ${
-                  isActive
-                    ? "border-brand font-medium text-brand"
-                    : "border-transparent text-ink/60 hover:text-ink"
-                }`}
-              >
-                <Icon size={16} aria-hidden="true" />
-                {label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {navDesktop}
     </header>
   );
 }

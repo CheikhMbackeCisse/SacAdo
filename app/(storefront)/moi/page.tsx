@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ClipboardList, Heart, History, Inbox, LifeBuoy, Settings, Store, User } from "lucide-react";
+import { ClipboardList, Heart, History, Inbox, LifeBuoy, Store } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { useFavoris } from "@/lib/local/favoris";
 import { useConsultes } from "@/lib/local/consultes";
@@ -87,23 +87,6 @@ export default function MoiPage() {
 
   return (
     <div className="flex flex-col gap-5 px-4 py-4">
-      <div className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
-          <User size={26} aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-ink">{identite?.nom || "Client SacAdo"}</p>
-          {identite && <p className="text-xs text-ink/50">{identite.telephone}</p>}
-        </div>
-        <Link
-          href="/moi/parametres"
-          aria-label="Paramètres"
-          className="shrink-0 rounded-full p-2 text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
-        >
-          <Settings size={20} aria-hidden="true" />
-        </Link>
-      </div>
-
       <div className="grid grid-cols-3 gap-x-2 gap-y-4 rounded-2xl border border-ink/10 bg-elevated p-4">
         {ONGLETS.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} className="flex flex-col items-center gap-1.5 text-center">
