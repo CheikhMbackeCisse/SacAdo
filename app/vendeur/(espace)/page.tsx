@@ -8,6 +8,7 @@ export default async function VendeurDashboardPage() {
   const [produits, ventes] = await Promise.all([getMesProduits(), getMesVentes()]);
 
   const enAttente = produits.filter((p) => p.statut_publication === "en_attente").length;
+  const enNegociation = produits.filter((p) => p.statut_publication === "negociation").length;
   const publies = produits.filter((p) => p.statut_publication === "publie").length;
   const refuses = produits.filter((p) => p.statut_publication === "refuse").length;
 
@@ -15,9 +16,10 @@ export default async function VendeurDashboardPage() {
     <div className="flex flex-col gap-6">
       <h1 className="font-heading text-xl font-bold text-[#001314]">Tableau de bord</h1>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Carte titre="Produits publiés" valeur={String(publies)} />
         <Carte titre="En attente de validation" valeur={String(enAttente)} accent={enAttente > 0} />
+        <Carte titre="Négociation en cours" valeur={String(enNegociation)} accent={enNegociation > 0} />
         <Carte titre="Refusés" valeur={String(refuses)} danger={refuses > 0} />
       </div>
 

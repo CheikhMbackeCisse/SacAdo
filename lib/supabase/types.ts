@@ -1,7 +1,11 @@
 export type Delai = "24h" | "5j";
 export type StatutProduit = "dispo" | "sur_commande" | "epuise";
 // Marketplace : circuit de modération d'un produit vendeur.
-export type StatutPublication = "en_attente" | "publie" | "refuse";
+//   en_attente  : soumis, pas encore traité par l'admin ;
+//   negociation : au moins une contre-proposition de prix a été faite ;
+//   publie      : prix accepté des deux côtés → visible au catalogue ;
+//   refuse      : abandonné par l'une des parties.
+export type StatutPublication = "en_attente" | "negociation" | "publie" | "refuse";
 export type StatutVariante = "dispo" | "epuise";
 export type Cycle = "prescolaire" | "elementaire" | "college" | "lycee";
 export type Gamme = "essentiel" | "confort" | "complet";
@@ -57,6 +61,20 @@ export type Commission = {
   sous_categorie_id: number | null;
   taux: number;
   created_at: string;
+};
+
+// Marketplace : négociation de prix admin ↔ vendeur.
+export type AuteurProposition = "vendeur" | "admin";
+// Statut d'UNE proposition (pas du produit).
+export type StatutProposition = "en_cours" | "accepte" | "refuse";
+
+export type NegociationProposition = {
+  id: number;
+  produit_id: number;
+  auteur: AuteurProposition;
+  prix_propose: number;
+  statut: StatutProposition;
+  date: string;
 };
 
 export type ProduitVariante = {
