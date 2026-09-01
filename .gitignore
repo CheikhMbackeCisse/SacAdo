@@ -46,3 +46,8 @@ next-env.d.ts
 
 # claude code local settings
 .claude/
+
+# captures d'écran de travail à la racine (non versionnées)
+/accueil.png
+/categorie.png
+/sac-decole.png
