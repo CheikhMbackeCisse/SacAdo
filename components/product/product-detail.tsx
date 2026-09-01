@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { FavoriteButton } from "@/components/ui/favorite-button";
@@ -23,6 +23,8 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
   );
   const [quantite, setQuantite] = useState(1);
   const [added, setAdded] = useState(false);
+  const [slide, setSlide] = useState(0);
+  const carrouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     recordConsulte(produit.id);
@@ -39,10 +41,23 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
       : null;
 
   const selectedVariante = variantes.find((v) => v.id === selectedId) ?? null;
-  // Une seule photo par produit/variante dans le modèle actuel : pas de vraie
-  // galerie multi-images tant que ce champ n'est pas étendu.
-  const photo = selectedVariante?.photo ?? produit.photo;
+  // Galerie : la photo de la variante choisie prime ; sinon la galerie du
+  // produit (jusqu'à 4, vendeurs), avec repli sur la photo principale seule.
+  // `?? []` : tolère les lignes pas encore migrées (colonne `photos` absente).
+  const photosProduit = produit.photos ?? [];
+  const galerie: string[] = selectedVariante?.photo
+    ? [selectedVariante.photo]
+    : photosProduit.length > 0
+      ? photosProduit
+      : produit.photo
+        ? [produit.photo]
+        : [];
   const prix = selectedVariante?.prix ?? produit.prix;
+
+  const majSlide = () => {
+    const el = carrouselRef.current;
+    if (el && el.clientWidth > 0) setSlide(Math.round(el.scrollLeft / el.clientWidth));
+  };
 
   const varianteEpuisee = variantes.length > 0 && selectedVariante?.statut === "epuise";
   const produitEpuise = produit.statut === "epuise";
@@ -58,8 +73,43 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="relative aspect-square w-full bg-ink/5">
-        <ProductImage src={photo} alt={produit.nom} className="h-full w-full" />
+      <div className="relative">
+        {galerie.length <= 1 ? (
+          <div className="relative aspect-square w-full bg-ink/5">
+            <ProductImage src={galerie[0] ?? null} alt={produit.nom} className="h-full w-full" />
+          </div>
+        ) : (
+          <>
+            <div
+              ref={carrouselRef}
+              onScroll={majSlide}
+              className="flex snap-x snap-mandatory overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {galerie.map((src, index) => (
+                <div
+                  key={src}
+                  className="relative aspect-square w-full shrink-0 snap-center bg-ink/5"
+                >
+                  <ProductImage
+                    src={src}
+                    alt={`${produit.nom} — photo ${index + 1}`}
+                    className="h-full w-full"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+              {galerie.map((src, index) => (
+                <span
+                  key={src}
+                  className={`h-1.5 rounded-full transition-all ${
+                    index === slide ? "w-4 bg-brand" : "w-1.5 bg-white/70"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
         <div className="absolute right-3 top-3">
           <FavoriteButton produitId={produit.id} size={20} />
         </div>

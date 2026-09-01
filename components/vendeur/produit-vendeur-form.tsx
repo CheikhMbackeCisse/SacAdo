@@ -3,13 +3,15 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from "lucide-react";
 import {
   creerMonProduit,
   modifierMonProduit,
   televerserPhoto,
   type ProduitVendeurInput,
 } from "@/lib/vendeur/produits-actions";
+import { MAX_PHOTOS_PRODUIT } from "@/lib/vendeur/produits-shared";
+import { compresserImage } from "@/lib/images/compress-image";
 import type { Categorie, Commission, Produit, SousCategorie } from "@/lib/supabase/types";
 import { calculerCommission, tauxCommission } from "@/lib/commissions";
 import { formatPrice } from "@/lib/format";
@@ -49,7 +51,9 @@ export function ProduitVendeurForm({
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
   const [delai, setDelai] = useState<ProduitVendeurInput["delai"] | "">(produit?.delai ?? "");
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
-  const [photo, setPhoto] = useState(produit?.photo ?? "");
+  const [photos, setPhotos] = useState<string[]>(
+    produit?.photos?.length ? produit.photos : produit?.photo ? [produit.photo] : [],
+  );
 
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -94,18 +98,41 @@ export function ProduitVendeurForm({
     if (!encoreValide) setSousCategorieId(null);
   };
 
-  const choisirPhoto = async (fichier: File) => {
+  const placesLibres = MAX_PHOTOS_PRODUIT - photos.length;
+
+  const choisirPhotos = async (fichiers: File[]) => {
+    if (fichiers.length === 0 || placesLibres <= 0) return;
     setUploading(true);
     setError(null);
-    const formData = new FormData();
-    formData.append("file", fichier);
-    const result = await televerserPhoto(formData);
-    setUploading(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    const aTraiter = fichiers.slice(0, placesLibres);
+    const urls: string[] = [];
+    for (const fichier of aTraiter) {
+      const compresse = await compresserImage(fichier);
+      const formData = new FormData();
+      formData.append("file", compresse);
+      const result = await televerserPhoto(formData);
+      if (!result.ok) {
+        setError(result.error);
+        break;
+      }
+      urls.push(result.url);
     }
-    setPhoto(result.url);
+    if (urls.length > 0) setPhotos((current) => [...current, ...urls]);
+    setUploading(false);
+  };
+
+  const retirerPhoto = (index: number) => {
+    setPhotos((current) => current.filter((_, i) => i !== index));
+  };
+
+  const deplacerPhoto = (index: number, direction: -1 | 1) => {
+    setPhotos((current) => {
+      const cible = index + direction;
+      if (cible < 0 || cible >= current.length) return current;
+      const copie = [...current];
+      [copie[index], copie[cible]] = [copie[cible], copie[index]];
+      return copie;
+    });
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -134,7 +161,7 @@ export function ProduitVendeurForm({
       sous_categorie_id: sousCategorieId,
       prix: Number(prix),
       delai,
-      photo: photo || null,
+      photos,
       stock: Number(stock),
     };
 
@@ -286,52 +313,89 @@ export function ProduitVendeurForm({
         </div>
       )}
 
-      <div className="flex flex-col gap-1.5 text-sm">
-        <span className="text-xs font-medium text-[#001314]/60">Photo</span>
-        <div className="flex items-center gap-3">
-          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-[#001314]/10 bg-[#001314]/5">
-            {photo ? (
-              <>
-                <Image src={photo} alt="" fill sizes="96px" className="object-cover" />
+      <div className="flex flex-col gap-2 text-sm">
+        <span className="text-xs font-medium text-[#001314]/60">
+          Photos <span className="text-[#001314]/40">({photos.length}/{MAX_PHOTOS_PRODUIT})</span>
+        </span>
+
+        {photos.length > 0 && (
+          <div className="grid grid-cols-4 gap-2">
+            {photos.map((url, index) => (
+              <div
+                key={url}
+                className="relative aspect-square overflow-hidden rounded-xl border border-[#001314]/10 bg-[#001314]/5"
+              >
+                <Image src={url} alt="" fill sizes="120px" className="object-cover" />
+
+                {index === 0 && (
+                  <span className="absolute left-1 top-1 rounded-full bg-[#0B3D91] px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                    Principale
+                  </span>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setPhoto("")}
+                  onClick={() => retirerPhoto(index)}
                   className="absolute right-1 top-1 rounded-full bg-white/90 p-0.5 text-[#001314] shadow"
-                  aria-label="Retirer la photo"
+                  aria-label="Retirer cette photo"
                 >
-                  <X size={13} />
+                  <X size={12} />
                 </button>
-              </>
-            ) : (
-              <span className="flex h-full items-center justify-center text-[#001314]/25">
-                <ImagePlus size={22} aria-hidden="true" />
-              </span>
-            )}
+
+                <div className="absolute inset-x-1 bottom-1 flex justify-between">
+                  <button
+                    type="button"
+                    onClick={() => deplacerPhoto(index, -1)}
+                    disabled={index === 0}
+                    className="rounded-full bg-white/90 p-0.5 text-[#001314] shadow disabled:opacity-30"
+                    aria-label="Déplacer vers la gauche"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deplacerPhoto(index, 1)}
+                    disabled={index === photos.length - 1}
+                    className="rounded-full bg-white/90 p-0.5 text-[#001314] shadow disabled:opacity-30"
+                    aria-label="Déplacer vers la droite"
+                  >
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-          <div>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-1.5 rounded-full border border-[#001314]/15 px-3 py-1.5 text-xs font-medium text-[#001314]/70 hover:bg-[#001314]/[0.04] disabled:opacity-50"
-            >
-              {uploading ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
-              {photo ? "Changer la photo" : "Téléverser une photo"}
-            </button>
-            <p className="mt-1 text-[11px] text-[#001314]/45">JPG, PNG ou WebP — 3 Mo max.</p>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => {
-              const fichier = e.target.files?.[0];
-              if (fichier) choisirPhoto(fichier);
-              e.target.value = "";
-            }}
-          />
-        </div>
+        )}
+
+        {placesLibres > 0 && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex w-fit items-center gap-1.5 rounded-full border border-[#001314]/15 px-3 py-1.5 text-xs font-medium text-[#001314]/70 hover:bg-[#001314]/[0.04] disabled:opacity-50"
+          >
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
+            {photos.length === 0 ? "Ajouter des photos" : "Ajouter une photo"}
+          </button>
+        )}
+
+        <p className="text-[11px] text-[#001314]/45">
+          JPG, PNG ou WebP — jusqu’à {MAX_PHOTOS_PRODUIT} photos. La première est la photo
+          principale (grille du catalogue et début du carrousel) ; réordonnez avec les flèches.
+        </p>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const fichiers = Array.from(e.target.files ?? []);
+            if (fichiers.length > 0) void choisirPhotos(fichiers);
+            e.target.value = "";
+          }}
+        />
       </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}

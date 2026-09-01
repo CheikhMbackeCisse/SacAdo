@@ -19,7 +19,12 @@ export type Produit = {
   sous_categorie_id: number | null;
   prix: number;
   delai: Delai;
+  // Photo principale (= photos[0], maintenue par le serveur). Reste la source
+  // de vérité pour les cartes catalogue et les RPC de recherche.
   photo: string | null;
+  // Galerie ordonnée (jusqu'à 4). photos[0] = principale. Vide pour les
+  // produits SacAdo tant qu'ils n'ont pas été migrés vers la galerie.
+  photos: string[];
   stock: number;
   seuil_alerte: number;
   statut: StatutProduit;

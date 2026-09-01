@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { requireVendeur } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { estNombrePositifValide, texteNonVide } from "@/lib/admin/validation";
+import { MAX_PHOTOS_PRODUIT } from "./produits-shared";
 import type { Categorie, Commission, Delai, Produit, SousCategorie } from "@/lib/supabase/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -56,9 +57,24 @@ export type ProduitVendeurInput = {
   sous_categorie_id: number | null;
   prix: number;
   delai: Delai;
-  photo: string | null;
+  // Galerie ordonnée : photos[0] = principale. 0 à 4 URLs.
+  photos: string[];
   stock: number;
 };
+
+// Ne garde que des URLs http(s) non vides, dédoublonnées, plafonnées à 4.
+function nettoyerPhotos(photos: string[]): string[] {
+  const vues = new Set<string>();
+  const propres: string[] = [];
+  for (const p of photos) {
+    const url = typeof p === "string" ? p.trim() : "";
+    if (!/^https?:\/\//i.test(url) || vues.has(url)) continue;
+    vues.add(url);
+    propres.push(url);
+    if (propres.length === MAX_PHOTOS_PRODUIT) break;
+  }
+  return propres;
+}
 
 function valider(input: ProduitVendeurInput): string | null {
   if (!texteNonVide(input.nom, 200)) return "Le nom est requis.";
@@ -75,10 +91,14 @@ function valider(input: ProduitVendeurInput): string | null {
   if (input.description !== null && input.description.length > 2000) {
     return "La description est trop longue (2000 caractères maximum).";
   }
+  if (input.photos.length > MAX_PHOTOS_PRODUIT) {
+    return `${MAX_PHOTOS_PRODUIT} photos maximum par produit.`;
+  }
   return null;
 }
 
 function versColonnes(input: ProduitVendeurInput) {
+  const photos = nettoyerPhotos(input.photos);
   return {
     nom: input.nom.trim(),
     description: input.description?.trim() || null,
@@ -86,10 +106,21 @@ function versColonnes(input: ProduitVendeurInput) {
     sous_categorie_id: input.sous_categorie_id,
     prix: Math.round(input.prix),
     delai: input.delai,
-    photo: input.photo?.trim() || null,
+    photos,
+    // Photo principale maintenue par le serveur = première de la galerie.
+    photo: photos[0] ?? null,
     stock: Math.round(input.stock),
   };
 }
+
+// Retire `photos` d'un jeu de colonnes (repli si la migration 0019 n'est pas
+// encore passée : Postgres renvoie 42703 « column does not exist »).
+function sansColonnePhotos(colonnes: Record<string, unknown>): Record<string, unknown> {
+  const reste = { ...colonnes };
+  delete reste.photos;
+  return reste;
+}
+const COLONNE_ABSENTE = "42703";
 
 // La soumission (et chaque re-soumission) d'un produit ouvre une proposition de
 // prix du vendeur : c'est le premier tour du fil de négociation. L'admin a alors
@@ -118,17 +149,25 @@ export async function creerMonProduit(
   if (erreur) return { ok: false, error: erreur };
 
   const prix = Math.round(input.prix);
-  const { data, error } = await supabaseAdmin
+  const colonnes = {
+    ...versColonnes(input),
+    seuil_alerte: 5,
+    vendeur_id: userId,
+    statut_publication: "en_attente" as const,
+    motif_refus: null,
+  };
+  let { data, error } = await supabaseAdmin
     .from("produits")
-    .insert({
-      ...versColonnes(input),
-      seuil_alerte: 5,
-      vendeur_id: userId,
-      statut_publication: "en_attente",
-      motif_refus: null,
-    })
+    .insert(colonnes)
     .select("id")
     .single();
+  if (error?.code === COLONNE_ABSENTE) {
+    ({ data, error } = await supabaseAdmin
+      .from("produits")
+      .insert(sansColonnePhotos(colonnes))
+      .select("id")
+      .single());
+  }
 
   if (error || !data) return { ok: false, error: "Impossible d'enregistrer le produit." };
 
@@ -145,15 +184,23 @@ export async function modifierMonProduit(
   const erreur = valider(input);
   if (erreur) return { ok: false, error: erreur };
 
-  const { error } = await supabaseAdmin
+  const colonnes = {
+    ...versColonnes(input),
+    statut_publication: "en_attente" as const,
+    motif_refus: null,
+  };
+  let { error } = await supabaseAdmin
     .from("produits")
-    .update({
-      ...versColonnes(input),
-      statut_publication: "en_attente",
-      motif_refus: null,
-    })
+    .update(colonnes)
     .eq("id", id)
     .eq("vendeur_id", userId);
+  if (error?.code === COLONNE_ABSENTE) {
+    ({ error } = await supabaseAdmin
+      .from("produits")
+      .update(sansColonnePhotos(colonnes))
+      .eq("id", id)
+      .eq("vendeur_id", userId));
+  }
 
   if (error) return { ok: false, error: "Impossible de modifier le produit." };
 
