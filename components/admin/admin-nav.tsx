@@ -11,6 +11,7 @@ import {
   LogOut,
   MapPin,
   Package,
+  ShieldCheck,
   Tags,
   Users,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import { signOut } from "@/lib/admin/auth-actions";
 const LIENS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/produits", label: "Produits", icon: Package },
+  { href: "/admin/moderation", label: "Modération vendeurs", icon: ShieldCheck },
   { href: "/admin/categories", label: "Catégories", icon: FolderTree },
   { href: "/admin/sous-categories", label: "Sous-catégories", icon: Tags },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },

@@ -77,6 +77,19 @@ export type NegociationProposition = {
   date: string;
 };
 
+export type TypeMessageVendeur = "negociation" | "publication" | "refus" | "info";
+
+export type MessageVendeur = {
+  id: number;
+  vendeur_id: string;
+  type: TypeMessageVendeur;
+  titre: string;
+  corps: string;
+  produit_id: number | null;
+  lu: boolean;
+  date: string;
+};
+
 export type ProduitVariante = {
   id: number;
   produit_id: number;

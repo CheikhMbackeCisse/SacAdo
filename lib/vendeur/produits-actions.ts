@@ -91,6 +91,25 @@ function versColonnes(input: ProduitVendeurInput) {
   };
 }
 
+// La soumission (et chaque re-soumission) d'un produit ouvre une proposition de
+// prix du vendeur : c'est le premier tour du fil de négociation. L'admin a alors
+// la balle (accepter / contre-proposer / refuser).
+async function ouvrirPropositionVendeur(produitId: number, prix: number): Promise<void> {
+  // Toute proposition encore en_cours est dépassée par la nouvelle.
+  await supabaseAdmin
+    .from("negociation_propositions")
+    .update({ statut: "refuse" })
+    .eq("produit_id", produitId)
+    .eq("statut", "en_cours");
+
+  await supabaseAdmin.from("negociation_propositions").insert({
+    produit_id: produitId,
+    auteur: "vendeur",
+    prix_propose: prix,
+    statut: "en_cours",
+  });
+}
+
 export async function creerMonProduit(
   input: ProduitVendeurInput,
 ): Promise<ActionResult & { id?: number }> {
@@ -98,6 +117,7 @@ export async function creerMonProduit(
   const erreur = valider(input);
   if (erreur) return { ok: false, error: erreur };
 
+  const prix = Math.round(input.prix);
   const { data, error } = await supabaseAdmin
     .from("produits")
     .insert({
@@ -111,6 +131,8 @@ export async function creerMonProduit(
     .single();
 
   if (error || !data) return { ok: false, error: "Impossible d'enregistrer le produit." };
+
+  await ouvrirPropositionVendeur(data.id, prix);
   return { ok: true, id: data.id };
 }
 
@@ -134,6 +156,8 @@ export async function modifierMonProduit(
     .eq("vendeur_id", userId);
 
   if (error) return { ok: false, error: "Impossible de modifier le produit." };
+
+  await ouvrirPropositionVendeur(id, Math.round(input.prix));
   return { ok: true };
 }
 

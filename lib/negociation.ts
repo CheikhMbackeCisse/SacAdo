@@ -38,6 +38,26 @@ export function autre(auteur: AuteurProposition): AuteurProposition {
   return auteur === "vendeur" ? "admin" : "vendeur";
 }
 
+// Qui doit jouer, en tenant compte du statut du produit :
+//   - produit publié / refusé → personne (null) ;
+//   - fil avec une proposition en_cours → l'autre que son auteur ;
+//   - fil vide + 'en_attente' → soumission initiale du vendeur, balle côté admin.
+export function balleCote(
+  statutPublication: string,
+  fil: NegociationProposition[],
+): AuteurProposition | null {
+  if (statutPublication !== "en_attente" && statutPublication !== "negociation") return null;
+  const { derniere, balle } = etatNegociation(fil);
+  if (derniere) return balle;
+  return statutPublication === "en_attente" ? "admin" : null;
+}
+
+// Prix actuellement sur la table : dernière proposition en_cours, ou à défaut le
+// prix courant du produit (cas de la soumission initiale sans ligne de fil).
+export function prixEnJeu(produitPrix: number, fil: NegociationProposition[]): number {
+  return etatNegociation(fil).prixCourant ?? produitPrix;
+}
+
 // Vrai quand le fil a atteint la limite : plus de nouvelle contre-proposition,
 // on ne peut plus qu'accepter le dernier prix ou abandonner.
 export function limiteAtteinte(tours: number, toursMax = TOURS_MAX_DEFAUT): boolean {
