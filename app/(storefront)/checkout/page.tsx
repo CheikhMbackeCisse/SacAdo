@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { BookOpen, LocateFixed, MapPinned } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
 import { useKitEnfants } from "@/lib/local/kit-enfants";
 import { getZones } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
-import { passerCommande } from "@/lib/checkout/actions";
+import { getDernierePosition, passerCommande } from "@/lib/checkout/actions";
 import { SEUIL_GRATUITE } from "@/components/panier/free-shipping-progress";
 import { RegionPicker } from "@/components/checkout/region-picker";
+import { CartePin, type Coordonnees } from "@/components/checkout/carte-pin";
 import type { ModeLivraison, Zone } from "@/lib/supabase/types";
 
 // crypto.randomUUID() exige un contexte sécurisé (HTTPS/localhost) : absent
@@ -51,36 +52,13 @@ export default function CheckoutPage() {
   const nom = nomSaisi ?? identite?.nom ?? "";
   const telephone = telephoneSaisi ?? identite?.telephone ?? "";
   const [zoneId, setZoneId] = useState<number | null>(null);
-  const [adresse, setAdresse] = useState("");
   const [modeLivraison, setModeLivraison] = useState<ModeLivraison>("6j");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [errorZones, setErrorZones] = useState(false);
-  const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
-  const [lienMapsManuel, setLienMapsManuel] = useState("");
-  const [localisationEnCours, setLocalisationEnCours] = useState(false);
-  const [erreurLocalisation, setErreurLocalisation] = useState<string | null>(null);
-
-  const localiser = () => {
-    if (!navigator.geolocation) {
-      setErreurLocalisation("La géolocalisation n'est pas disponible sur cet appareil.");
-      return;
-    }
-    setLocalisationEnCours(true);
-    setErreurLocalisation(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocalisationEnCours(false);
-      },
-      () => {
-        setErreurLocalisation("Impossible d'obtenir ta position. Vérifie l'autorisation de localisation.");
-        setLocalisationEnCours(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
+  const [position, setPosition] = useState<Coordonnees | null>(null);
+  const [precisionLivreur, setPrecisionLivreur] = useState("");
 
   useEffect(() => {
     getZones()
@@ -91,6 +69,19 @@ export default function CheckoutPage() {
       })
       .catch(() => setErrorZones(true));
   }, []);
+
+  // Pré-remplissage : dernière position validée par ce numéro de client.
+  const prefillFait = useRef(false);
+  useEffect(() => {
+    const numero = telephone.trim();
+    if (prefillFait.current || !numero) return;
+    prefillFait.current = true;
+    getDernierePosition(numero).then((pos) => {
+      if (!pos) return;
+      setPosition({ lat: pos.lat, lng: pos.lng });
+      setPrecisionLivreur((actuel) => actuel || pos.precisionLivreur || "");
+    });
+  }, [telephone]);
 
   const zoneSelectionnee = zones.find((z) => z.id === zoneId) ?? null;
   const livraisonGratuite = sousTotal >= SEUIL_GRATUITE;
@@ -109,6 +100,10 @@ export default function CheckoutPage() {
       setError("Veuillez choisir une région de livraison.");
       return;
     }
+    if (!position) {
+      setError("Confirme le lieu de livraison sur la carte.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -118,16 +113,14 @@ export default function CheckoutPage() {
       quantite: d.quantite,
     }));
 
-    const lienPosition =
-      lienMapsManuel.trim() || (position ? `https://www.google.com/maps?q=${position.lat},${position.lng}` : "");
-    const adresseAvecPosition = lienPosition ? `${adresse}\nPosition : ${lienPosition}` : adresse;
-
     try {
       const result = await passerCommande(lignesPourEnvoi, {
         nom,
         telephone,
         zoneId,
-        adresse: adresseAvecPosition,
+        lat: position.lat,
+        lng: position.lng,
+        precisionLivreur: precisionLivreur.trim() || null,
         modeLivraison,
         reference,
         enfantsEbook: enfantsEbook.map((e) => ({ kit: e.kit, prenom: e.prenom })),
@@ -193,52 +186,24 @@ export default function CheckoutPage() {
           )}
         </label>
 
-        <div className="flex flex-col gap-1 text-sm">
-          <label className="flex flex-col gap-1" htmlFor="adresse">
-            <span className="text-xs font-medium text-ink/60">Adresse / point de repère</span>
-            <textarea
-              id="adresse"
-              required
-              rows={2}
-              value={adresse}
-              onChange={(event) => setAdresse(event.target.value)}
-              className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
-            />
-          </label>
-          <div className="mt-1 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={localiser}
-              disabled={localisationEnCours}
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 active:scale-95 disabled:opacity-50"
-            >
-              <LocateFixed size={14} aria-hidden="true" />
-              {localisationEnCours
-                ? "Localisation…"
-                : position
-                  ? "Position signalée ✓"
-                  : "Utiliser ma position actuelle"}
-            </button>
-            <a
-              href="https://www.google.com/maps"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 active:scale-95"
-            >
-              <MapPinned size={14} aria-hidden="true" />
-              Trouver sur Google Maps
-            </a>
-          </div>
-          {erreurLocalisation && <span className="text-xs text-ink/60">{erreurLocalisation}</span>}
-
-          <input
-            aria-label="Lien Google Maps de ta position"
-            value={lienMapsManuel}
-            onChange={(event) => setLienMapsManuel(event.target.value)}
-            placeholder="Colle ici le lien Google Maps de ta position (optionnel)"
-            className="mt-1 rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
-          />
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span className="text-xs font-medium text-ink/60">Où livrer ?</span>
+          <CartePin position={position} onChange={setPosition} />
         </div>
+
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-ink/60">
+            Précision pour le livreur <span className="text-ink/40">(facultatif)</span>
+          </span>
+          <textarea
+            rows={2}
+            maxLength={300}
+            value={precisionLivreur}
+            onChange={(event) => setPrecisionLivreur(event.target.value)}
+            placeholder="Portail bleu, 2e étage, appeler en arrivant…"
+            className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          />
+        </label>
       </section>
 
       <section className="flex flex-col gap-2">
@@ -334,7 +299,7 @@ export default function CheckoutPage() {
       <div className="sticky bottom-16 z-30 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:bottom-0">
         <button
           type="submit"
-          disabled={submitting || !zoneId}
+          disabled={submitting || !zoneId || !position}
           className="flex h-12 w-full items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
           {submitting ? "Confirmation…" : "Confirmer la commande"}

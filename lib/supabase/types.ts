@@ -157,6 +157,11 @@ export type Commande = {
   client_reference: string | null;
   // Prénom(s) d'enfant pour la personnalisation de l'ebook offert avec un kit.
   enfants_ebook: string | null;
+  // Point de livraison validé sur la carte (LOCALISATION_LIVRAISON.md) + note
+  // libre pour le livreur. Peuvent être null pour les commandes d'avant 0021.
+  lat: number | null;
+  lng: number | null;
+  precision_livreur: string | null;
 };
 
 export type CommandeItem = {

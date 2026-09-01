@@ -25,6 +25,9 @@ function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecCl
     date: row.date,
     client_reference: row.client_reference,
     enfants_ebook: row.enfants_ebook,
+    lat: row.lat,
+    lng: row.lng,
+    precision_livreur: row.precision_livreur,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
   };

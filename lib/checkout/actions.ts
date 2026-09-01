@@ -11,7 +11,7 @@ const SEUIL_GRATUITE = 50000;
 // bornés : sert à rejeter du bruit random, pas à valider un vrai numéro.
 const TELEPHONE_REGEX = /^[0-9+\s.-]{6,20}$/;
 const NOM_MAX = 100;
-const ADRESSE_MAX = 500;
+const PRECISION_LIVREUR_MAX = 300;
 const LIGNES_MAX = 50;
 const QUANTITE_MAX = 999;
 
@@ -21,7 +21,12 @@ export type CheckoutInput = {
   nom: string;
   telephone: string;
   zoneId: number;
-  adresse: string;
+  // Point validé sur la carte (LOCALISATION_LIVRAISON.md) : sert à guider le
+  // livreur, pas à calculer le prix (toujours par zone).
+  lat: number;
+  lng: number;
+  // Champ libre facultatif : « portail bleu, 2e étage, appeler en arrivant ».
+  precisionLivreur?: string | null;
   modeLivraison: ModeLivraison;
   // Généré une fois côté client (crypto.randomUUID()) au chargement du
   // checkout : permet à creer_commande() de rejouer un clic double ou une
@@ -67,13 +72,21 @@ export async function passerCommande(
 ): Promise<CheckoutResult> {
   const nom = input.nom.trim();
   const telephone = input.telephone.trim();
-  const adresse = input.adresse.trim();
+  const precisionLivreur = (input.precisionLivreur ?? "").trim() || null;
 
   if (lignes.length === 0) return { ok: false, error: "Ton panier est vide." };
-  if (!nom || !telephone || !adresse) {
-    return { ok: false, error: "Merci de renseigner tous les champs." };
+  if (!nom || !telephone) {
+    return { ok: false, error: "Merci de renseigner ton nom et ton téléphone." };
   }
-  if (nom.length > NOM_MAX || adresse.length > ADRESSE_MAX) {
+  if (
+    !Number.isFinite(input.lat) ||
+    !Number.isFinite(input.lng) ||
+    Math.abs(input.lat) > 90 ||
+    Math.abs(input.lng) > 180
+  ) {
+    return { ok: false, error: "Confirme le lieu de livraison sur la carte." };
+  }
+  if (nom.length > NOM_MAX || (precisionLivreur?.length ?? 0) > PRECISION_LIVREUR_MAX) {
     return { ok: false, error: "Un des champs est trop long." };
   }
   if (!TELEPHONE_REGEX.test(telephone)) {
@@ -163,14 +176,24 @@ export async function passerCommande(
     .maybeSingle();
   if (clientReadError) return { ok: false, error: "Une erreur est survenue, réessaie." };
 
+  // Dernière position mémorisée pour pré-remplir la prochaine commande.
+  const positionClient = {
+    derniere_lat: input.lat,
+    derniere_lng: input.lng,
+    derniere_precision_livreur: precisionLivreur,
+  };
+
   let clientId: number;
   if (clientExistant) {
     clientId = clientExistant.id;
-    await supabaseAdmin.from("clients").update({ nom, zone_id: input.zoneId }).eq("id", clientId);
+    await supabaseAdmin
+      .from("clients")
+      .update({ nom, zone_id: input.zoneId, ...positionClient })
+      .eq("id", clientId);
   } else {
     const { data: nouveauClient, error: clientInsertError } = await supabaseAdmin
       .from("clients")
-      .insert({ nom, telephone, zone_id: input.zoneId })
+      .insert({ nom, telephone, zone_id: input.zoneId, ...positionClient })
       .select()
       .single();
 
@@ -192,7 +215,10 @@ export async function passerCommande(
   const { data: commandeId, error: commandeError } = await supabaseAdmin.rpc("creer_commande", {
     p_client_id: clientId,
     p_zone_id: input.zoneId,
-    p_adresse: adresse,
+    p_adresse: null,
+    p_lat: input.lat,
+    p_lng: input.lng,
+    p_precision_livreur: precisionLivreur,
     p_mode_livraison: input.modeLivraison,
     p_frais_livraison: fraisLivraison,
     p_sous_total: sousTotal,
@@ -231,4 +257,29 @@ export async function passerCommande(
   }
 
   return { ok: true, commandeId: commandeId as number };
+}
+
+export type DernierePosition = {
+  lat: number;
+  lng: number;
+  precisionLivreur: string | null;
+};
+
+// Dernière position validée par le client (via son numéro) pour pré-remplir le
+// checkout. clients n'a aucune policy publique → lecture service_role seule.
+export async function getDernierePosition(telephone: string): Promise<DernierePosition | null> {
+  const numero = telephone.trim();
+  if (!numero) return null;
+  const { data } = await supabaseAdmin
+    .from("clients")
+    .select("derniere_lat, derniere_lng, derniere_precision_livreur")
+    .eq("telephone", numero)
+    .maybeSingle();
+
+  if (!data || data.derniere_lat == null || data.derniere_lng == null) return null;
+  return {
+    lat: data.derniere_lat,
+    lng: data.derniere_lng,
+    precisionLivreur: data.derniere_precision_livreur ?? null,
+  };
 }
