@@ -12,6 +12,7 @@ import {
   MapPin,
   Package,
   ShieldCheck,
+  SlidersHorizontal,
   Tags,
   Users,
 } from "lucide-react";
@@ -23,6 +24,7 @@ const LIENS = [
   { href: "/admin/moderation", label: "Modération vendeurs", icon: ShieldCheck },
   { href: "/admin/categories", label: "Catégories", icon: FolderTree },
   { href: "/admin/sous-categories", label: "Sous-catégories", icon: Tags },
+  { href: "/admin/attributs", label: "Attributs", icon: SlidersHorizontal },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
   { href: "/admin/zones", label: "Zones", icon: MapPin },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },
