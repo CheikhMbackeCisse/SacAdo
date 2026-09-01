@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Heart, Search, Settings, Tag, User } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProductImage } from "@/components/ui/product-image";
+import { NavIcon } from "@/components/layout/nav-icon";
 import { useIdentite } from "@/lib/local/identite";
 import { formatPrice } from "@/lib/format";
 import {
@@ -108,7 +109,7 @@ export function Header() {
   const navDesktop = (
     <nav aria-label="Navigation principale" className="hidden border-t border-ink/10 lg:block">
       <div className="mx-auto flex max-w-6xl items-center gap-1 px-4">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon, img }) => {
           const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link
@@ -122,7 +123,7 @@ export function Header() {
                   : "border-transparent text-ink/60 hover:text-ink"
               }`}
             >
-              <Icon size={16} aria-hidden="true" />
+              <NavIcon img={img} icon={Icon} size={16} />
               {label}
             </Link>
           );

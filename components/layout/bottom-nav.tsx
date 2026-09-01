@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav-items";
+import { NavIcon } from "@/components/layout/nav-icon";
 import { useNavVisible } from "@/lib/local/use-scroll-direction";
 
 // Pages où la nav du bas reste TOUJOURS visible (pas de masquage au scroll) :
@@ -29,7 +30,7 @@ export function BottomNav() {
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-stretch justify-around px-2">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon, img }) => {
           const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
 
           return (
@@ -46,9 +47,10 @@ export function BottomNav() {
                 }`}
                 aria-hidden="true"
               />
-              <Icon
+              <NavIcon
+                img={img}
+                icon={Icon}
                 size={22}
-                strokeWidth={isActive ? 2.5 : 2}
                 className={`transition-colors duration-200 ${isActive ? "text-brand" : "text-ink/50"}`}
               />
               <span
