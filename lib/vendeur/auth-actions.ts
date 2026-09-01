@@ -20,6 +20,30 @@ function nettoyerBoutique(valeur: string): string {
   return valeur.trim().replace(/\s+/g, " ").slice(0, 80);
 }
 
+// Le nom de boutique est unique (insensible à la casse) — migration 0018.
+// On vérifie en amont pour renvoyer un message clair et, à l'inscription, éviter
+// de créer un compte Auth orphelin si le nom est déjà pris.
+async function boutiqueDejaPrise(boutique: string, exceptId?: string): Promise<boolean> {
+  const cible = boutique.toLowerCase();
+  const { data, error } = await supabaseAdmin
+    .from("vendeurs")
+    .select("id, nom_boutique");
+
+  if (error || !data) return false; // en cas de souci, l'index unique reste le garde-fou
+  return data.some(
+    (v) => v.id !== exceptId && v.nom_boutique.trim().toLowerCase() === cible,
+  );
+}
+
+function estViolationUnicite(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
+}
+
 export async function signUpVendeur(
   email: string,
   password: string,
@@ -36,6 +60,9 @@ export async function signUpVendeur(
   if (password.length < 8) {
     return { ok: false, error: "Le mot de passe doit contenir au moins 8 caractères." };
   }
+  if (await boutiqueDejaPrise(boutique)) {
+    return { ok: false, error: "Ce nom de boutique est déjà utilisé. Choisis-en un autre." };
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({ email, password });
@@ -51,6 +78,9 @@ export async function signUpVendeur(
     .upsert({ id: data.user.id, nom_boutique: boutique }, { onConflict: "id" });
 
   if (ficheError) {
+    if (estViolationUnicite(ficheError)) {
+      return { ok: false, error: "Ce nom de boutique vient d'être pris. Choisis-en un autre." };
+    }
     return { ok: false, error: "Compte créé mais la fiche boutique a échoué. Contacte le support." };
   }
 
@@ -93,6 +123,9 @@ export async function enregistrerProfilVendeur(input: {
   if (boutique.length < 2) {
     return { ok: false, error: "Indique le nom de ta boutique (2 caractères minimum)." };
   }
+  if (await boutiqueDejaPrise(boutique, user.id)) {
+    return { ok: false, error: "Ce nom de boutique est déjà utilisé. Choisis-en un autre." };
+  }
 
   const { error } = await supabaseAdmin.from("vendeurs").upsert(
     {
@@ -104,6 +137,11 @@ export async function enregistrerProfilVendeur(input: {
     { onConflict: "id" },
   );
 
-  if (error) return { ok: false, error: "Enregistrement impossible. Réessaie." };
+  if (error) {
+    if (estViolationUnicite(error)) {
+      return { ok: false, error: "Ce nom de boutique vient d'être pris. Choisis-en un autre." };
+    }
+    return { ok: false, error: "Enregistrement impossible. Réessaie." };
+  }
   return { ok: true };
 }
