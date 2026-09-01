@@ -21,7 +21,9 @@ export function KitItemsManager({
   produits: Produit[];
 }) {
   const router = useRouter();
-  const [produitId, setProduitId] = useState<number | "">(produits[0]?.id ?? "");
+  // Aucun produit pré-sélectionné : choix explicite (sinon on ajoute le premier
+  // produit de la liste sans le vouloir).
+  const [produitId, setProduitId] = useState<number | "">("");
   const [quantite, setQuantite] = useState("1");
   const [error, setError] = useState<string | null>(null);
 
@@ -29,13 +31,17 @@ export function KitItemsManager({
   const produitsDisponibles = produits.filter((p) => !dejaPresents.has(p.id));
 
   const ajouter = async () => {
-    if (!produitId) return;
     setError(null);
+    if (!produitId) {
+      setError("Veuillez choisir un article à ajouter.");
+      return;
+    }
     const result = await ajouterKitItem(kitId, Number(produitId), Number(quantite));
     if (!result.ok) {
       setError(result.error);
       return;
     }
+    setProduitId("");
     setQuantite("1");
     router.refresh();
   };
@@ -88,10 +94,16 @@ export function KitItemsManager({
           <label className="flex flex-1 flex-col gap-1 text-xs">
             <span className="text-ink/60">Ajouter un article</span>
             <select
+              required
               value={produitId}
-              onChange={(event) => setProduitId(Number(event.target.value))}
+              onChange={(event) =>
+                setProduitId(event.target.value === "" ? "" : Number(event.target.value))
+              }
               className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
             >
+              <option value="" disabled>
+                Choisir un article…
+              </option>
               {produitsDisponibles.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nom}

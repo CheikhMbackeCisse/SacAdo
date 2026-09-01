@@ -8,8 +8,9 @@ import type { Cycle, Gamme } from "@/lib/supabase/types";
 
 export function NouveauKitForm() {
   const router = useRouter();
-  const [cycle, setCycle] = useState<Cycle>("elementaire");
-  const [gamme, setGamme] = useState<Gamme>("essentiel");
+  // Aucun cycle / gamme par défaut : choix explicite obligatoire.
+  const [cycle, setCycle] = useState<Cycle | "">("");
+  const [gamme, setGamme] = useState<Gamme | "">("");
   const [niveau, setNiveau] = useState("");
   const [nom, setNom] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -17,8 +18,16 @@ export function NouveauKitForm() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+    if (cycle === "") {
+      setError("Veuillez choisir un cycle.");
+      return;
+    }
+    if (gamme === "") {
+      setError("Veuillez choisir une gamme.");
+      return;
+    }
+    setSubmitting(true);
     const result = await creerKit({ cycle, gamme, niveau: niveau.trim(), nom: nom.trim() });
     setSubmitting(false);
     if (!result.ok) {
@@ -38,10 +47,14 @@ export function NouveauKitForm() {
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-ink/60">Cycle</span>
         <select
+          required
           value={cycle}
-          onChange={(event) => setCycle(event.target.value as Cycle)}
+          onChange={(event) => setCycle(event.target.value as Cycle | "")}
           className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
         >
+          <option value="" disabled>
+            Choisir un cycle…
+          </option>
           <option value="prescolaire">Préscolaire</option>
           <option value="elementaire">Élémentaire</option>
           <option value="college">Collège</option>
@@ -52,10 +65,14 @@ export function NouveauKitForm() {
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-ink/60">Gamme</span>
         <select
+          required
           value={gamme}
-          onChange={(event) => setGamme(event.target.value as Gamme)}
+          onChange={(event) => setGamme(event.target.value as Gamme | "")}
           className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
         >
+          <option value="" disabled>
+            Choisir une gamme…
+          </option>
           {GAMMES.map((g) => (
             <option key={g.value} value={g.value}>
               {g.label}

@@ -24,9 +24,9 @@ export function SousCategoriesEditor({ sousCategories, categories }: Props) {
     () => categories.filter((c) => c.slug !== "kits"),
     [categories],
   );
-  const [nouvelleCategorie, setNouvelleCategorie] = useState<number | null>(
-    categoriesUtilisables[0]?.id ?? null,
-  );
+  // Pas de catégorie par défaut : l'admin doit la choisir (sinon la nouvelle
+  // sous-catégorie est rattachée à la première catégorie par inadvertance).
+  const [nouvelleCategorie, setNouvelleCategorie] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const groupes = useMemo(() => {
@@ -44,9 +44,13 @@ export function SousCategoriesEditor({ sousCategories, categories }: Props) {
 
   const ajouter = async (event: FormEvent) => {
     event.preventDefault();
-    if (!nouveauNom.trim() || nouvelleCategorie === null) return;
-    setSubmitting(true);
     setError(null);
+    if (nouvelleCategorie === null) {
+      setError("Veuillez choisir une catégorie.");
+      return;
+    }
+    if (!nouveauNom.trim()) return;
+    setSubmitting(true);
     const result = await creerSousCategorie({
       nom: nouveauNom.trim(),
       categorie_id: nouvelleCategorie,
@@ -101,10 +105,16 @@ export function SousCategoriesEditor({ sousCategories, categories }: Props) {
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-ink/60">Catégorie</span>
           <select
+            required
             value={nouvelleCategorie ?? ""}
-            onChange={(event) => setNouvelleCategorie(Number(event.target.value))}
+            onChange={(event) =>
+              setNouvelleCategorie(event.target.value === "" ? null : Number(event.target.value))
+            }
             className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
           >
+            <option value="" disabled>
+              Choisir une catégorie…
+            </option>
             {categoriesUtilisables.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nom}
