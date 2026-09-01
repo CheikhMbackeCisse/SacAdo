@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getClientIp, verifierLimite } from "@/lib/security/rate-limit";
+import { regionLaPlusProche } from "@/lib/senegal-regions";
 import type { LignePanier } from "@/lib/local/panier";
 import type { ModeLivraison, Produit, ProduitVariante } from "@/lib/supabase/types";
 
@@ -20,9 +21,9 @@ export type EnfantEbook = { kit: string; prenom: string };
 export type CheckoutInput = {
   nom: string;
   telephone: string;
-  zoneId: number;
-  // Point validé sur la carte (LOCALISATION_LIVRAISON.md) : sert à guider le
-  // livreur, pas à calculer le prix (toujours par zone).
+  // Point validé sur la carte. Le client ne choisit plus sa région : on la
+  // déduit de ces coordonnées côté serveur, ce qui détermine le tarif de
+  // livraison (toujours par zone) — CORRECTIONS_DIVERSES_V6 §2.
   lat: number;
   lng: number;
   // Champ libre facultatif : « portail bleu, 2e étage, appeler en arrivant ».
@@ -108,19 +109,24 @@ export async function passerCommande(
   const produitIds = [...new Set(lignes.map((l) => l.produitId))];
   const varianteIds = [...new Set(lignes.map((l) => l.varianteId).filter((v): v is number => v !== null))];
 
+  // Région déduite du point de livraison (jamais depuis le client) → zone/tarif.
+  const regionNom = regionLaPlusProche(input.lat, input.lng);
+
   const [produitsRes, variantesRes, zoneRes] = await Promise.all([
     supabaseAdmin.from("produits").select("*").in("id", produitIds),
     varianteIds.length > 0
       ? supabaseAdmin.from("produit_variantes").select("*").in("id", varianteIds)
       : Promise.resolve({ data: [] as ProduitVariante[], error: null }),
-    supabaseAdmin.from("zones").select("*").eq("id", input.zoneId).maybeSingle(),
+    supabaseAdmin.from("zones").select("*").eq("nom", regionNom).maybeSingle(),
   ]);
 
   if (produitsRes.error || variantesRes.error || zoneRes.error) {
     return { ok: false, error: "Une erreur est survenue, réessaie." };
   }
   const zone = zoneRes.data;
-  if (!zone) return { ok: false, error: "Zone de livraison invalide." };
+  if (!zone) {
+    return { ok: false, error: "Impossible de déterminer la zone de livraison. Repositionne l'épingle." };
+  }
 
   const produitsById = new Map<number, Produit>((produitsRes.data ?? []).map((p) => [p.id, p]));
   const variantesById = new Map<number, ProduitVariante>((variantesRes.data ?? []).map((v) => [v.id, v]));
@@ -188,12 +194,12 @@ export async function passerCommande(
     clientId = clientExistant.id;
     await supabaseAdmin
       .from("clients")
-      .update({ nom, zone_id: input.zoneId, ...positionClient })
+      .update({ nom, zone_id: zone.id, ...positionClient })
       .eq("id", clientId);
   } else {
     const { data: nouveauClient, error: clientInsertError } = await supabaseAdmin
       .from("clients")
-      .insert({ nom, telephone, zone_id: input.zoneId, ...positionClient })
+      .insert({ nom, telephone, zone_id: zone.id, ...positionClient })
       .select()
       .single();
 
@@ -214,7 +220,7 @@ export async function passerCommande(
 
   const { data: commandeId, error: commandeError } = await supabaseAdmin.rpc("creer_commande", {
     p_client_id: clientId,
-    p_zone_id: input.zoneId,
+    p_zone_id: zone.id,
     p_adresse: null,
     p_lat: input.lat,
     p_lng: input.lng,

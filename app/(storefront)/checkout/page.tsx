@@ -11,8 +11,8 @@ import { getZones } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import { getDernierePosition, passerCommande } from "@/lib/checkout/actions";
 import { SEUIL_GRATUITE } from "@/components/panier/free-shipping-progress";
-import { RegionPicker } from "@/components/checkout/region-picker";
 import { CartePin, type Coordonnees } from "@/components/checkout/carte-pin";
+import { regionLaPlusProche } from "@/lib/senegal-regions";
 import type { ModeLivraison, Zone } from "@/lib/supabase/types";
 
 // crypto.randomUUID() exige un contexte sécurisé (HTTPS/localhost) : absent
@@ -51,23 +51,17 @@ export default function CheckoutPage() {
   const [telephoneSaisi, setTelephoneSaisi] = useState<string | null>(null);
   const nom = nomSaisi ?? identite?.nom ?? "";
   const telephone = telephoneSaisi ?? identite?.telephone ?? "";
-  const [zoneId, setZoneId] = useState<number | null>(null);
   const [modeLivraison, setModeLivraison] = useState<ModeLivraison>("6j");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [errorZones, setErrorZones] = useState(false);
   const [position, setPosition] = useState<Coordonnees | null>(null);
   const [precisionLivreur, setPrecisionLivreur] = useState("");
 
   useEffect(() => {
     getZones()
-      .then((data) => {
-        setZones(data);
-        // Pas de zone pré-sélectionnée : le client doit choisir sa région
-        // (sinon la livraison serait calculée pour la mauvaise zone).
-      })
-      .catch(() => setErrorZones(true));
+      .then((data) => setZones(data))
+      .catch(() => setZones([]));
   }, []);
 
   // Pré-remplissage : dernière position validée par ce numéro de client.
@@ -83,7 +77,12 @@ export default function CheckoutPage() {
     });
   }, [telephone]);
 
-  const zoneSelectionnee = zones.find((z) => z.id === zoneId) ?? null;
+  // La région (donc le tarif) est déduite de l'épingle — le client ne la choisit
+  // plus. Le serveur refait la déduction de son côté (jamais confiance au client).
+  const regionDeduite = position ? regionLaPlusProche(position.lat, position.lng) : null;
+  const zoneSelectionnee = regionDeduite
+    ? (zones.find((z) => z.nom === regionDeduite) ?? null)
+    : null;
   const livraisonGratuite = sousTotal >= SEUIL_GRATUITE;
   const fraisLivraison = !zoneSelectionnee
     ? 0
@@ -96,10 +95,6 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!zoneId) {
-      setError("Veuillez choisir une région de livraison.");
-      return;
-    }
     if (!position) {
       setError("Confirme le lieu de livraison sur la carte.");
       return;
@@ -117,7 +112,6 @@ export default function CheckoutPage() {
       const result = await passerCommande(lignesPourEnvoi, {
         nom,
         telephone,
-        zoneId,
         lat: position.lat,
         lng: position.lng,
         precisionLivreur: precisionLivreur.trim() || null,
@@ -176,19 +170,25 @@ export default function CheckoutPage() {
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs font-medium text-ink/60">Région de livraison</span>
-          <RegionPicker zones={zones} zoneId={zoneId} onChange={setZoneId} />
-          {errorZones && (
-            <span className="text-xs text-ink/60">
-              Impossible de charger les zones de livraison. Vérifie ta connexion et recharge la page.
-            </span>
-          )}
-        </label>
-
         <div className="flex flex-col gap-1.5 text-sm">
           <span className="text-xs font-medium text-ink/60">Où livrer ?</span>
           <CartePin position={position} onChange={setPosition} />
+          {regionDeduite && (
+            <p className="rounded-xl bg-brand/5 px-3 py-2 text-xs text-ink/75">
+              Livraison vers <span className="font-semibold text-ink">{regionDeduite}</span>
+              {zoneSelectionnee ? (
+                <>
+                  {" — "}
+                  <span className="font-semibold text-ink">
+                    {livraisonGratuite || fraisLivraison === 0
+                      ? "livraison gratuite"
+                      : formatPrice(fraisLivraison)}
+                  </span>
+                </>
+              ) : null}
+              . Si ce n’est pas la bonne zone, déplace l’épingle.
+            </p>
+          )}
         </div>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -299,7 +299,7 @@ export default function CheckoutPage() {
       <div className="sticky bottom-16 z-30 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:bottom-0">
         <button
           type="submit"
-          disabled={submitting || !zoneId || !position}
+          disabled={submitting || !position}
           className="flex h-12 w-full items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
           {submitting ? "Confirmation…" : "Confirmer la commande"}
