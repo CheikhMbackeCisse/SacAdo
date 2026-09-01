@@ -81,6 +81,21 @@ body {
   }
 }
 
+/* Écran de démarrage : fond clair par défaut (comme à l'origine), bleu nuit du
+   logo en mode sombre — système OU choix explicite. Le logo ne change pas.
+   Même mécanique de thème que les tokens de couleur plus haut. */
+.splash-fond {
+  background-color: #fefdff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .splash-fond {
+    background-color: #02296c;
+  }
+}
+:root[data-theme="dark"] .splash-fond {
+  background-color: #02296c;
+}
+
 /* Écran de démarrage : pulsation douce du logo (ECRAN_DEMARRAGE.md). */
 @keyframes splash-pulse {
   0%,

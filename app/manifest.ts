@@ -8,9 +8,10 @@ export default function manifest(): MetadataRoute.Manifest {
       "Kits scolaires et fournitures d'étude, livrés partout au Sénégal.",
     start_url: "/",
     display: "standalone",
-    // Fond du splash natif = bleu nuit du logo (PAS blanc) : au tout premier
-    // instant, l'utilisateur voit le fond de marque avec l'icône centrée, pas
-    // une page blanche. Doit rester cohérent avec le fond de SplashScreen.
+    // Fond du splash natif : bleu nuit du logo (PAS blanc) → plus de page
+    // blanche au tout premier instant, quel que soit le thème du téléphone.
+    // Le manifeste ne permet pas de valeur par thème ; l'écran de démarrage de
+    // l'app (SplashScreen) prend le relais et s'adapte clair/sombre.
     background_color: "#02296C",
     theme_color: "#0B3D91",
     lang: "fr",

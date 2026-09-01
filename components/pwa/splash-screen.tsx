@@ -2,17 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-// Écran de démarrage : le logo SacAdo (le sac) sur le bleu foncé de la marque —
-// exactement le même visuel que le splash natif de la PWA (manifest
-// background_color + icônes), pour un enchaînement sans rupture.
+// Écran de démarrage : le logo SacAdo (le sac) centré. Le fond suit le thème du
+// téléphone — clair par défaut, bleu nuit `#02296C` en mode sombre (classe
+// `.splash-fond` dans globals.css) — pour rester cohérent avec le splash natif.
 // COURT : masque l'initialisation, ne la rallonge pas. N'attend pas le catalogue.
 const DUREE_MS = 1400;
 const DUREE_MS_MOUVEMENT_REDUIT = 450;
 // Une seule apparition par session (= par lancement de l'app). Un refresh dans
 // le même onglet ne re-déclenche pas le splash ; relancer l'app installée oui.
 const CLE_SESSION = "sacado_splash_vu";
-
-const BLEU_NUIT = "#02296C"; // = manifest background_color
 
 export function SplashScreen() {
   // Visible dès le premier rendu (serveur + client) : aucun flash de page nue.
@@ -47,8 +45,7 @@ export function SplashScreen() {
   return (
     <div
       aria-hidden="true"
-      style={{ backgroundColor: BLEU_NUIT }}
-      className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-300 ${
+      className={`splash-fond fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-300 ${
         phase === "sortie" ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >
