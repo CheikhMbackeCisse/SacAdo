@@ -5,7 +5,7 @@ const FAQ = [
   },
   {
     q: "Quels sont les délais de livraison ?",
-    r: "24h ou 5 jours selon le produit et ta zone — c'est indiqué sur chaque article.",
+    r: "24h ou 6 jours selon le produit et ta zone — c'est indiqué sur chaque article.",
   },
   {
     q: "Comment payer ?",

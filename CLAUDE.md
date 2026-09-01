@@ -86,7 +86,7 @@ Règles d'or :
 ### Cartes produit
 - Grille 2 colonnes dense, cartes **compactes** (pas trop hautes).
 - Photo carrée, nom court (2 lignes max), **prix en taille discrète** (pas énorme),
-  badge de délai (24h / 5j), petit **cœur** pour favori, bouton **"+" orange** pour
+  badge de délai (24h / 6j), petit **cœur** pour favori, bouton **"+" orange** pour
   ajouter au panier.
 - Rupture : carte grisée, overlay "Épuisé", bouton désactivé.
 
@@ -123,7 +123,7 @@ Tant que les vraies images ne sont pas là, utiliser des placeholders.
 - **Produit** : galerie photos → variantes (couleur/taille, stock par variante) →
   ajouter au panier.
 - **Panier** : barre de progression vers la livraison gratuite (50 000 FCFA) → total.
-- **Checkout** : coordonnées → zone → mode livraison (24h/5j) → paiement à la
+- **Checkout** : coordonnées → zone → mode livraison (24h/6j) → paiement à la
   livraison → confirmer.
 - **Suivi** : stepper Reçue → En préparation → En livraison → Livrée (vert).
 - **Moi** : mes commandes, boîte de réception, favoris, déjà consultés, assistance,

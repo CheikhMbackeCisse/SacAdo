@@ -1,4 +1,4 @@
-export type Delai = "24h" | "5j";
+export type Delai = "24h" | "6j";
 export type StatutProduit = "dispo" | "sur_commande" | "epuise";
 // Marketplace : circuit de modération d'un produit vendeur.
 //   en_attente  : soumis, pas encore traité par l'admin ;
@@ -126,11 +126,11 @@ export type KitItem = {
 export type Zone = {
   id: number;
   nom: string;
-  tarif_5j: number;
+  tarif_6j: number;
   tarif_24h: number;
 };
 
-export type ModeLivraison = "24h" | "5j";
+export type ModeLivraison = "24h" | "6j";
 export type ModePaiement = "livraison";
 export type StatutCommande = "recue" | "preparation" | "livraison" | "livree";
 

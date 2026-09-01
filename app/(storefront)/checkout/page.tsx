@@ -52,7 +52,7 @@ export default function CheckoutPage() {
   const telephone = telephoneSaisi ?? identite?.telephone ?? "";
   const [zoneId, setZoneId] = useState<number | null>(null);
   const [adresse, setAdresse] = useState("");
-  const [modeLivraison, setModeLivraison] = useState<ModeLivraison>("5j");
+  const [modeLivraison, setModeLivraison] = useState<ModeLivraison>("6j");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,7 +100,7 @@ export default function CheckoutPage() {
       ? 0
       : modeLivraison === "24h"
         ? zoneSelectionnee.tarif_24h
-        : zoneSelectionnee.tarif_5j;
+        : zoneSelectionnee.tarif_6j;
   const total = sousTotal + fraisLivraison;
 
   const handleSubmit = async (event: FormEvent) => {
@@ -244,7 +244,7 @@ export default function CheckoutPage() {
       <section className="flex flex-col gap-2">
         <span className="text-xs font-medium text-ink/60">Mode de livraison</span>
         <div className="grid grid-cols-2 gap-3">
-          {(["24h", "5j"] as const).map((mode) => {
+          {(["24h", "6j"] as const).map((mode) => {
             const active = modeLivraison === mode;
             const prix = !zoneSelectionnee
               ? null
@@ -252,7 +252,7 @@ export default function CheckoutPage() {
                 ? 0
                 : mode === "24h"
                   ? zoneSelectionnee.tarif_24h
-                  : zoneSelectionnee.tarif_5j;
+                  : zoneSelectionnee.tarif_6j;
             return (
               <button
                 key={mode}
@@ -264,7 +264,7 @@ export default function CheckoutPage() {
                 }`}
               >
                 <span className="text-sm font-semibold text-ink">
-                  {mode === "24h" ? "Livraison 24h" : "Livraison 5 jours"}
+                  {mode === "24h" ? "Livraison 24h" : "Livraison 6 jours"}
                 </span>
                 <span className="text-xs text-ink/50">
                   {prix === null ? "—" : prix === 0 ? "Gratuite" : formatPrice(prix)}

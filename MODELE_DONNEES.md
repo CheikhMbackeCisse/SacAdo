@@ -13,7 +13,7 @@ client identifié par le **numéro de téléphone WhatsApp**.
 | nom | texte | |
 | categorie | texte | Cahiers, Écriture, Géométrie, Cartables, Livres, Informatique |
 | prix | entier | en FCFA |
-| delai | enum | "24h" ou "5j" |
+| delai | enum | "24h" ou "6j" |
 | photo | url | |
 | stock | entier | quantité réelle, **jamais affichée au client** |
 | seuil_alerte | entier | ex. 5 → alerte admin |
@@ -56,8 +56,8 @@ client identifié par le **numéro de téléphone WhatsApp**.
 |---|---|---|
 | id | id | |
 | nom | texte | Dakar, Thiès, Autres régions |
-| tarif_5j | entier | Dakar le moins cher |
-| tarif_24h | entier | plus cher que 5j |
+| tarif_6j | entier | Dakar le moins cher |
+| tarif_24h | entier | plus cher que 6j |
 
 ### commandes
 | champ | type | note |
@@ -66,7 +66,7 @@ client identifié par le **numéro de téléphone WhatsApp**.
 | client_id | ref clients | |
 | zone_id | ref zones | |
 | adresse | texte | point de repère |
-| mode_livraison | enum | "24h" / "5j" |
+| mode_livraison | enum | "24h" / "6j" |
 | frais_livraison | entier | calculé (0 si total ≥ seuil gratuité) |
 | mode_paiement | enum | "wave" / "orange_money" / "livraison" |
 | sous_total | entier | |
@@ -84,7 +84,7 @@ client identifié par le **numéro de téléphone WhatsApp**.
 
 ## Règles métier (pas des tables)
 - **Seuil gratuité livraison** : 50 000 FCFA. Si sous_total ≥ 50 000 → frais_livraison = 0.
-- **Sinon** : frais_livraison = tarif de la zone selon mode_livraison (24h ou 5j).
+- **Sinon** : frais_livraison = tarif de la zone selon mode_livraison (24h ou 6j).
 - **Statut produit** : stock atteint 0 → statut "epuise", bouton désactivé côté client.
 - **Alerte stock bas** : stock ≤ seuil_alerte → notification admin.
 
@@ -238,5 +238,5 @@ code final.
   (cartables en couleurs, tabliers en tailles).
 - Seeder les catégories (10), quelques sous-catégories, et des kits par classe
   pour au moins Élémentaire (CI→CM2).
-- Seeder 3 zones : Dakar (moins cher), Thiès, Autres régions, avec tarifs 24h/5j
+- Seeder 3 zones : Dakar (moins cher), Thiès, Autres régions, avec tarifs 24h/6j
   provisoires à ajuster.

@@ -149,7 +149,7 @@ export async function passerCommande(
 
   const sousTotal = lignesResolues.reduce((sum, l) => sum + l.prixUnitaire * l.quantite, 0);
   const fraisLivraison =
-    sousTotal >= SEUIL_GRATUITE ? 0 : input.modeLivraison === "24h" ? zone.tarif_24h : zone.tarif_5j;
+    sousTotal >= SEUIL_GRATUITE ? 0 : input.modeLivraison === "24h" ? zone.tarif_24h : zone.tarif_6j;
   const total = sousTotal + fraisLivraison;
 
   // Client retrouvé par téléphone (identifiant unique), sinon créé ; la zone

@@ -86,7 +86,7 @@ Tu dois voir 6 kits (CI à CM2), chacun avec 8 à 12 articles selon le niveau.
 
 ## Données de démo
 
-- 3 zones (Dakar, Thiès, Autres régions) avec tarifs 24h/5j provisoires.
+- 3 zones (Dakar, Thiès, Autres régions) avec tarifs 24h/6j provisoires.
 - 34 produits sur les 9 catégories de fournitures (les "Kits scolaires" sont la
   10e catégorie de l'accueil, mais vivent dans la table `kits`, pas `produits`).
 - 2 cas volontaires pour tester l'admin plus tard : le Kit Arduino est sous son

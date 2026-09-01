@@ -185,7 +185,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
               Choisir un délai…
             </option>
             <option value="24h">24h</option>
-            <option value="5j">5 jours</option>
+            <option value="6j">6 jours</option>
           </select>
         </label>
       </div>

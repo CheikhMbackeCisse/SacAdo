@@ -9,11 +9,11 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [nouveauNom, setNouveauNom] = useState("");
-  const [nouveau5j, setNouveau5j] = useState("0");
+  const [nouveau6j, setNouveau6j] = useState("0");
   const [nouveau24h, setNouveau24h] = useState("0");
 
-  const enregistrer = async (zone: Zone, tarif5j: number, tarif24h: number) => {
-    const result = await modifierZone(zone.id, { nom: zone.nom, tarif_5j: tarif5j, tarif_24h: tarif24h });
+  const enregistrer = async (zone: Zone, tarif6j: number, tarif24h: number) => {
+    const result = await modifierZone(zone.id, { nom: zone.nom, tarif_6j: tarif6j, tarif_24h: tarif24h });
     if (!result.ok) setError(result.error);
     router.refresh();
   };
@@ -22,7 +22,7 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
     if (!nouveauNom.trim()) return;
     const result = await creerZone({
       nom: nouveauNom.trim(),
-      tarif_5j: Number(nouveau5j),
+      tarif_6j: Number(nouveau6j),
       tarif_24h: Number(nouveau24h),
     });
     if (!result.ok) {
@@ -30,7 +30,7 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
       return;
     }
     setNouveauNom("");
-    setNouveau5j("0");
+    setNouveau6j("0");
     setNouveau24h("0");
     router.refresh();
   };
@@ -42,7 +42,7 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
           <thead>
             <tr className="border-b border-ink/10 text-left text-xs text-ink/50">
               <th className="px-4 py-3 font-medium">Zone</th>
-              <th className="px-4 py-3 font-medium">Tarif 5j</th>
+              <th className="px-4 py-3 font-medium">Tarif 6j</th>
               <th className="px-4 py-3 font-medium">Tarif 24h</th>
             </tr>
           </thead>
@@ -54,7 +54,7 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
                   <input
                     type="number"
                     min={0}
-                    defaultValue={zone.tarif_5j}
+                    defaultValue={zone.tarif_6j}
                     onBlur={(event) => enregistrer(zone, Number(event.target.value), zone.tarif_24h)}
                     className="w-24 rounded-lg border border-ink/15 px-2 py-1 text-sm"
                   />
@@ -64,7 +64,7 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
                     type="number"
                     min={0}
                     defaultValue={zone.tarif_24h}
-                    onBlur={(event) => enregistrer(zone, zone.tarif_5j, Number(event.target.value))}
+                    onBlur={(event) => enregistrer(zone, zone.tarif_6j, Number(event.target.value))}
                     className="w-24 rounded-lg border border-ink/15 px-2 py-1 text-sm"
                   />
                 </td>
@@ -84,12 +84,12 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          <span className="text-ink/60">Tarif 5j</span>
+          <span className="text-ink/60">Tarif 6j</span>
           <input
             type="number"
             min={0}
-            value={nouveau5j}
-            onChange={(event) => setNouveau5j(event.target.value)}
+            value={nouveau6j}
+            onChange={(event) => setNouveau6j(event.target.value)}
             className="w-24 rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
           />
         </label>

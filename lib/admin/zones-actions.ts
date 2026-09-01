@@ -12,11 +12,11 @@ export async function getZonesAdmin(): Promise<Zone[]> {
   return data ?? [];
 }
 
-export type ZoneInput = { nom: string; tarif_5j: number; tarif_24h: number };
+export type ZoneInput = { nom: string; tarif_6j: number; tarif_24h: number };
 
 function validerZoneInput(input: ZoneInput): string | null {
   if (!texteNonVide(input.nom, 100)) return "Le nom de la zone est requis.";
-  if (!estNombrePositifValide(input.tarif_5j) || !estNombrePositifValide(input.tarif_24h)) {
+  if (!estNombrePositifValide(input.tarif_6j) || !estNombrePositifValide(input.tarif_24h)) {
     return "Les tarifs doivent être des nombres positifs.";
   }
   return null;

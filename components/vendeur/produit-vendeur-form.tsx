@@ -52,7 +52,7 @@ export function ProduitVendeurForm({
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
   // Le délai de livraison n'est plus demandé au vendeur : c'est SacAdo qui livre
   // et garantit le délai. Valeur conservée pour l'affichage storefront.
-  const delai: ProduitVendeurInput["delai"] = produit?.delai ?? "5j";
+  const delai: ProduitVendeurInput["delai"] = produit?.delai ?? "6j";
   const [photos, setPhotos] = useState<string[]>(
     produit?.photos?.length ? produit.photos : produit?.photo ? [produit.photo] : [],
   );
