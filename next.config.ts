@@ -19,7 +19,8 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co",
+  // Tuiles OpenStreetMap : carte de localisation de livraison (checkout + admin).
+  "img-src 'self' data: blob: https://*.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co",
   "worker-src 'self'",
@@ -64,8 +65,10 @@ const nextConfig: NextConfig = {
           // N'envoie l'URL complète comme referrer qu'aux sites en https, et
           // seulement le domaine (pas le chemin complet) vers un autre site.
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // Coupe l'accès à des capteurs qu'on n'utilise jamais.
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          // Caméra/micro jamais utilisés. Géolocalisation autorisée pour SacAdo
+          // lui-même (placement du pin de livraison au checkout), refusée aux
+          // iframes tierces (il n'y en a pas : X-Frame-Options DENY).
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
         ],
       },
     ];
