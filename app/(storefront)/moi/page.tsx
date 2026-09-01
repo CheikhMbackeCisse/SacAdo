@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ClipboardList, Heart, History, Inbox, LifeBuoy, Settings, User } from "lucide-react";
+import { ClipboardList, Heart, History, Inbox, LifeBuoy, Settings, Store, User } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { useFavoris } from "@/lib/local/favoris";
 import { useConsultes } from "@/lib/local/consultes";
@@ -11,12 +11,16 @@ import { getPopulaires, getProduitsByIds } from "@/lib/supabase/queries";
 import { ProductGrid } from "@/components/product/product-grid";
 import type { Produit } from "@/lib/supabase/types";
 
+// 6 entrées disposées en 2 lignes × 3 colonnes (voir la grille plus bas).
+// "Espace vendeur" mène à la connexion vendeur ; le proxy redirige vers le
+// tableau de bord si une session vendeur est déjà ouverte.
 const ONGLETS = [
   { href: "/moi/assistance", label: "Assistance", icon: LifeBuoy },
   { href: "/commandes", label: "Mes commandes", icon: ClipboardList },
   { href: "/moi/messages", label: "Boîte de réception", icon: Inbox },
   { href: "/favoris", label: "Favoris", icon: Heart },
   { href: "/moi/consultes", label: "Déjà consultés", icon: History },
+  { href: "/vendeur/connexion", label: "Espace vendeur", icon: Store },
 ] as const;
 
 const APERCU_MAX = 4;
@@ -100,18 +104,18 @@ export default function MoiPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-5 gap-1 rounded-2xl border border-ink/10 bg-elevated p-3">
+      <div className="grid grid-cols-3 gap-x-2 gap-y-4 rounded-2xl border border-ink/10 bg-elevated p-4">
         {ONGLETS.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} className="relative flex flex-col items-center gap-1.5 text-center">
-            <span className="flex size-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+          <Link key={href} href={href} className="flex flex-col items-center gap-1.5 text-center">
+            <span className="relative flex size-10 items-center justify-center rounded-full bg-brand/10 text-brand">
               <Icon size={17} aria-hidden="true" />
+              {label === "Boîte de réception" && nonLusAffiches > 0 && (
+                <span className="absolute -right-1 -top-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold leading-none text-on-brand">
+                  {nonLusAffiches}
+                </span>
+              )}
             </span>
             <span className="line-clamp-2 text-[11px] leading-tight text-ink/70">{label}</span>
-            {label === "Boîte de réception" && nonLusAffiches > 0 && (
-              <span className="absolute -top-0.5 right-3 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold leading-none text-on-brand">
-                {nonLusAffiches}
-              </span>
-            )}
           </Link>
         ))}
       </div>
