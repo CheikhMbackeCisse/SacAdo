@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { requireVendeur } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { estNombrePositifValide, texteNonVide } from "@/lib/admin/validation";
-import type { Categorie, Delai, Produit, SousCategorie } from "@/lib/supabase/types";
+import type { Categorie, Commission, Delai, Produit, SousCategorie } from "@/lib/supabase/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -13,13 +13,19 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 export async function getReferentiel(): Promise<{
   categories: Categorie[];
   sousCategories: SousCategorie[];
+  commissions: Commission[];
 }> {
   await requireVendeur();
-  const [cats, sousCats] = await Promise.all([
+  const [cats, sousCats, commissions] = await Promise.all([
     supabaseAdmin.from("categories").select("*").eq("actif", true).order("ordre").order("nom"),
     supabaseAdmin.from("sous_categories").select("*").order("ordre").order("nom"),
+    supabaseAdmin.from("commissions").select("*"),
   ]);
-  return { categories: cats.data ?? [], sousCategories: sousCats.data ?? [] };
+  return {
+    categories: cats.data ?? [],
+    sousCategories: sousCats.data ?? [],
+    commissions: commissions.data ?? [],
+  };
 }
 
 export async function getMesProduits(): Promise<Produit[]> {

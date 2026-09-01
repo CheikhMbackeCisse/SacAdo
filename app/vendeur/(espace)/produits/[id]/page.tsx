@@ -13,7 +13,7 @@ export default async function ModifierProduitVendeurPage({
   const produitId = Number(id);
   if (!Number.isInteger(produitId)) notFound();
 
-  const [produit, { categories, sousCategories }] = await Promise.all([
+  const [produit, { categories, sousCategories, commissions }] = await Promise.all([
     getMonProduit(produitId),
     getReferentiel(),
   ]);
@@ -33,6 +33,7 @@ export default async function ModifierProduitVendeurPage({
         produit={produit}
         categories={categories}
         sousCategories={sousCategories}
+        commissions={commissions}
       />
     </div>
   );

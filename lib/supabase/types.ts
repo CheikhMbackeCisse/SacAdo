@@ -48,6 +48,17 @@ export type SousCategorie = {
   created_at: string;
 };
 
+// Marketplace : taux de commission SacAdo prélevé sur un produit vendeur.
+// Portée : (null, null) = taux global ; (categorie_id, null) = taux catégorie ;
+// (null, sous_categorie_id) = taux sous-catégorie.
+export type Commission = {
+  id: number;
+  categorie_id: number | null;
+  sous_categorie_id: number | null;
+  taux: number;
+  created_at: string;
+};
+
 export type ProduitVariante = {
   id: number;
   produit_id: number;

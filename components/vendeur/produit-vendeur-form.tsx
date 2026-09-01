@@ -10,7 +10,9 @@ import {
   televerserPhoto,
   type ProduitVendeurInput,
 } from "@/lib/vendeur/produits-actions";
-import type { Categorie, Produit, SousCategorie } from "@/lib/supabase/types";
+import type { Categorie, Commission, Produit, SousCategorie } from "@/lib/supabase/types";
+import { calculerCommission, tauxCommission } from "@/lib/commissions";
+import { formatPrice } from "@/lib/format";
 
 const INK = "#001314";
 const ACTION = "#E07B39";
@@ -21,10 +23,12 @@ export function ProduitVendeurForm({
   produit,
   categories,
   sousCategories,
+  commissions,
 }: {
   produit?: Produit;
   categories: Categorie[];
   sousCategories: SousCategorie[];
+  commissions: Commission[];
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -58,6 +62,25 @@ export function ProduitVendeurForm({
         .sort((a, b) => a.ordre - b.ordre || a.nom.localeCompare(b.nom)),
     [sousCategories, categorieId],
   );
+
+  // Taux applicable à la catégorie / sous-catégorie choisie — affiché en
+  // permanence dès qu'une catégorie est sélectionnée, même sans prix.
+  const tauxApplique = useMemo(
+    () => tauxCommission(commissions, categorieId, sousCategorieId),
+    [commissions, categorieId, sousCategorieId],
+  );
+
+  const nomCategorie = categoriesUtilisables.find((c) => c.id === categorieId)?.nom ?? null;
+  const nomSousCategorie =
+    sousCategorieId != null
+      ? (sousCategories.find((sc) => sc.id === sousCategorieId)?.nom ?? null)
+      : null;
+
+  const prixNombre = Number(prix);
+  const apercuCommission = useMemo(() => {
+    if (!Number.isFinite(prixNombre) || prixNombre <= 0) return null;
+    return calculerCommission(prixNombre, commissions, categorieId, sousCategorieId);
+  }, [prixNombre, commissions, categorieId, sousCategorieId]);
 
   const changerCategorie = (valeur: number) => {
     setCategorieId(valeur);
@@ -166,6 +189,16 @@ export function ProduitVendeurForm({
         </label>
       </div>
 
+      {nomCategorie && (
+        <p className="-mt-1 text-xs text-[#001314]/55">
+          Commission SacAdo sur{" "}
+          <span className="font-medium text-[#001314]/75">
+            {nomSousCategorie ?? nomCategorie}
+          </span>{" "}
+          : <span className="font-semibold text-[#001314]">{tauxApplique}%</span>
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-[#001314]/60">Prix (FCFA)</span>
@@ -201,6 +234,22 @@ export function ProduitVendeurForm({
           </select>
         </label>
       </div>
+
+      {apercuCommission && (
+        <div className="-mt-1 flex flex-col gap-1 rounded-xl border border-[#001314]/10 bg-[#001314]/[0.03] px-3.5 py-3 text-sm">
+          <div className="flex items-center justify-between text-[#001314]/70">
+            <span>Commission SacAdo ({apercuCommission.taux}%)</span>
+            <span>− {formatPrice(apercuCommission.commission)}</span>
+          </div>
+          <div className="flex items-center justify-between font-semibold text-[#001314]">
+            <span>Vous recevez</span>
+            <span>{formatPrice(apercuCommission.net)}</span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-[#001314]/45">
+            Estimation. Le taux dépend de la catégorie choisie et peut être ajusté avant publication.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5 text-sm">
         <span className="text-xs font-medium text-[#001314]/60">Photo</span>
