@@ -148,7 +148,7 @@ export function ChampSelect({
         aria-label={ariaLabel}
         disabled={disabled}
         onClick={basculer}
-        className={`flex w-full items-center justify-between gap-2 text-left ${className} ${
+        className={`flex w-full items-center justify-between gap-2 text-left focus:outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 ${className} ${
           disabled ? "cursor-not-allowed opacity-60" : ""
         }`}
       >

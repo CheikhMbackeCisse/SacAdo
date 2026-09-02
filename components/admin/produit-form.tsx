@@ -4,7 +4,11 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { creerProduit, modifierProduit, type ProduitInput } from "@/lib/admin/produits-actions";
 import { creerSousCategorie } from "@/lib/admin/sous-categories-actions";
+import { ChampSelect } from "@/components/ui/champ-select";
 import type { Categorie, Produit, SousCategorie } from "@/lib/supabase/types";
+
+const CHAMP =
+  "rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25";
 
 type Props = {
   produit?: Produit;
@@ -154,66 +158,49 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-ink/60">Catégorie</span>
-          <select
-            required
-            value={categorieId}
-            onChange={(event) =>
-              changerCategorie(event.target.value === "" ? "" : Number(event.target.value))
-            }
-            className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
-          >
-            <option value="" disabled>
-              Choisir une catégorie…
-            </option>
-            {categoriesUtilisables.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nom}
-              </option>
-            ))}
-          </select>
+          <ChampSelect
+            ariaLabel="Catégorie"
+            placeholder="Choisir une catégorie…"
+            className={CHAMP}
+            value={categorieId === "" ? "" : String(categorieId)}
+            onChange={(v) => changerCategorie(v === "" ? "" : Number(v))}
+            options={categoriesUtilisables.map((c) => ({ value: String(c.id), label: c.nom }))}
+          />
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-ink/60">Délai</span>
-          <select
-            required
+          <ChampSelect
+            ariaLabel="Délai de livraison"
+            placeholder="Choisir un délai…"
+            className={CHAMP}
             value={delai}
-            onChange={(event) => setDelai(event.target.value as ProduitInput["delai"] | "")}
-            className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
-          >
-            <option value="" disabled>
-              Choisir un délai…
-            </option>
-            <option value="24h">24h</option>
-            <option value="6j">6 jours</option>
-          </select>
+            onChange={(v) => setDelai(v as ProduitInput["delai"] | "")}
+            options={[
+              { value: "24h", label: "24h" },
+              { value: "6j", label: "6 jours" },
+            ]}
+          />
         </label>
       </div>
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-xs font-medium text-ink/60">Sous-catégorie</span>
-        <select
-          required={sousCategorieRequise}
+        <ChampSelect
+          ariaLabel="Sous-catégorie"
           disabled={categorieId === "" || sousCatsDeLaCategorie.length === 0}
-          value={sousCategorieId ?? ""}
-          onChange={(event) =>
-            setSousCategorieId(event.target.value ? Number(event.target.value) : null)
-          }
-          className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 disabled:bg-ink/[0.04] disabled:text-ink/40"
-        >
-          <option value="" disabled>
-            {categorieId === ""
+          placeholder={
+            categorieId === ""
               ? "Choisir d’abord une catégorie"
               : sousCatsDeLaCategorie.length === 0
                 ? "Aucune sous-catégorie"
-                : "Choisir une sous-catégorie…"}
-          </option>
-          {sousCatsDeLaCategorie.map((sc) => (
-            <option key={sc.id} value={sc.id}>
-              {sc.nom}
-            </option>
-          ))}
-        </select>
+                : "Choisir une sous-catégorie…"
+          }
+          className={`${CHAMP} disabled:bg-ink/[0.04] disabled:text-ink/40`}
+          value={sousCategorieId ? String(sousCategorieId) : ""}
+          onChange={(v) => setSousCategorieId(v ? Number(v) : null)}
+          options={sousCatsDeLaCategorie.map((sc) => ({ value: String(sc.id), label: sc.nom }))}
+        />
         <span className="flex flex-wrap items-center gap-2 pt-1">
           <input
             value={nouvelleSousCat}

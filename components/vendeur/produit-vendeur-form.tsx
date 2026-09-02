@@ -12,6 +12,7 @@ import {
 } from "@/lib/vendeur/produits-actions";
 import { MAX_PHOTOS_PRODUIT } from "@/lib/vendeur/produits-shared";
 import { compresserImage } from "@/lib/images/compress-image";
+import { ChampSelect } from "@/components/ui/champ-select";
 import type { Categorie, Commission, Produit, SousCategorie } from "@/lib/supabase/types";
 import { calculerCommission, tauxCommission } from "@/lib/commissions";
 import { formatPrice } from "@/lib/format";
@@ -202,45 +203,33 @@ export function ProduitVendeurForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-[#001314]/60">Catégorie</span>
-          <select
-            required
-            value={categorieId}
-            onChange={(e) => changerCategorie(e.target.value === "" ? "" : Number(e.target.value))}
+          <ChampSelect
+            ariaLabel="Catégorie"
+            placeholder="Choisir une catégorie…"
             className={CHAMP}
-          >
-            <option value="" disabled>
-              Choisir une catégorie…
-            </option>
-            {categoriesUtilisables.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nom}
-              </option>
-            ))}
-          </select>
+            value={categorieId === "" ? "" : String(categorieId)}
+            onChange={(v) => changerCategorie(v === "" ? "" : Number(v))}
+            options={categoriesUtilisables.map((c) => ({ value: String(c.id), label: c.nom }))}
+          />
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-[#001314]/60">Sous-catégorie</span>
-          <select
-            required={sousCategorieRequise}
+          <ChampSelect
+            ariaLabel="Sous-catégorie"
             disabled={categorieId === "" || sousCatsDeLaCategorie.length === 0}
-            value={sousCategorieId ?? ""}
-            onChange={(e) => setSousCategorieId(e.target.value ? Number(e.target.value) : null)}
-            className={`${CHAMP} disabled:bg-[#001314]/[0.04] disabled:text-[#001314]/40`}
-          >
-            <option value="" disabled>
-              {categorieId === ""
+            placeholder={
+              categorieId === ""
                 ? "Choisir d’abord une catégorie"
                 : sousCatsDeLaCategorie.length === 0
                   ? "Aucune sous-catégorie"
-                  : "Choisir une sous-catégorie…"}
-            </option>
-            {sousCatsDeLaCategorie.map((sc) => (
-              <option key={sc.id} value={sc.id}>
-                {sc.nom}
-              </option>
-            ))}
-          </select>
+                  : "Choisir une sous-catégorie…"
+            }
+            className={`${CHAMP} disabled:bg-[#001314]/[0.04] disabled:text-[#001314]/40`}
+            value={sousCategorieId ? String(sousCategorieId) : ""}
+            onChange={(v) => setSousCategorieId(v ? Number(v) : null)}
+            options={sousCatsDeLaCategorie.map((sc) => ({ value: String(sc.id), label: sc.nom }))}
+          />
         </label>
       </div>
 
