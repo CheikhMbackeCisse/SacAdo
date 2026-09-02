@@ -9,6 +9,7 @@ import {
   type KitItemAvecProduit,
 } from "@/lib/admin/kits-actions";
 import { formatPrice } from "@/lib/format";
+import { ChampSelect } from "@/components/ui/champ-select";
 import type { Produit } from "@/lib/supabase/types";
 
 export function KitItemsManager({
@@ -93,23 +94,14 @@ export function KitItemsManager({
         <div className="flex items-end gap-2 border-t border-ink/10 pt-3">
           <label className="flex flex-1 flex-col gap-1 text-xs">
             <span className="text-ink/60">Ajouter un article</span>
-            <select
-              required
-              value={produitId}
-              onChange={(event) =>
-                setProduitId(event.target.value === "" ? "" : Number(event.target.value))
-              }
+            <ChampSelect
+              ariaLabel="Article à ajouter au kit"
+              placeholder="Choisir un article…"
               className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
-            >
-              <option value="" disabled>
-                Choisir un article…
-              </option>
-              {produitsDisponibles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nom}
-                </option>
-              ))}
-            </select>
+              value={produitId === "" ? "" : String(produitId)}
+              onChange={(v) => setProduitId(v === "" ? "" : Number(v))}
+              options={produitsDisponibles.map((p) => ({ value: String(p.id), label: p.nom }))}
+            />
           </label>
           <label className="flex flex-col gap-1 text-xs">
             <span className="text-ink/60">Qté</span>

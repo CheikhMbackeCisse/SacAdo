@@ -10,6 +10,7 @@ import {
   supprimerAttribut,
   validerAttribut,
 } from "@/lib/admin/attributs-actions";
+import { ChampSelect } from "@/components/ui/champ-select";
 import type { Attribut } from "@/lib/supabase/types";
 
 export function AttributsEditor({ attributs }: { attributs: Attribut[] }) {
@@ -79,22 +80,17 @@ export function AttributsEditor({ attributs }: { attributs: Attribut[] }) {
                   </button>
 
                   <span className="inline-flex items-center gap-1">
-                    <select
-                      value={cibleFusion[prop.id] ?? 0}
-                      onChange={(event) =>
-                        setCibleFusion((c) => ({ ...c, [prop.id]: Number(event.target.value) }))
-                      }
+                    <ChampSelect
+                      ariaLabel="Fusionner dans"
+                      placeholder="Fusionner dans…"
                       className={`${champ} text-xs`}
-                    >
-                      <option value={0} disabled>
-                        Fusionner dans…
-                      </option>
-                      {valides.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.nom}
-                        </option>
-                      ))}
-                    </select>
+                      wrapperClassName="w-40"
+                      value={cibleFusion[prop.id] ? String(cibleFusion[prop.id]) : ""}
+                      onChange={(v) =>
+                        setCibleFusion((c) => ({ ...c, [prop.id]: v === "" ? 0 : Number(v) }))
+                      }
+                      options={valides.map((v) => ({ value: String(v.id), label: v.nom }))}
+                    />
                     <button
                       type="button"
                       disabled={!cibleFusion[prop.id]}

@@ -8,6 +8,7 @@ import {
   modifierSousCategorie,
   supprimerSousCategorie,
 } from "@/lib/admin/sous-categories-actions";
+import { ChampSelect } from "@/components/ui/champ-select";
 import type { Categorie, SousCategorie } from "@/lib/supabase/types";
 
 type Props = {
@@ -104,23 +105,15 @@ export function SousCategoriesEditor({ sousCategories, categories }: Props) {
       >
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-ink/60">Catégorie</span>
-          <select
-            required
-            value={nouvelleCategorie ?? ""}
-            onChange={(event) =>
-              setNouvelleCategorie(event.target.value === "" ? null : Number(event.target.value))
-            }
+          <ChampSelect
+            ariaLabel="Catégorie"
+            placeholder="Choisir une catégorie…"
             className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
-          >
-            <option value="" disabled>
-              Choisir une catégorie…
-            </option>
-            {categoriesUtilisables.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nom}
-              </option>
-            ))}
-          </select>
+            wrapperClassName="w-48"
+            value={nouvelleCategorie === null ? "" : String(nouvelleCategorie)}
+            onChange={(v) => setNouvelleCategorie(v === "" ? null : Number(v))}
+            options={categoriesUtilisables.map((c) => ({ value: String(c.id), label: c.nom }))}
+          />
         </label>
 
         <label className="flex flex-1 flex-col gap-1 text-xs">

@@ -4,7 +4,10 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { creerKit } from "@/lib/admin/kits-actions";
 import { GAMMES } from "@/lib/gammes";
+import { ChampSelect } from "@/components/ui/champ-select";
 import type { Cycle, Gamme } from "@/lib/supabase/types";
+
+const CHAMP = "rounded-lg border border-ink/15 px-2 py-1.5 text-sm";
 
 export function NouveauKitForm() {
   const router = useRouter();
@@ -46,39 +49,33 @@ export function NouveauKitForm() {
     >
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-ink/60">Cycle</span>
-        <select
-          required
+        <ChampSelect
+          ariaLabel="Cycle"
+          placeholder="Choisir un cycle…"
+          className={CHAMP}
+          wrapperClassName="w-40"
           value={cycle}
-          onChange={(event) => setCycle(event.target.value as Cycle | "")}
-          className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
-        >
-          <option value="" disabled>
-            Choisir un cycle…
-          </option>
-          <option value="prescolaire">Préscolaire</option>
-          <option value="elementaire">Élémentaire</option>
-          <option value="college">Collège</option>
-          <option value="lycee">Lycée</option>
-        </select>
+          onChange={(v) => setCycle(v as Cycle | "")}
+          options={[
+            { value: "prescolaire", label: "Préscolaire" },
+            { value: "elementaire", label: "Élémentaire" },
+            { value: "college", label: "Collège" },
+            { value: "lycee", label: "Lycée" },
+          ]}
+        />
       </label>
 
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-ink/60">Gamme</span>
-        <select
-          required
+        <ChampSelect
+          ariaLabel="Gamme"
+          placeholder="Choisir une gamme…"
+          className={CHAMP}
+          wrapperClassName="w-40"
           value={gamme}
-          onChange={(event) => setGamme(event.target.value as Gamme | "")}
-          className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
-        >
-          <option value="" disabled>
-            Choisir une gamme…
-          </option>
-          {GAMMES.map((g) => (
-            <option key={g.value} value={g.value}>
-              {g.label}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setGamme(v as Gamme | "")}
+          options={GAMMES.map((g) => ({ value: g.value, label: g.label }))}
+        />
       </label>
 
       <label className="flex flex-col gap-1 text-xs">

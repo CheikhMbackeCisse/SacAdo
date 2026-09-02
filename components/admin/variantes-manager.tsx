@@ -11,6 +11,7 @@ import {
 } from "@/lib/admin/produits-actions";
 import { creerAttribut, getAttributsValides } from "@/lib/admin/attributs-actions";
 import { libelleVarianteDetaille } from "@/lib/variantes";
+import { ChampSelect } from "@/components/ui/champ-select";
 import type { Attribut, VarianteAvecAttributs } from "@/lib/supabase/types";
 
 type LigneAttribut = { attributId: number; valeur: string };
@@ -156,20 +157,15 @@ export function VariantesManager({ produitId }: { produitId: number }) {
 
         {lignes.map((ligne, index) => (
           <div key={index} className="flex items-center gap-2">
-            <select
-              value={ligne.attributId}
-              onChange={(event) => majLigne(index, { attributId: Number(event.target.value) })}
+            <ChampSelect
+              ariaLabel="Attribut"
+              placeholder="Choisir un attribut…"
               className={champ}
-            >
-              <option value={0} disabled>
-                Choisir un attribut…
-              </option>
-              {attributs.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nom}
-                </option>
-              ))}
-            </select>
+              wrapperClassName="w-40 shrink-0"
+              value={ligne.attributId === 0 ? "" : String(ligne.attributId)}
+              onChange={(v) => majLigne(index, { attributId: v === "" ? 0 : Number(v) })}
+              options={attributs.map((a) => ({ value: String(a.id), label: a.nom }))}
+            />
             <input
               value={ligne.valeur}
               onChange={(event) => majLigne(index, { valeur: event.target.value })}
