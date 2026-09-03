@@ -15,7 +15,10 @@ const NAV_TOUJOURS_VISIBLE = ["/categories", "/kits", "/panier"];
 // Cachée en desktop (lg+) : la nav y vit dans la barre du header à la place
 // (voir components/layout/header.tsx), conformément à CLAUDE.md section 6.
 export function BottomNav() {
-  const pathname = usePathname();
+  // usePathname() peut valoir null au tout premier rendu (layout partagé,
+  // pré-rendu statique) : l'app s'ouvrant toujours sur l'accueil, on retombe
+  // sur "/" pour que l'onglet Accueil soit actif dès l'ouverture (CORRECTIONS_V7 §2).
+  const pathname = usePathname() ?? "/";
   const navFixe = NAV_TOUJOURS_VISIBLE.some(
     (base) => pathname === base || pathname.startsWith(`${base}/`),
   );
@@ -32,6 +35,36 @@ export function BottomNav() {
       <div className="mx-auto flex h-16 max-w-6xl items-stretch justify-around px-2">
         {NAV_ITEMS.map(({ href, label, icon: Icon, img }) => {
           const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+          // « Kits » = produit phare : bouton central surélevé, cercle bleu
+          // marque bien visible, distinct des 4 onglets classiques
+          // (CORRECTIONS_V7 §1). Garde l'icône sac.
+          if (href === "/kits") {
+            return (
+              <Link
+                key={href}
+                href={href}
+                prefetch
+                aria-current={isActive ? "page" : undefined}
+                className="relative flex flex-1 flex-col items-center gap-1 text-xs active:scale-95"
+              >
+                <span
+                  className={`-mt-5 flex size-14 items-center justify-center rounded-full border-4 border-surface shadow-lg transition-colors ${
+                    isActive ? "bg-brand ring-2 ring-brand/30" : "bg-brand"
+                  }`}
+                >
+                  <NavIcon img={img} icon={Icon} size={26} className="text-on-brand" />
+                </span>
+                <span
+                  className={`font-semibold transition-colors duration-200 ${
+                    isActive ? "text-brand" : "text-brand/80"
+                  }`}
+                >
+                  {label}
+                </span>
+              </Link>
+            );
+          }
 
           return (
             <Link

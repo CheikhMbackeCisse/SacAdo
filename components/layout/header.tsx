@@ -26,7 +26,9 @@ const SUGGESTIONS_VIDES: SuggestionsRecherche = { produits: [], sousCategories: 
 
 export function Header() {
   const router = useRouter();
-  const pathname = usePathname();
+  // Repli "/" : usePathname() peut être null au premier rendu (layout partagé,
+  // pré-rendu) — l'app ouvre toujours sur l'accueil (CORRECTIONS_V7 §2).
+  const pathname = usePathname() ?? "/";
   const { identite } = useIdentite();
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [query, setQuery] = useState("");
