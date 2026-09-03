@@ -5,11 +5,9 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Heart, Search, Settings, Tag, User } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ProductImage } from "@/components/ui/product-image";
 import { NavIcon } from "@/components/layout/nav-icon";
 import { InstallHeaderButton } from "@/components/pwa/install-header-button";
 import { useIdentite } from "@/lib/local/identite";
-import { formatPrice } from "@/lib/format";
 import {
   placeholdersPourCategorie,
   slugCategorieDepuisPath,
@@ -168,7 +166,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-surface/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2 rounded-full transition-opacity duration-150 hover:opacity-80 active:scale-95"
@@ -220,53 +218,36 @@ export function Header() {
           </form>
 
           {afficherPanneau && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-ink/10 bg-elevated shadow-lg">
+            // Suggestions en TEXTE uniquement (CORRECTIONS_V8 §1). Panneau bas et
+            // large pour tenir au-dessus du clavier mobile (§2) : max ~42vh,
+            // nombre de suggestions limité, scroll interne si besoin.
+            <div className="absolute -left-1 -right-1 top-full z-50 mt-1 overflow-hidden rounded-xl border border-ink/10 bg-elevated shadow-lg sm:left-0 sm:right-0">
               {!aDesSuggestions ? (
                 <p className="px-4 py-3 text-sm text-ink/50">Aucune suggestion.</p>
               ) : (
-                <div className="max-h-[70vh] overflow-y-auto py-1">
-                  {suggestions.sousCategories.map((sc) => (
+                <div className="max-h-[42vh] overflow-y-auto py-1">
+                  {suggestions.sousCategories.slice(0, 3).map((sc) => (
                     <button
                       key={`sc-${sc.id}`}
                       type="button"
-                      onClick={() =>
-                        allerVers(`/categorie/${sc.categorie_slug}?sc=${sc.slug}`)
-                      }
-                      className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-ink/5"
+                      onClick={() => allerVers(`/categorie/${sc.categorie_slug}?sc=${sc.slug}`)}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"
                     >
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
-                        <Tag size={16} aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm text-ink">{sc.nom}</span>
-                        <span className="block truncate text-xs text-ink/45">
-                          dans {sc.categorie_nom}
-                        </span>
-                      </span>
+                      <Tag size={15} className="shrink-0 text-ink/35" aria-hidden="true" />
+                      <span className="truncate text-ink">{sc.nom}</span>
+                      <span className="shrink-0 text-xs text-ink/40">dans {sc.categorie_nom}</span>
                     </button>
                   ))}
 
-                  {suggestions.produits.map((produit) => (
+                  {suggestions.produits.slice(0, 5).map((produit) => (
                     <button
                       key={`p-${produit.id}`}
                       type="button"
-                      onClick={() => allerVers(`/produit/${produit.id}`)}
-                      className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-ink/5"
+                      onClick={() => lancerRecherche(produit.nom)}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"
                     >
-                      <span className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-ink/5">
-                        <ProductImage
-                          src={produit.photo}
-                          alt={produit.nom}
-                          className="h-full w-full"
-                          sizes="40px"
-                        />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-ink">{produit.nom}</span>
-                        <span className="block text-xs text-ink/45">
-                          {formatPrice(produit.prix)}
-                        </span>
-                      </span>
+                      <Search size={15} className="shrink-0 text-ink/35" aria-hidden="true" />
+                      <span className="truncate text-ink">{produit.nom}</span>
                     </button>
                   ))}
                 </div>
@@ -284,15 +265,18 @@ export function Header() {
           )}
         </div>
 
-        <Link
-          href="/favoris"
-          aria-label="Favoris"
-          className="shrink-0 rounded-full p-2 text-ink transition-colors duration-150 hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-90"
-        >
-          <Heart size={22} />
-        </Link>
-
-        <InstallHeaderButton />
+        {/* Cœur + installer regroupés serré à droite (CORRECTIONS_V8 §3),
+            l'espace gagné va à la barre de recherche. */}
+        <div className="flex shrink-0 items-center">
+          <Link
+            href="/favoris"
+            aria-label="Favoris"
+            className="rounded-full p-2 text-ink transition-colors duration-150 hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-90"
+          >
+            <Heart size={22} />
+          </Link>
+          <InstallHeaderButton />
+        </div>
       </div>
 
       {/* Desktop (lg+) : la nav vit ici plutôt qu'en bottom nav fixe (voir

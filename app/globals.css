@@ -61,6 +61,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* Pas de « tirer pour rafraîchir » ni de rebond d'overscroll : effet « app »,
+     pas « site web » (CORRECTIONS_V8 §4). Les scrolls internes (carrousels,
+     panneaux) gardent leur propre comportement. */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -68,6 +72,7 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
 @keyframes fade-in-up {
