@@ -24,6 +24,9 @@ export async function getFournisseurs(): Promise<Fournisseur[]> {
 
 function valider(input: FournisseurInput): string | null {
   if (!texteNonVide(input.nom, 120)) return "Le nom est requis.";
+  if (input.adresse != null && input.adresse.length > 300) {
+    return "L'adresse est trop longue (300 caractères maximum).";
+  }
   const posPartielle =
     (input.lat == null) !== (input.lng == null);
   if (posPartielle) return "Position incomplète : place le point sur la carte.";

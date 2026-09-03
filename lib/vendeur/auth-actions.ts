@@ -127,12 +127,18 @@ export async function enregistrerProfilVendeur(input: {
     return { ok: false, error: "Ce nom de boutique est déjà utilisé. Choisis-en un autre." };
   }
 
+  const contactNom = input.contactNom?.trim() || null;
+  const contactTelephone = input.contactTelephone?.trim() || null;
+  if ((contactNom && contactNom.length > 100) || (contactTelephone && contactTelephone.length > 30)) {
+    return { ok: false, error: "Un des champs de contact est trop long." };
+  }
+
   const { error } = await supabaseAdmin.from("vendeurs").upsert(
     {
       id: user.id,
       nom_boutique: boutique,
-      contact_nom: input.contactNom?.trim() || null,
-      contact_telephone: input.contactTelephone?.trim() || null,
+      contact_nom: contactNom,
+      contact_telephone: contactTelephone,
     },
     { onConflict: "id" },
   );

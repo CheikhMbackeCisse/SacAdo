@@ -122,6 +122,14 @@ async function resoudreCommande(
     const produit = produitsById.get(ligne.produitId);
     if (!produit) return { ok: false, error: "Un produit du panier n'existe plus." };
 
+    // Visibilité catalogue (AUDIT_SECURITE_3 G2) : resoudreCommande lit en
+    // service_role, hors RLS. Un produit vendeur pas encore publié (en
+    // négociation, refusé) ne doit pas être commandable, même par appel direct.
+    // On refait donc ici le filtre de la policy catalogue.
+    if (produit.vendeur_id !== null && produit.statut_publication !== "publie") {
+      return { ok: false, error: "Un produit du panier n'est plus disponible à la vente." };
+    }
+
     const variante = ligne.varianteId ? variantesById.get(ligne.varianteId) : null;
     if (ligne.varianteId && !variante) {
       return { ok: false, error: "Une option choisie n'existe plus." };

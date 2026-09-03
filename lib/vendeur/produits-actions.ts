@@ -244,6 +244,31 @@ const TYPES_IMAGE: Record<string, string> = {
 };
 const TAILLE_MAX_PHOTO = 3 * 1024 * 1024; // 3 Mo
 
+// Contrôle du contenu réel du fichier (AUDIT_SECURITE_3 F1) : le type MIME
+// annoncé par le navigateur est falsifiable sur un appel direct. On lit les
+// premiers octets ("magic bytes") pour confirmer que c'est bien un JPEG/PNG/WebP
+// et refuser un fichier non-image (script, HTML, SVG…) déguisé en image.
+function snifferImage(octets: Uint8Array): "jpg" | "png" | "webp" | null {
+  if (octets.length >= 3 && octets[0] === 0xff && octets[1] === 0xd8 && octets[2] === 0xff) {
+    return "jpg";
+  }
+  if (
+    octets.length >= 8 &&
+    octets[0] === 0x89 && octets[1] === 0x50 && octets[2] === 0x4e && octets[3] === 0x47 &&
+    octets[4] === 0x0d && octets[5] === 0x0a && octets[6] === 0x1a && octets[7] === 0x0a
+  ) {
+    return "png";
+  }
+  if (
+    octets.length >= 12 &&
+    octets[0] === 0x52 && octets[1] === 0x49 && octets[2] === 0x46 && octets[3] === 0x46 && // "RIFF"
+    octets[8] === 0x57 && octets[9] === 0x45 && octets[10] === 0x42 && octets[11] === 0x50 // "WEBP"
+  ) {
+    return "webp";
+  }
+  return null;
+}
+
 export async function televerserPhoto(
   formData: FormData,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
@@ -259,10 +284,16 @@ export async function televerserPhoto(
   const ext = TYPES_IMAGE[file.type];
   if (!ext) return { ok: false, error: "Format accepté : JPG, PNG ou WebP." };
 
+  const buffer = await file.arrayBuffer();
+  const typeReel = snifferImage(new Uint8Array(buffer.slice(0, 12)));
+  if (!typeReel || typeReel !== ext) {
+    return { ok: false, error: "Ce fichier n'est pas une image JPG, PNG ou WebP valide." };
+  }
+
   const chemin = `${userId}/${randomUUID()}.${ext}`;
   const { error } = await supabaseAdmin.storage
     .from("produits")
-    .upload(chemin, await file.arrayBuffer(), { contentType: file.type, upsert: false });
+    .upload(chemin, buffer, { contentType: file.type, upsert: false });
 
   if (error) return { ok: false, error: "Le téléversement a échoué." };
 
