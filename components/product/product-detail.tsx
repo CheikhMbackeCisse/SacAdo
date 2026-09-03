@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { FavoriteButton } from "@/components/ui/favorite-button";
+import { ShareButton } from "@/components/ui/share-button";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
@@ -140,8 +141,9 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
             </div>
           </>
         )}
-        <div className="absolute right-3 top-3">
+        <div className="absolute right-3 top-3 flex flex-col gap-2">
           <FavoriteButton produitId={produit.id} size={20} />
+          <ShareButton path={`/produit/${produit.id}`} title={produit.nom} size={18} />
         </div>
       </div>
 

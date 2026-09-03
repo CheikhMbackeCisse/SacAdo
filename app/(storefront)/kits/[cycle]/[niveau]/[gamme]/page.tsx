@@ -5,6 +5,7 @@ import { getCycleByValue } from "@/lib/cycles";
 import { getGammeDef, isGamme } from "@/lib/gammes";
 import { getKitByCycleNiveauGamme, getKitItemsAvecProduits } from "@/lib/supabase/queries";
 import { KitBuilder } from "@/components/kits/kit-builder";
+import { ShareButton } from "@/components/ui/share-button";
 
 export const revalidate = 120;
 
@@ -46,9 +47,17 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
         Gammes du Kit {niveau}
       </Link>
 
-      <h1 className="px-4 font-heading text-xl font-bold text-ink">
-        Kit {niveau} · {gammeDef?.label}
-      </h1>
+      <div className="flex items-start justify-between gap-3 px-4">
+        <h1 className="font-heading text-xl font-bold text-ink">
+          Kit {niveau} · {gammeDef?.label}
+        </h1>
+        <ShareButton
+          path={`/kits/${cycle}/${encodeURIComponent(niveau)}/${gamme}`}
+          title={`Kit ${niveau} ${gammeDef?.label ?? ""}`.trim()}
+          className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-ink/15 text-ink/70 transition-transform active:scale-90"
+          size={17}
+        />
+      </div>
       <p className="px-4 pb-2 text-sm text-ink/60">{gammeDef?.tagline}</p>
 
       <div className="mx-4 mb-2 flex items-center gap-2.5 rounded-2xl border border-decorative/30 bg-decorative/10 px-4 py-3">
