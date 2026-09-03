@@ -9,17 +9,28 @@ import { promptInstall, useInstallState } from "@/lib/pwa/install-prompt";
 // inciter (CORRECTIONS_V7 §3). Purement incitatif : jamais bloquant.
 // Disparaît quand l'app tourne en mode installé ; réapparaît si l'app est
 // désinstallée (l'événement beforeinstallprompt repasse `installed` à false).
+//
+// CORRECTIONS_V8 §6 : au clic, on tente D'ABORD le popup natif d'installation
+// (Chrome/Edge/Opera Android) — installation en un clic, sans écran
+// intermédiaire. Le repli (instructions courtes iOS / desktop) ne s'affiche que
+// si le navigateur ne propose pas ce popup, pour qu'un clic ne « ne fasse
+// jamais rien ».
 export function InstallHeaderButton() {
   const { canPrompt, installed } = useInstallState();
   const [ouvert, setOuvert] = useState(false);
 
   if (installed) return null;
 
+  const auClic = async () => {
+    const resultat = await promptInstall();
+    if (resultat === "unavailable") setOuvert(true);
+  };
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOuvert(true)}
+        onClick={auClic}
         aria-label="Installer l'application"
         className="relative shrink-0 rounded-full p-2 text-ink transition-colors duration-150 hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-90"
       >
