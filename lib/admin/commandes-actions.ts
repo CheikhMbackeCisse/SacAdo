@@ -24,6 +24,10 @@ function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecCl
     statut: row.statut,
     date: row.date,
     client_reference: row.client_reference,
+    statut_paiement: row.statut_paiement,
+    wave_session_id: row.wave_session_id,
+    wave_event_id: row.wave_event_id,
+    montant_paye: row.montant_paye,
     enfants_ebook: row.enfants_ebook,
     lat: row.lat,
     lng: row.lng,
@@ -71,6 +75,22 @@ export async function getCommandeAdmin(id: number): Promise<CommandeAvecClient |
 
 export async function changerStatutCommande(id: number, statut: StatutCommande): Promise<ActionResult> {
   await requireAdmin();
+
+  // Une commande Wave en attente de paiement n'avance pas à la main : c'est le
+  // webhook Wave qui la fait passer 'recue' (ou 'echoue'). On refuse aussi de
+  // remettre une commande dans cet état manuellement.
+  if (statut === "paiement_en_attente") {
+    return { ok: false, error: "Statut réservé au paiement Wave." };
+  }
+  const { data: actuelle } = await supabaseAdmin
+    .from("commandes")
+    .select("statut")
+    .eq("id", id)
+    .maybeSingle<{ statut: StatutCommande }>();
+  if (actuelle?.statut === "paiement_en_attente") {
+    return { ok: false, error: "Cette commande attend la confirmation du paiement Wave." };
+  }
+
   // Le trigger DB (Lot 1) insère automatiquement le message de suivi côté client.
   const { error } = await supabaseAdmin.from("commandes").update({ statut }).eq("id", id);
   if (error) return { ok: false, error: "Impossible de changer le statut." };

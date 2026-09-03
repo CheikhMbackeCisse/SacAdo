@@ -2,6 +2,7 @@
 
 import { requireVendeur } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { STATUT_EN_ATTENTE_PAIEMENT } from "@/lib/commandes";
 import type { StatutCommande } from "@/lib/supabase/types";
 
 export type LigneVente = {
@@ -36,10 +37,12 @@ export async function getMesVentes(): Promise<RecapVentes> {
 
   const nomParId = new Map((mesProduits ?? []).map((p) => [p.id, p.nom as string]));
 
+  // !inner + filtre : on exclut les commandes Wave pas encore payées.
   const { data: items } = await supabaseAdmin
     .from("commande_items")
-    .select("commande_id, produit_id, quantite, prix_unitaire, commandes(date, statut)")
+    .select("commande_id, produit_id, quantite, prix_unitaire, commandes!inner(date, statut)")
     .in("produit_id", ids)
+    .neq("commandes.statut", STATUT_EN_ATTENTE_PAIEMENT)
     .order("commande_id", { ascending: false });
 
   type Row = {

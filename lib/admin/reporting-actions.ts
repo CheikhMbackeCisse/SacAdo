@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { STATUT_EN_ATTENTE_PAIEMENT, estCommandeConfirmee } from "@/lib/commandes";
 import type { Commande, Produit } from "@/lib/supabase/types";
 
 export type DashboardStats = {
@@ -21,9 +22,18 @@ function debutJournee(): string {
 export async function getDashboardStats(): Promise<DashboardStats> {
   await requireAdmin();
 
+  // Les commandes Wave non encore payées (statut 'paiement_en_attente') sont
+  // exclues du CA et des ventes : elles ne comptent qu'une fois le webhook reçu.
   const [{ data: commandesDuJour }, { data: items }, { data: produits }] = await Promise.all([
-    supabaseAdmin.from("commandes").select("total").gte("date", debutJournee()),
-    supabaseAdmin.from("commande_items").select("quantite, produit:produits(nom)"),
+    supabaseAdmin
+      .from("commandes")
+      .select("total")
+      .gte("date", debutJournee())
+      .neq("statut", STATUT_EN_ATTENTE_PAIEMENT),
+    supabaseAdmin
+      .from("commande_items")
+      .select("quantite, produit:produits(nom), commande:commandes!inner(statut)")
+      .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT),
     supabaseAdmin.from("produits").select("*"),
   ]);
 
@@ -56,7 +66,8 @@ export async function getArticlesVendus(): Promise<VenteAgregee[]> {
 
   const { data: items } = await supabaseAdmin
     .from("commande_items")
-    .select("produit_id, quantite, produit:produits(nom)");
+    .select("produit_id, quantite, produit:produits(nom), commande:commandes!inner(statut)")
+    .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT);
 
   type Row = { produit_id: number; quantite: number; produit: { nom: string } | { nom: string }[] | null };
   const parProduit = new Map<number, VenteAgregee>();
@@ -100,7 +111,10 @@ export async function chercherClientParTelephone(telephone: string): Promise<Cli
     .order("date", { ascending: false });
 
   const liste = commandes ?? [];
-  const totalDepense = liste.reduce((sum, c) => sum + c.total, 0);
+  // Total dépensé : hors commandes Wave non payées.
+  const totalDepense = liste
+    .filter((c) => estCommandeConfirmee(c.statut))
+    .reduce((sum, c) => sum + c.total, 0);
 
   return { id: client.id, nom: client.nom, telephone: client.telephone, commandes: liste, totalDepense };
 }

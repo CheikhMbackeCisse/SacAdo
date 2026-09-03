@@ -6,6 +6,7 @@ import type { StatutCommande } from "@/lib/supabase/types";
 
 const STATUTS: { value: StatutCommande | "toutes"; label: string }[] = [
   { value: "toutes", label: "Toutes" },
+  { value: "paiement_en_attente", label: "Paiement en attente" },
   { value: "recue", label: "Reçue" },
   { value: "preparation", label: "En préparation" },
   { value: "livraison", label: "En livraison" },
@@ -80,7 +81,15 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
                   <div className="text-xs text-ink/40">{commande.client_telephone}</div>
                 </td>
                 <td className="px-4 py-3 text-ink/60">{formatDate(commande.date)}</td>
-                <td className="px-4 py-3 font-medium text-ink">{formatPrice(commande.total)}</td>
+                <td className="px-4 py-3 font-medium text-ink">
+                  {formatPrice(commande.total)}
+                  {commande.mode_paiement === "wave" && (
+                    <span className="ml-2 rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium text-ink/50">
+                      Wave
+                      {commande.statut_paiement === "payee" ? " ✓" : ""}
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
                 </td>

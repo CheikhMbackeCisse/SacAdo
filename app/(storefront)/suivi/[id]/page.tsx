@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/format";
@@ -20,12 +21,33 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
 
   if (error || !commande) notFound();
 
+  const enAttentePaiement = commande.statut === "paiement_en_attente";
+
   return (
     <div className="animate-fade-in-up flex flex-col gap-6 px-4 py-6">
       <div>
         <h1 className="font-heading text-xl font-bold text-ink">Commande #{commande.id}</h1>
-        <p className="text-sm text-ink/60">Merci ! Ta commande a bien été reçue.</p>
+        <p className="text-sm text-ink/60">
+          {enAttentePaiement
+            ? "Paiement Wave non finalisé."
+            : "Merci ! Ta commande a bien été reçue."}
+        </p>
       </div>
+
+      {enAttentePaiement && commande.client_reference && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-brand/30 bg-brand/5 p-3">
+          <p className="text-sm text-ink/75">
+            Cette commande n&apos;est pas encore confirmée : le paiement Wave n&apos;a pas
+            abouti. Tu peux le reprendre maintenant.
+          </p>
+          <Link
+            href={`/checkout/paiement-echoue?ref=${encodeURIComponent(commande.client_reference)}`}
+            className="flex h-11 items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action"
+          >
+            Reprendre le paiement
+          </Link>
+        </div>
+      )}
 
       <OrderStepper statut={commande.statut} />
 

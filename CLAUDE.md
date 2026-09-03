@@ -20,9 +20,17 @@ l'emploi** (une liste de fournitures par classe, achetable en un geste).
 
 ## 2. Décisions verrouillées (v1)
 
-- **Paiement : à la livraison uniquement.** Pas d'API Wave/Orange Money, pas de
-  paiement en ligne. Les logos Wave/OM peuvent être affichés à titre informatif
-  (le livreur peut être payé ainsi à la remise), mais AUCUNE intégration.
+- **Paiement : à la livraison + Wave en ligne selon un seuil.** Spec complète :
+  `INTEGRATION_WAVE.md`. Règle du seuil, calculée **côté serveur** sur le total
+  de la commande (sous-total + livraison) :
+  * **< 10 000 FCFA** : le client choisit — Wave d'avance OU à la livraison.
+  * **≥ 10 000 FCFA** : Wave d'avance uniquement (plus de paiement au livreur).
+  Wave **uniquement** en v1 (pas d'Orange Money : décision reportée). Le logo
+  Orange Money peut rester affiché à titre informatif (le livreur peut être payé
+  ainsi à la remise pour les commandes payées à la livraison), sans intégration.
+  Preuve de paiement = **webhook signé Wave** (HMAC-SHA256), jamais le simple
+  retour du client sur la success_url. Clés Wave en variables d'environnement,
+  jamais committées.
 - **Notifications : boîte de réception in-app uniquement.** Chaque changement de
   statut de commande crée un message dans la boîte de réception du client. Pas de
   WhatsApp API en v1 (à prévoir plus tard sans casser le modèle).

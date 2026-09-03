@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCommandeAdmin, getCommandeItemsAdmin } from "@/lib/admin/commandes-actions";
 import { formatPrice } from "@/lib/format";
+import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
 import { StatutSelect } from "@/components/admin/statut-select";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
 
@@ -33,6 +34,33 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
           <p className="text-ink/50">{commande.client_telephone}</p>
           {commande.adresse && <p className="mt-2 text-ink/70">{commande.adresse}</p>}
           <p className="text-ink/50">Livraison {commande.mode_livraison}</p>
+        </div>
+
+        <div className="border-t border-ink/10 pt-3">
+          <p className="text-xs font-medium text-ink/50">Paiement</p>
+          {commande.mode_paiement === "wave" ? (
+            <p className="text-ink/80">
+              Wave —{" "}
+              <span
+                className={
+                  commande.statut_paiement === "payee"
+                    ? "font-semibold text-success"
+                    : commande.statut_paiement === "en_attente"
+                      ? "font-semibold text-brand"
+                      : "font-semibold text-ink/60"
+                }
+              >
+                {commande.statut_paiement
+                  ? LIBELLES_STATUT_PAIEMENT[commande.statut_paiement]
+                  : "—"}
+              </span>
+              {commande.montant_paye != null && (
+                <span className="text-ink/50"> · {formatPrice(commande.montant_paye)} encaissés</span>
+              )}
+            </p>
+          ) : (
+            <p className="text-ink/80">À la livraison</p>
+          )}
         </div>
 
         {commande.lat != null && commande.lng != null ? (

@@ -8,14 +8,10 @@ import { getCommandesParTelephone } from "@/lib/moi/actions";
 import { formatPrice } from "@/lib/format";
 import { IdentitePrompt } from "@/components/moi/identite-prompt";
 import { EmptyState } from "@/components/ui/empty-state";
-import type { Commande, StatutCommande } from "@/lib/supabase/types";
+import { LIBELLES_STATUT_COMMANDE } from "@/lib/commandes";
+import type { Commande } from "@/lib/supabase/types";
 
-const LABELS_STATUT: Record<StatutCommande, string> = {
-  recue: "Reçue",
-  preparation: "En préparation",
-  livraison: "En livraison",
-  livree: "Livrée",
-};
+const LABELS_STATUT = LIBELLES_STATUT_COMMANDE;
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", {

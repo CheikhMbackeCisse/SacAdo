@@ -9,11 +9,17 @@ import { useIdentite } from "@/lib/local/identite";
 import { useKitEnfants } from "@/lib/local/kit-enfants";
 import { getZones } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
-import { getDernierePosition, passerCommande } from "@/lib/checkout/actions";
+import {
+  demarrerPaiementWave,
+  getDernierePosition,
+  getOptionsPaiement,
+  passerCommande,
+} from "@/lib/checkout/actions";
 import { SEUIL_GRATUITE } from "@/components/panier/free-shipping-progress";
+import { SEUIL_PAIEMENT_AVANCE } from "@/lib/checkout/montants";
 import { CartePin, type Coordonnees } from "@/components/checkout/carte-pin";
 import { regionLaPlusProche } from "@/lib/senegal-regions";
-import type { ModeLivraison, Zone } from "@/lib/supabase/types";
+import type { ModeLivraison, ModePaiement, Zone } from "@/lib/supabase/types";
 
 // crypto.randomUUID() exige un contexte sécurisé (HTTPS/localhost) : absent
 // en HTTP simple sur une IP réseau (cas de test courant sur mobile), ce qui
@@ -52,6 +58,7 @@ export default function CheckoutPage() {
   const nom = nomSaisi ?? identite?.nom ?? "";
   const telephone = telephoneSaisi ?? identite?.telephone ?? "";
   const [modeLivraison, setModeLivraison] = useState<ModeLivraison>("6j");
+  const [modePaiement, setModePaiement] = useState<ModePaiement>("livraison");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +100,42 @@ export default function CheckoutPage() {
         : zoneSelectionnee.tarif_6j;
   const total = sousTotal + fraisLivraison;
 
+  // Règle du seuil recalculée côté serveur (INTEGRATION_WAVE.md, W2) : c'est
+  // elle qui fait autorité sur les modes de paiement proposés. Signature stable
+  // du panier pour ne relancer l'appel que sur un vrai changement, et pour
+  // ignorer une réponse qui ne correspond plus au panier courant.
+  const [seuilServeur, setSeuilServeur] = useState<{ sig: string; waveImpose: boolean } | null>(null);
+  const panierSignature = detail
+    .map((d) => `${d.produit.id}:${d.variante?.id ?? 0}x${d.quantite}`)
+    .join(",");
+
+  useEffect(() => {
+    if (!position || detail.length === 0) return;
+    let annule = false;
+    getOptionsPaiement(
+      detail.map((d) => ({
+        produitId: d.produit.id,
+        varianteId: d.variante?.id ?? null,
+        quantite: d.quantite,
+      })),
+      { lat: position.lat, lng: position.lng, modeLivraison },
+    ).then((r) => {
+      if (annule || !r.ok) return;
+      setSeuilServeur({ sig: panierSignature, waveImpose: r.waveImpose });
+    });
+    return () => {
+      annule = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panierSignature, position?.lat, position?.lng, modeLivraison]);
+
+  // Autorité serveur si sa réponse concerne bien le panier courant ; sinon
+  // estimation locale (le temps de l'aller-retour). Au-dessus du seuil, seul
+  // Wave est possible : le choix effectif bascule d'office, sans setState.
+  const waveImpose =
+    seuilServeur?.sig === panierSignature ? seuilServeur.waveImpose : total >= SEUIL_PAIEMENT_AVANCE;
+  const modePaiementEffectif: ModePaiement = waveImpose ? "wave" : modePaiement;
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!position) {
@@ -107,19 +150,33 @@ export default function CheckoutPage() {
       varianteId: d.variante?.id ?? null,
       quantite: d.quantite,
     }));
+    const commandeInput = {
+      nom,
+      telephone,
+      lat: position.lat,
+      lng: position.lng,
+      precisionLivreur: precisionLivreur.trim() || null,
+      modeLivraison,
+      reference,
+      enfantsEbook: enfantsEbook.map((e) => ({ kit: e.kit, prenom: e.prenom })),
+    };
 
     try {
-      const result = await passerCommande(lignesPourEnvoi, {
-        nom,
-        telephone,
-        lat: position.lat,
-        lng: position.lng,
-        precisionLivreur: precisionLivreur.trim() || null,
-        modeLivraison,
-        reference,
-        enfantsEbook: enfantsEbook.map((e) => ({ kit: e.kit, prenom: e.prenom })),
-      });
+      if (modePaiementEffectif === "wave") {
+        // Paiement Wave : on ne vide PAS le panier ici (paiement non confirmé) ;
+        // il sera vidé au retour dans l'app (page confirmation).
+        const result = await demarrerPaiementWave(lignesPourEnvoi, commandeInput);
+        if (!result.ok) {
+          setError(result.error);
+          setSubmitting(false);
+          return;
+        }
+        setIdentite({ nom, telephone });
+        window.location.href = result.waveLaunchUrl;
+        return;
+      }
 
+      const result = await passerCommande(lignesPourEnvoi, commandeInput);
       if (!result.ok) {
         setError(result.error);
         setSubmitting(false);
@@ -259,23 +316,68 @@ export default function CheckoutPage() {
 
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3">
         <span className="text-xs font-medium text-ink/60">Paiement</span>
-        <p className="text-sm text-ink">Paiement à la livraison</p>
-        <div className="flex items-center gap-3">
-          <Image
-            src="/images/logo-wave.jpg"
-            alt="Wave"
-            width={40}
-            height={24}
-            className="rounded object-contain"
-          />
-          <Image
-            src="/images/logo-om.jpg"
-            alt="Orange Money"
-            width={40}
-            height={24}
-            className="rounded object-contain"
-          />
-          <span className="text-[11px] text-ink/40">Espèces, Wave ou Orange Money à la remise</span>
+
+        {waveImpose ? (
+          <p className="rounded-xl bg-brand/5 px-3 py-2 text-xs text-ink/75">
+            Au-dessus de{" "}
+            <span className="font-semibold text-ink">{formatPrice(SEUIL_PAIEMENT_AVANCE)}</span>, le
+            paiement se règle <span className="font-semibold text-ink">d’avance par Wave</span>.
+          </p>
+        ) : null}
+
+        <div className="flex flex-col gap-2">
+          {!waveImpose && (
+            <button
+              type="button"
+              aria-pressed={modePaiementEffectif === "livraison"}
+              onClick={() => setModePaiement("livraison")}
+              className={`flex flex-col gap-1 rounded-2xl border p-3 text-left transition-colors ${
+                modePaiementEffectif === "livraison" ? "border-brand bg-brand/5" : "border-ink/10 bg-surface"
+              }`}
+            >
+              <span className="text-sm font-semibold text-ink">À la livraison</span>
+              <span className="flex items-center gap-2 text-[11px] text-ink/45">
+                <Image
+                  src="/images/logo-wave.jpg"
+                  alt="Wave"
+                  width={32}
+                  height={20}
+                  className="rounded object-contain"
+                />
+                <Image
+                  src="/images/logo-om.jpg"
+                  alt="Orange Money"
+                  width={32}
+                  height={20}
+                  className="rounded object-contain"
+                />
+                Espèces, Wave ou Orange Money à la remise
+              </span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            aria-pressed={modePaiementEffectif === "wave"}
+            onClick={() => setModePaiement("wave")}
+            className={`flex flex-col gap-1 rounded-2xl border p-3 text-left transition-colors ${
+              modePaiementEffectif === "wave" ? "border-brand bg-brand/5" : "border-ink/10 bg-surface"
+            }`}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <Image
+                src="/images/logo-wave.jpg"
+                alt=""
+                width={32}
+                height={20}
+                className="rounded object-contain"
+              />
+              Payer d’avance avec Wave
+            </span>
+            <span className="text-[11px] text-ink/45">
+              Paiement sécurisé sur Wave, puis retour sur SacAdo.
+            </span>
+          </button>
         </div>
       </section>
 
@@ -302,7 +404,13 @@ export default function CheckoutPage() {
           disabled={submitting || !position}
           className="flex h-12 w-full items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
-          {submitting ? "Confirmation…" : "Confirmer la commande"}
+          {submitting
+            ? modePaiementEffectif === "wave"
+              ? "Redirection vers Wave…"
+              : "Confirmation…"
+            : modePaiementEffectif === "wave"
+              ? "Payer avec Wave"
+              : "Confirmer la commande"}
         </button>
       </div>
     </form>

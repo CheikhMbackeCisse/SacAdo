@@ -80,9 +80,12 @@ Tu dois voir 6 kits (CI à CM2), chacun avec 8 à 12 articles selon le niveau.
     seront lisibles/écrivables que via `service_role`, depuis des routes
     serveur Next.js (jamais depuis le navigateur avec la clé `anon`). C'est un
     point de sécurité important qu'il ne faut pas assouplir sans y réfléchir.
-- **`mode_paiement`** limité à `'livraison'` par une contrainte `CHECK` (pas un
-  enum Postgres), pour pouvoir ajouter `'wave'`/`'orange_money'` plus tard avec
-  un simple `ALTER TABLE ... DROP/ADD CONSTRAINT`, sans migration lourde.
+- **`mode_paiement`** : `'livraison'` ou `'wave'` (migration 0023, contrainte
+  `CHECK`, pas un enum Postgres). Une commande Wave porte aussi `statut_paiement`
+  / `wave_session_id` / `wave_event_id` / `montant_paye` (null si payée à la
+  livraison) et entre en base au statut `'paiement_en_attente'` jusqu'à
+  confirmation du webhook signé. Voir `INTEGRATION_WAVE.md`. Orange Money reste
+  ajoutable plus tard par un simple `DROP/ADD CONSTRAINT`.
 
 ## Données de démo
 

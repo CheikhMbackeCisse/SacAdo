@@ -68,11 +68,34 @@ client identifié par le **numéro de téléphone WhatsApp**.
 | adresse | texte | point de repère |
 | mode_livraison | enum | "24h" / "6j" |
 | frais_livraison | entier | calculé (0 si total ≥ seuil gratuité) |
-| mode_paiement | enum | "wave" / "orange_money" / "livraison" |
+| mode_paiement | enum | "livraison" (payé au livreur) / "wave" (payé d'avance). Orange Money : reporté |
+| statut_paiement | enum \| null | paiement Wave : "en_attente" / "payee" / "echoue" / "annulee". **null** si payé à la livraison |
+| wave_session_id | texte \| null | id de session de paiement renvoyé par Wave |
+| wave_event_id | texte \| null | id du dernier événement webhook traité (idempotence, index unique) |
+| montant_paye | entier \| null | montant réellement encaissé (FCFA), revérifié serveur |
 | sous_total | entier | |
 | total | entier | sous_total + frais_livraison |
-| statut | enum | "recue" / "preparation" / "livraison" / "livree" |
+| statut | enum | "paiement_en_attente" / "recue" / "preparation" / "livraison" / "livree" |
 | date | datetime | |
+
+> **Paiement Wave** (voir `INTEGRATION_WAVE.md` + `WAVE_ACTIVATION.md`,
+> migrations 0023-0025). Une commande Wave est créée en
+> `statut = "paiement_en_attente"` (hors du flux de préparation, exclue du
+> CA/ventes, aucun message boîte de réception) ; le stock est réservé dès la
+> création. Le **webhook signé** (`/api/wave/webhook` → `traiter_paiement_wave`)
+> la fait passer `recue` + `statut_paiement = "payee"` après revérification du
+> montant ; en cas d'échec/annulation, `statut_paiement = "echoue"` et le stock
+> est relâché. Le retour du client sur la success_url ne vaut jamais preuve de
+> paiement. Seuil : total < 10 000 FCFA → client choisit ; ≥ 10 000 → Wave
+> imposé (calcul serveur).
+
+### wave_evenements (idempotence webhook)
+| champ | type | note |
+|---|---|---|
+| event_id | texte | **PK** — id d'évènement Wave, jamais traité deux fois |
+| commande_id | ref commandes | commande concernée (nullable si supprimée) |
+| type | texte | issue journalisée (paye / echoue / montant_invalide / …) |
+| recu_le | datetime | |
 
 ### commande_items
 | champ | type | note |
@@ -215,11 +238,19 @@ code final.
 ## Mise à jour finale v1 (décisions verrouillées)
 
 ### Paiement
-- **À la livraison uniquement.** Le champ `mode_paiement` sur `commandes` garde la
-  valeur "livraison" par défaut. Wave/Orange Money peuvent être affichés comme
-  info (paiement possible au livreur) mais NE sont PAS des flux techniques en v1.
-- Prévoir l'enum extensible : mode_paiement ∈ {"livraison"} pour l'instant,
-  extensible à {"wave","orange_money"} plus tard sans migration lourde.
+- **À la livraison + Wave en ligne selon un seuil** (spec : `INTEGRATION_WAVE.md`,
+  migration 0023).
+  * `mode_paiement` ∈ {"livraison", "wave"}. Orange Money : reporté (pas gratuit).
+  * Seuil, calculé **côté serveur** sur le total : < 10 000 FCFA → le client
+    choisit ; ≥ 10 000 FCFA → Wave imposé.
+  * Preuve de paiement = **webhook Wave signé** (HMAC-SHA256) + idempotence via
+    `wave_event_id` + revérification du montant serveur. Le retour sur la
+    success_url ne vaut jamais paiement.
+  * Colonnes `commandes` : `statut_paiement`, `wave_session_id`, `wave_event_id`,
+    `montant_paye` (toutes null si payé à la livraison). Statut `commandes`
+    gagne `"paiement_en_attente"` en entrée de flux.
+- Le logo Orange Money peut rester affiché à titre informatif (paiement possible
+  au livreur pour les commandes payées à la livraison).
 
 ### Notifications
 - **Boîte de réception in-app uniquement** (table `messages` déjà définie).

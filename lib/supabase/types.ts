@@ -152,8 +152,19 @@ export type Zone = {
 };
 
 export type ModeLivraison = "24h" | "6j";
-export type ModePaiement = "livraison";
-export type StatutCommande = "recue" | "preparation" | "livraison" | "livree";
+// 'livraison' = payé au livreur à la remise ; 'wave' = payé en ligne d'avance
+// (INTEGRATION_WAVE.md, migration 0023).
+export type ModePaiement = "livraison" | "wave";
+// Cycle de vie du paiement Wave. NULL sur une commande payée à la livraison.
+export type StatutPaiement = "en_attente" | "payee" | "echoue" | "annulee";
+// 'paiement_en_attente' : commande Wave créée, webhook pas encore confirmé —
+// hors du flux de préparation tant qu'elle n'est pas passée 'recue'.
+export type StatutCommande =
+  | "paiement_en_attente"
+  | "recue"
+  | "preparation"
+  | "livraison"
+  | "livree";
 
 export type Client = {
   id: number;
@@ -176,6 +187,12 @@ export type Commande = {
   statut: StatutCommande;
   date: string;
   client_reference: string | null;
+  // Paiement Wave (INTEGRATION_WAVE.md, migration 0023). Tous NULL pour une
+  // commande payée à la livraison.
+  statut_paiement: StatutPaiement | null;
+  wave_session_id: string | null;
+  wave_event_id: string | null;
+  montant_paye: number | null;
   // Prénom(s) d'enfant pour la personnalisation de l'ebook offert avec un kit.
   enfants_ebook: string | null;
   // Point de livraison validé sur la carte (LOCALISATION_LIVRAISON.md) + note
