@@ -4,7 +4,6 @@ import { bodyFont, headingFont } from "@/lib/fonts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { AdminNav } from "@/components/admin/admin-nav";
-import { AdminDesktopHint } from "@/components/admin/desktop-hint";
 
 export const metadata: Metadata = {
   title: "Administration — SacAdo",
@@ -35,13 +34,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     >
       <body className="min-h-full bg-ink/[0.03] text-ink">
         {user && estAdmin ? (
-          <>
-            <AdminDesktopHint />
-            <div className="flex min-h-screen w-full">
-              <AdminNav email={user.email ?? ""} />
-              <main className="min-w-0 flex-1 overflow-x-auto p-6">{children}</main>
-            </div>
-          </>
+          <div className="lg:flex lg:min-h-screen">
+            <AdminNav email={user.email ?? ""} />
+            <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
+          </div>
         ) : (
           children
         )}
