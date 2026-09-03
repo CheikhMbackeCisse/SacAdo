@@ -6,21 +6,18 @@ import crypto from "node:crypto";
 //
 // Wave signe chaque webhook avec l'en-tête `Wave-Signature` de la forme :
 //   t=<timestamp_unix>,v1=<hmac_sha256_hex>[,v1=<autre_hmac>...]
-// Le message signé est `${timestamp}.${corps_brut}` (corps EXACT reçu, non
-// re-sérialisé), la clé est le secret de webhook Wave. Plusieurs `v1` peuvent
-// coexister pendant une rotation de secret.
-//
-// ⚠️ À confirmer contre la doc Wave à l'activation du compte marchand : si Wave
-// concatène sans le `.` ou nomme l'en-tête autrement, ajuster ici uniquement.
+// Le message signé est la CONCATÉNATION DIRECTE `${timestamp}${corps_brut}`
+// (sans séparateur ; corps EXACT reçu, non re-sérialisé), HMAC-SHA256 avec le
+// secret de webhook Wave. Plusieurs `v1` peuvent coexister (rotation de secret).
+// Réf : https://docs.wave.com/webhook (vérifié 2026-09).
 
 export const EN_TETE_SIGNATURE = "wave-signature";
 
-// Tolérance sur l'horodatage de la signature (anti-rejeu). Généreuse : le
-// journal wave_evenements empêche déjà de traiter deux fois le même évènement.
-export const TOLERANCE_SECONDES = 600;
+// Wave recommande de rejeter les requêtes de plus de 5 minutes (anti-rejeu).
+export const TOLERANCE_SECONDES = 300;
 
 function messageASigner(timestamp: string, corps: string): string {
-  return `${timestamp}.${corps}`;
+  return `${timestamp}${corps}`;
 }
 
 function comparaisonConstante(a: string, b: string): boolean {

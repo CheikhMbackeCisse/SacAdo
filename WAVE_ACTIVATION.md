@@ -35,10 +35,18 @@ Dès que `WAVE_API_KEY` est renseignée, le mode simulation se coupe tout seul
 
 ## 4. Configuration côté Wave Business
 
-- [ ] Déclarer l'URL de webhook : `<NEXT_PUBLIC_SITE_URL>/api/wave/webhook`
-- [ ] **Vérifier le schéma exact de signature** contre la doc Wave et, si besoin,
-      ajuster `lib/wave/webhook-core.ts` (en-tête `Wave-Signature`, message signé
-      `${t}.${corps}`) — c'est le seul point d'incertitude du code.
+- [ ] Créer une **clé API** (dev-portal) — visible une seule fois, la copier
+      intégralement. Activer le **request signing** si proposé → note aussi le
+      *signing secret*.
+- [ ] Déclarer l'URL de webhook : `<NEXT_PUBLIC_SITE_URL>/api/wave/webhook`,
+      récupérer le **secret de webhook** (`wave_sn_WHS_…`).
+- [ ] Schéma de signature déjà implémenté d'après `docs.wave.com/webhook`
+      (en-tête `Wave-Signature: t=…,v1=…`, HMAC-SHA256 de `${t}${corps}` en
+      concaténation directe, tolérance 5 min). Si Wave a changé, un seul endroit
+      à toucher : `messageASigner()` dans `lib/wave/webhook-core.ts`.
+- [ ] Endpoint utilisé : `POST https://api.wave.com/v1/checkout/sessions`
+      (body `amount`/`currency`/`success_url`/`error_url`/`client_reference`,
+      réponse `id` + `wave_launch_url`) — conforme à `docs.wave.com/checkout`.
 
 ## 5. Tests de recette (les 4 du doc + le seuil)
 
