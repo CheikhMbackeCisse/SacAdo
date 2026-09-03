@@ -10,11 +10,27 @@ import {
   televerserPhoto,
   type ProduitVendeurInput,
 } from "@/lib/vendeur/produits-actions";
+import { remplacerMesVariantes } from "@/lib/vendeur/variantes-actions";
 import { MAX_PHOTOS_PRODUIT } from "@/lib/vendeur/produits-shared";
 import { compresserImage } from "@/lib/images/compress-image";
 import { ChampSelect } from "@/components/ui/champ-select";
+import {
+  VariantesEditor,
+  ETAT_VARIANTES_VIDE,
+  etatDepuisVariantes,
+  etatVariantesValide,
+  etatVersLignes,
+  type EtatVariantes,
+} from "@/components/vendeur/variantes-editor";
 import { useConfirmLeave, useUnsavedChanges } from "@/components/ui/navigation-guard";
-import type { Categorie, Commission, Produit, SousCategorie } from "@/lib/supabase/types";
+import type {
+  Attribut,
+  Categorie,
+  Commission,
+  Produit,
+  SousCategorie,
+  VarianteAvecAttributs,
+} from "@/lib/supabase/types";
 import { calculerCommission, tauxCommission } from "@/lib/commissions";
 import { formatPrice } from "@/lib/format";
 
@@ -28,11 +44,15 @@ export function ProduitVendeurForm({
   categories,
   sousCategories,
   commissions,
+  attributs,
+  variantesInitiales = [],
 }: {
   produit?: Produit;
   categories: Categorie[];
   sousCategories: SousCategorie[];
   commissions: Commission[];
+  attributs: Attribut[];
+  variantesInitiales?: VarianteAvecAttributs[];
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -59,6 +79,9 @@ export function ProduitVendeurForm({
   const [photos, setPhotos] = useState<string[]>(
     produit?.photos?.length ? produit.photos : produit?.photo ? [produit.photo] : [],
   );
+  const [variantes, setVariantes] = useState<EtatVariantes>(() =>
+    variantesInitiales.length ? etatDepuisVariantes(variantesInitiales) : ETAT_VARIANTES_VIDE,
+  );
 
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -81,6 +104,9 @@ export function ProduitVendeurForm({
         ? [produit.photo]
         : []
     ).join("|"),
+    variantes: JSON.stringify(
+      variantesInitiales.length ? etatDepuisVariantes(variantesInitiales) : ETAT_VARIANTES_VIDE,
+    ),
   }));
   const modifie =
     !enregistre &&
@@ -91,7 +117,8 @@ export function ProduitVendeurForm({
       sousCategorieId !== initial.sousCategorieId ||
       prix !== initial.prix ||
       stock !== initial.stock ||
-      photos.join("|") !== initial.photos);
+      photos.join("|") !== initial.photos ||
+      JSON.stringify(variantes) !== initial.variantes);
   useUnsavedChanges(modifie);
   const confirmerDepart = useConfirmLeave();
 
@@ -183,6 +210,11 @@ export function ProduitVendeurForm({
       setError("Veuillez choisir une sous-catégorie.");
       return;
     }
+    const erreurVariantes = etatVariantesValide(variantes);
+    if (erreurVariantes) {
+      setError(erreurVariantes);
+      return;
+    }
 
     setSubmitting(true);
 
@@ -208,11 +240,26 @@ export function ProduitVendeurForm({
       return;
     }
 
+    // Produit enregistré : on applique le jeu de variantes (créées en lot juste
+    // après la création, mises à jour / retirées en édition).
+    const produitId: number | undefined =
+      produit?.id ?? (result as { id?: number }).id;
+    const lignes = etatVersLignes(variantes);
+    if (produitId && (produit || lignes.length > 0)) {
+      const rv = await remplacerMesVariantes(produitId, lignes);
+      if (!rv.ok) {
+        setEnregistre(true);
+        router.push(`/vendeur/produits/${produitId}`);
+        router.refresh();
+        setError(
+          `Produit enregistré, mais les variantes n'ont pas pu l'être : ${rv.error} Reprends-les sur la fiche.`,
+        );
+        return;
+      }
+    }
+
     setEnregistre(true);
-    // Après création, on ouvre la fiche du produit : c'est là que se trouve la
-    // section « Variantes » (Couleur, Taille…), qui a besoin de son id.
-    const idCree = !produit && "id" in result ? result.id : undefined;
-    router.push(idCree ? `/vendeur/produits/${idCree}` : "/vendeur/produits");
+    router.push(produit ? "/vendeur/produits" : `/vendeur/produits/${produitId}`);
     router.refresh();
   };
 
@@ -422,14 +469,14 @@ export function ProduitVendeurForm({
         />
       </label>
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      <VariantesEditor
+        attributsDispo={attributs}
+        prixProduit={prix}
+        value={variantes}
+        onChange={setVariantes}
+      />
 
-      {!produit && (
-        <p className="text-[11px] text-[#001314]/45">
-          Les variantes (Couleur, Taille…) et leurs stocks se déclarent juste après, sur la
-          fiche du produit.
-        </p>
-      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
       <div className="flex items-center gap-3">
         <button

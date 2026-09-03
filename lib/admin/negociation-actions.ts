@@ -4,6 +4,7 @@ import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/format";
 import { tauxCommission } from "@/lib/commissions";
+import { aplatirAttributs } from "@/lib/variantes";
 import { balleCote, etatNegociation, limiteAtteinte, prixEnJeu } from "@/lib/negociation";
 import { getToursMax, setToursMax } from "@/lib/parametres";
 import type {
@@ -11,6 +12,7 @@ import type {
   NegociationProposition,
   Produit,
   TypeMessageVendeur,
+  VarianteAvecAttributs,
 } from "@/lib/supabase/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -26,7 +28,28 @@ export type ProduitAModererer = {
   tauxCommission: number;
   tours: number;
   limiteAtteinte: boolean;
+  variantes: VarianteAvecAttributs[];
 };
+
+// Variantes déclarées par le vendeur, avec leurs attributs, par produit.
+async function chargerVariantes(
+  produitIds: number[],
+): Promise<Map<number, VarianteAvecAttributs[]>> {
+  const map = new Map<number, VarianteAvecAttributs[]>();
+  if (produitIds.length === 0) return map;
+  const { data } = await supabaseAdmin
+    .from("produit_variantes")
+    .select("*, variante_attributs(attribut_id, valeur, attributs(nom))")
+    .in("produit_id", produitIds)
+    .order("id", { ascending: true });
+  for (const row of data ?? []) {
+    const variante = { ...row, attributs: aplatirAttributs(row) } as VarianteAvecAttributs;
+    const liste = map.get(variante.produit_id) ?? [];
+    liste.push(variante);
+    map.set(variante.produit_id, liste);
+  }
+  return map;
+}
 
 async function chargerFils(produitIds: number[]): Promise<Map<number, NegociationProposition[]>> {
   const map = new Map<number, NegociationProposition[]>();
@@ -68,7 +91,10 @@ export async function getFileNegociation(): Promise<ProduitAModererer[]> {
   ]);
 
   const produits = (produitsData ?? []) as Produit[];
-  const fils = await chargerFils(produits.map((p) => p.id));
+  const [fils, variantesParProduit] = await Promise.all([
+    chargerFils(produits.map((p) => p.id)),
+    chargerVariantes(produits.map((p) => p.id)),
+  ]);
   const vendeurNom = new Map((vendeursData ?? []).map((v) => [v.id as string, v.nom_boutique as string]));
   const categorieNom = new Map((categoriesData ?? []).map((c) => [c.id as number, c.nom as string]));
   const commissions = (commissionsData ?? []) as Commission[];
@@ -86,6 +112,7 @@ export async function getFileNegociation(): Promise<ProduitAModererer[]> {
         tauxCommission: tauxCommission(commissions, produit.categorie_id, produit.sous_categorie_id),
         tours,
         limiteAtteinte: limiteAtteinte(tours, toursMax),
+        variantes: variantesParProduit.get(produit.id) ?? [],
       };
     })
     .filter((item) => balleCote(item.produit.statut_publication, item.fil) === "admin");

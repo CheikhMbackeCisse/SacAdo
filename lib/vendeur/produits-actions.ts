@@ -5,7 +5,7 @@ import { requireVendeur } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { estNombrePositifValide, texteNonVide } from "@/lib/admin/validation";
 import { MAX_PHOTOS_PRODUIT } from "./produits-shared";
-import type { Categorie, Commission, Delai, Produit, SousCategorie } from "@/lib/supabase/types";
+import type { Attribut, Categorie, Commission, Delai, Produit, SousCategorie } from "@/lib/supabase/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -15,17 +15,20 @@ export async function getReferentiel(): Promise<{
   categories: Categorie[];
   sousCategories: SousCategorie[];
   commissions: Commission[];
+  attributs: Attribut[];
 }> {
   await requireVendeur();
-  const [cats, sousCats, commissions] = await Promise.all([
+  const [cats, sousCats, commissions, attributs] = await Promise.all([
     supabaseAdmin.from("categories").select("*").eq("actif", true).order("ordre").order("nom"),
     supabaseAdmin.from("sous_categories").select("*").order("ordre").order("nom"),
     supabaseAdmin.from("commissions").select("*"),
+    supabaseAdmin.from("attributs").select("*").eq("statut", "valide").order("nom"),
   ]);
   return {
     categories: cats.data ?? [],
     sousCategories: sousCats.data ?? [],
     commissions: commissions.data ?? [],
+    attributs: attributs.data ?? [],
   };
 }
 

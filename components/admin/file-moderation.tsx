@@ -6,6 +6,7 @@ import { Check, Loader2 } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { StatutPublicationBadge } from "@/components/vendeur/statut-publication-badge";
 import { formatPrice } from "@/lib/format";
+import { libelleVarianteDetaille } from "@/lib/variantes";
 import {
   accepterPrix,
   contreProposer,
@@ -42,7 +43,7 @@ export function FileModeration({ items }: { items: ProduitAModererer[] }) {
 
 function CarteModeration({ item }: { item: ProduitAModererer }) {
   const router = useRouter();
-  const { produit, fil, prixEnJeu, tauxCommission, limiteAtteinte } = item;
+  const { produit, fil, prixEnJeu, tauxCommission, limiteAtteinte, variantes } = item;
 
   const [action, setAction] = useState<null | "accepter" | "contre" | "refuser">(null);
   const [contrePrix, setContrePrix] = useState(String(prixEnJeu));
@@ -122,6 +123,25 @@ function CarteModeration({ item }: { item: ProduitAModererer }) {
           ))}
         </ul>
       </div>
+
+      {variantes.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-medium text-ink/50">
+            Variantes déclarées ({variantes.length})
+          </p>
+          <ul className="flex flex-col divide-y divide-ink/10 rounded-xl border border-ink/10">
+            {variantes.map((v) => (
+              <li key={v.id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs">
+                <span className="text-ink/75">{libelleVarianteDetaille(v) || "—"}</span>
+                <span className="flex shrink-0 items-center gap-2 text-ink/55">
+                  {v.prix != null && <span>{formatPrice(v.prix)}</span>}
+                  <span className={v.stock === 0 ? "text-red-600" : ""}>stock {v.stock}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {limiteAtteinte && (
         <p className="rounded-lg bg-[#E07B39]/12 px-2.5 py-1.5 text-xs text-[#8a4a1f]">
