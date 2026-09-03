@@ -86,6 +86,13 @@ function CarteModeration({ item }: { item: ProduitAModererer }) {
         </div>
       </div>
 
+      {produit.commentaire_vendeur && (
+        <div className="rounded-xl border border-ink/10 bg-[#0B3D91]/[0.04] px-3.5 py-3 text-sm">
+          <p className="text-xs font-medium text-ink/50">Commentaire du vendeur</p>
+          <p className="mt-1 whitespace-pre-wrap text-ink/80">{produit.commentaire_vendeur}</p>
+        </div>
+      )}
+
       <div className="rounded-xl bg-ink/[0.03] px-3.5 py-3 text-sm">
         <div className="flex items-center justify-between">
           <span className="text-ink/70">Prix en jeu</span>

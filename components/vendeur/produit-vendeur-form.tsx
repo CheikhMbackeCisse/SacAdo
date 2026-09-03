@@ -44,6 +44,7 @@ export function ProduitVendeurForm({
 
   const [nom, setNom] = useState(produit?.nom ?? "");
   const [description, setDescription] = useState(produit?.description ?? "");
+  const [commentaire, setCommentaire] = useState(produit?.commentaire_vendeur ?? "");
   // Selects sans valeur par défaut : le vendeur DOIT choisir activement, sinon
   // des produits atterrissent dans la mauvaise catégorie sans qu'il l'ait voulu.
   const [categorieId, setCategorieId] = useState<number | "">(produit?.categorie_id ?? "");
@@ -69,6 +70,7 @@ export function ProduitVendeurForm({
   const [initial] = useState(() => ({
     nom: produit?.nom ?? "",
     description: produit?.description ?? "",
+    commentaire: produit?.commentaire_vendeur ?? "",
     categorieId: (produit?.categorie_id ?? "") as number | "",
     sousCategorieId: produit?.sous_categorie_id ?? null,
     prix: produit?.prix?.toString() ?? "",
@@ -84,6 +86,7 @@ export function ProduitVendeurForm({
     !enregistre &&
     (nom !== initial.nom ||
       description !== initial.description ||
+      commentaire !== initial.commentaire ||
       categorieId !== initial.categorieId ||
       sousCategorieId !== initial.sousCategorieId ||
       prix !== initial.prix ||
@@ -192,6 +195,7 @@ export function ProduitVendeurForm({
       delai,
       photos,
       stock: Number(stock),
+      commentaire_vendeur: commentaire.trim() || null,
     };
 
     const result = produit
@@ -403,6 +407,20 @@ export function ProduitVendeurForm({
           }}
         />
       </div>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs font-medium text-[#001314]/60">
+          Commentaires / remarques sur ce produit (à l’attention de SacAdo)
+        </span>
+        <textarea
+          value={commentaire}
+          onChange={(e) => setCommentaire(e.target.value)}
+          rows={3}
+          maxLength={2000}
+          className={CHAMP}
+          placeholder="Précision, question, contexte… Ce mot n’apparaît pas sur la fiche publique."
+        />
+      </label>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 

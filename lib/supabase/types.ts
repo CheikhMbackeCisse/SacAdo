@@ -34,6 +34,8 @@ export type Produit = {
   vendeur_id: string | null;
   statut_publication: StatutPublication;
   motif_refus: string | null;
+  // Remarque libre laissée par le vendeur à l'attention de SacAdo (migration 0029).
+  commentaire_vendeur: string | null;
 };
 
 // Catégories : source de vérité en base (table `categories`). Les icônes Lucide

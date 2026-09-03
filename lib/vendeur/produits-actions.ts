@@ -60,7 +60,11 @@ export type ProduitVendeurInput = {
   // Galerie ordonnée : photos[0] = principale. 0 à 4 URLs.
   photos: string[];
   stock: number;
+  // Remarque libre à l'attention de SacAdo (facultatif).
+  commentaire_vendeur: string | null;
 };
+
+const COMMENTAIRE_VENDEUR_MAX = 2000;
 
 // Ne garde que des URLs http(s) non vides, dédoublonnées, plafonnées à 4.
 function nettoyerPhotos(photos: string[]): string[] {
@@ -91,6 +95,9 @@ function valider(input: ProduitVendeurInput): string | null {
   if (input.description !== null && input.description.length > 2000) {
     return "La description est trop longue (2000 caractères maximum).";
   }
+  if (input.commentaire_vendeur !== null && input.commentaire_vendeur.length > COMMENTAIRE_VENDEUR_MAX) {
+    return `Le commentaire est trop long (${COMMENTAIRE_VENDEUR_MAX} caractères maximum).`;
+  }
   if (input.photos.length > MAX_PHOTOS_PRODUIT) {
     return `${MAX_PHOTOS_PRODUIT} photos maximum par produit.`;
   }
@@ -110,14 +117,17 @@ function versColonnes(input: ProduitVendeurInput) {
     // Photo principale maintenue par le serveur = première de la galerie.
     photo: photos[0] ?? null,
     stock: Math.round(input.stock),
+    commentaire_vendeur: input.commentaire_vendeur?.trim() || null,
   };
 }
 
-// Retire `photos` d'un jeu de colonnes (repli si la migration 0019 n'est pas
-// encore passée : Postgres renvoie 42703 « column does not exist »).
-function sansColonnePhotos(colonnes: Record<string, unknown>): Record<string, unknown> {
+// Retire les colonnes ajoutées par des migrations récentes (`photos` = 0019,
+// `commentaire_vendeur` = 0029) : repli si la migration n'est pas encore passée
+// en prod — Postgres renvoie alors 42703 « column does not exist ».
+function sansColonnesOptionnelles(colonnes: Record<string, unknown>): Record<string, unknown> {
   const reste = { ...colonnes };
   delete reste.photos;
+  delete reste.commentaire_vendeur;
   return reste;
 }
 const COLONNE_ABSENTE = "42703";
@@ -164,7 +174,7 @@ export async function creerMonProduit(
   if (error?.code === COLONNE_ABSENTE) {
     ({ data, error } = await supabaseAdmin
       .from("produits")
-      .insert(sansColonnePhotos(colonnes))
+      .insert(sansColonnesOptionnelles(colonnes))
       .select("id")
       .single());
   }
@@ -197,7 +207,7 @@ export async function modifierMonProduit(
   if (error?.code === COLONNE_ABSENTE) {
     ({ error } = await supabaseAdmin
       .from("produits")
-      .update(sansColonnePhotos(colonnes))
+      .update(sansColonnesOptionnelles(colonnes))
       .eq("id", id)
       .eq("vendeur_id", userId));
   }
