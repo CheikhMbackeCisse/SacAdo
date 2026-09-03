@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/header";
 import { CartToast } from "@/components/panier/cart-toast";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { WelcomeScreen } from "@/components/onboarding/welcome-screen";
+import { NavigationGuardProvider } from "@/components/ui/navigation-guard";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { SplashScreen } from "@/components/pwa/splash-screen";
@@ -62,7 +63,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
           id="main-content"
           className="mx-auto flex w-full max-w-6xl flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
         >
-          {children}
+          <NavigationGuardProvider>{children}</NavigationGuardProvider>
         </main>
         <BottomNav />
         <WelcomeScreen />

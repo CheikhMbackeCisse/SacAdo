@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, Inbox, LayoutDashboard, LogOut, Package, TrendingUp } from "lucide-react";
 import { signOutVendeur } from "@/lib/vendeur/auth-actions";
+import { NavigationGuardProvider } from "@/components/ui/navigation-guard";
 
 const LIENS = [
   { href: "/vendeur", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
@@ -77,7 +78,9 @@ export function VendeurShell({
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-4xl px-4 py-6">
+        <NavigationGuardProvider>{children}</NavigationGuardProvider>
+      </main>
     </div>
   );
 }

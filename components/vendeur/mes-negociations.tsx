@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { useUnsavedChanges } from "@/components/ui/navigation-guard";
 import {
   abandonnerNegociation,
   accepterPrixSacado,
@@ -56,6 +57,10 @@ function CarteNegociation({ item }: { item: MaNegociation }) {
   const commission = Math.round((prixEnJeu * tauxCommission) / 100);
   const net = prixEnJeu - commission;
   const busy = action !== null;
+
+  // Contre-proposition ou motif d'abandon saisi mais pas encore envoyé
+  // (CONFIRMATION_RETOUR.md).
+  useUnsavedChanges(!busy && (contrePrix !== String(prixEnJeu) || motif.trim() !== ""));
 
   const lancer = async (
     fn: () => Promise<{ ok: boolean; error?: string }>,

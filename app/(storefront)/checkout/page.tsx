@@ -18,6 +18,10 @@ import {
 import { SEUIL_GRATUITE } from "@/components/panier/free-shipping-progress";
 import { SEUIL_PAIEMENT_AVANCE } from "@/lib/checkout/montants";
 import { CartePin, type Coordonnees } from "@/components/checkout/carte-pin";
+import {
+  useAllowNextNavigation,
+  useUnsavedChanges,
+} from "@/components/ui/navigation-guard";
 import { regionLaPlusProche } from "@/lib/senegal-regions";
 import type { ModeLivraison, ModePaiement, Zone } from "@/lib/supabase/types";
 
@@ -64,6 +68,13 @@ export default function CheckoutPage() {
 
   const [position, setPosition] = useState<Coordonnees | null>(null);
   const [precisionLivreur, setPrecisionLivreur] = useState("");
+
+  // Le checkout contient un travail non enregistré dès que l'utilisateur a
+  // saisi/choisi quelque chose (CONFIRMATION_RETOUR.md). Repasse à false à la
+  // soumission réussie.
+  const [modifie, setModifie] = useState(false);
+  useUnsavedChanges(modifie);
+  const autoriserProchaineNavigation = useAllowNextNavigation();
 
   useEffect(() => {
     getZones()
@@ -172,6 +183,8 @@ export default function CheckoutPage() {
           return;
         }
         setIdentite({ nom, telephone });
+        setModifie(false);
+        autoriserProchaineNavigation();
         window.location.href = result.waveLaunchUrl;
         return;
       }
@@ -184,6 +197,7 @@ export default function CheckoutPage() {
       }
 
       setIdentite({ nom, telephone });
+      setModifie(false);
       vider();
       viderEnfantsEbook();
       router.push(`/suivi/${result.commandeId}`);
@@ -209,7 +223,10 @@ export default function CheckoutPage() {
           <input
             required
             value={nom}
-            onChange={(event) => setNomSaisi(event.target.value)}
+            onChange={(event) => {
+              setNomSaisi(event.target.value);
+              setModifie(true);
+            }}
             className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>
@@ -221,7 +238,10 @@ export default function CheckoutPage() {
             type="tel"
             inputMode="tel"
             value={telephone}
-            onChange={(event) => setTelephoneSaisi(event.target.value)}
+            onChange={(event) => {
+              setTelephoneSaisi(event.target.value);
+              setModifie(true);
+            }}
             placeholder="77 123 45 67"
             className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
@@ -229,7 +249,13 @@ export default function CheckoutPage() {
 
         <div className="flex flex-col gap-1.5 text-sm">
           <span className="text-xs font-medium text-ink/60">Où livrer ?</span>
-          <CartePin position={position} onChange={setPosition} />
+          <CartePin
+            position={position}
+            onChange={(c) => {
+              setPosition(c);
+              setModifie(true);
+            }}
+          />
           {regionDeduite && (
             <p className="rounded-xl bg-brand/5 px-3 py-2 text-xs text-ink/75">
               Livraison vers <span className="font-semibold text-ink">{regionDeduite}</span>
@@ -256,7 +282,10 @@ export default function CheckoutPage() {
             rows={2}
             maxLength={300}
             value={precisionLivreur}
-            onChange={(event) => setPrecisionLivreur(event.target.value)}
+            onChange={(event) => {
+              setPrecisionLivreur(event.target.value);
+              setModifie(true);
+            }}
             placeholder="Portail bleu, 2e étage, appeler en arrivant…"
             className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
@@ -280,7 +309,10 @@ export default function CheckoutPage() {
                 key={mode}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setModeLivraison(mode)}
+                onClick={() => {
+                  setModeLivraison(mode);
+                  setModifie(true);
+                }}
                 className={`flex flex-col items-center gap-1 rounded-2xl border p-3 text-center transition-colors ${
                   active ? "border-brand bg-brand/5" : "border-ink/10 bg-elevated"
                 }`}
@@ -330,7 +362,10 @@ export default function CheckoutPage() {
             <button
               type="button"
               aria-pressed={modePaiementEffectif === "livraison"}
-              onClick={() => setModePaiement("livraison")}
+              onClick={() => {
+              setModePaiement("livraison");
+              setModifie(true);
+            }}
               className={`flex flex-col gap-1 rounded-2xl border p-3 text-left transition-colors ${
                 modePaiementEffectif === "livraison" ? "border-brand bg-brand/5" : "border-ink/10 bg-surface"
               }`}
@@ -359,7 +394,10 @@ export default function CheckoutPage() {
           <button
             type="button"
             aria-pressed={modePaiementEffectif === "wave"}
-            onClick={() => setModePaiement("wave")}
+            onClick={() => {
+              setModePaiement("wave");
+              setModifie(true);
+            }}
             className={`flex flex-col gap-1 rounded-2xl border p-3 text-left transition-colors ${
               modePaiementEffectif === "wave" ? "border-brand bg-brand/5" : "border-ink/10 bg-surface"
             }`}

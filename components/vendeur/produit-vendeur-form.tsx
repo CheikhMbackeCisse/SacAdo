@@ -13,6 +13,7 @@ import {
 import { MAX_PHOTOS_PRODUIT } from "@/lib/vendeur/produits-shared";
 import { compresserImage } from "@/lib/images/compress-image";
 import { ChampSelect } from "@/components/ui/champ-select";
+import { useConfirmLeave, useUnsavedChanges } from "@/components/ui/navigation-guard";
 import type { Categorie, Commission, Produit, SousCategorie } from "@/lib/supabase/types";
 import { calculerCommission, tauxCommission } from "@/lib/commissions";
 import { formatPrice } from "@/lib/format";
@@ -61,6 +62,35 @@ export function ProduitVendeurForm({
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enregistre, setEnregistre] = useState(false);
+
+  // Garde de navigation (CONFIRMATION_RETOUR.md) : on compare aux valeurs
+  // initiales — un formulaire simplement ouvert (rien touché) ne déclenche rien.
+  const [initial] = useState(() => ({
+    nom: produit?.nom ?? "",
+    description: produit?.description ?? "",
+    categorieId: (produit?.categorie_id ?? "") as number | "",
+    sousCategorieId: produit?.sous_categorie_id ?? null,
+    prix: produit?.prix?.toString() ?? "",
+    stock: produit?.stock?.toString() ?? "0",
+    photos: (produit?.photos?.length
+      ? produit.photos
+      : produit?.photo
+        ? [produit.photo]
+        : []
+    ).join("|"),
+  }));
+  const modifie =
+    !enregistre &&
+    (nom !== initial.nom ||
+      description !== initial.description ||
+      categorieId !== initial.categorieId ||
+      sousCategorieId !== initial.sousCategorieId ||
+      prix !== initial.prix ||
+      stock !== initial.stock ||
+      photos.join("|") !== initial.photos);
+  useUnsavedChanges(modifie);
+  const confirmerDepart = useConfirmLeave();
 
   const sousCatsDeLaCategorie = useMemo(
     () =>
@@ -174,6 +204,7 @@ export function ProduitVendeurForm({
       return;
     }
 
+    setEnregistre(true);
     // Après création, on ouvre la fiche du produit : c'est là que se trouve la
     // section « Variantes » (Couleur, Taille…), qui a besoin de son id.
     const idCree = !produit && "id" in result ? result.id : undefined;
@@ -397,7 +428,9 @@ export function ProduitVendeurForm({
         </button>
         <button
           type="button"
-          onClick={() => router.push("/vendeur/produits")}
+          onClick={async () => {
+            if (await confirmerDepart()) router.push("/vendeur/produits");
+          }}
           className="text-sm font-medium text-[#001314]/55 hover:text-[#001314]"
         >
           Annuler
