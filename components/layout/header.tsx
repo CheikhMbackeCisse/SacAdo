@@ -7,6 +7,7 @@ import { Heart, Search, Settings, Tag, User } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProductImage } from "@/components/ui/product-image";
 import { NavIcon } from "@/components/layout/nav-icon";
+import { InstallHeaderButton } from "@/components/pwa/install-header-button";
 import { useIdentite } from "@/lib/local/identite";
 import { formatPrice } from "@/lib/format";
 import {
@@ -290,6 +291,8 @@ export function Header() {
         >
           <Heart size={22} />
         </Link>
+
+        <InstallHeaderButton />
       </div>
 
       {/* Desktop (lg+) : la nav vit ici plutôt qu'en bottom nav fixe (voir
