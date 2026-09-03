@@ -8,7 +8,11 @@ const EVENT = "sacado:identite";
 // l'efface aussi à la déconnexion pour que le formulaire de départ revienne.
 const ONBOARDING_REPORTE_KEY = "sacado_onboarding_reporte";
 
-export type Identite = { nom: string; telephone: string };
+// `jeton` : remis par le serveur à la création d'une commande (HMAC du
+// client_id, voir lib/client-auth.ts). Exigé pour relire l'historique / les
+// messages / la position du client. Absent tant qu'aucune commande n'a été
+// passée depuis cet appareil.
+export type Identite = { nom: string; telephone: string; jeton?: string };
 
 let cache: Identite | null | undefined;
 

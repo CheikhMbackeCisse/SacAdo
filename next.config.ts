@@ -58,6 +58,12 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: CSP },
+          // HTTPS only (le site est 100 % HTTPS via Vercel) : le navigateur
+          // refuse toute tentative de chargement en http pendant 2 ans.
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains",
+          },
           // Anti-clickjacking : personne ne peut mettre SacAdo dans une <iframe>.
           { key: "X-Frame-Options", value: "DENY" },
           // Empêche le navigateur de "deviner" le type d'un fichier (ex: un

@@ -6,6 +6,7 @@ import { getClientIp, verifierLimite } from "@/lib/security/rate-limit";
 import { regionLaPlusProche } from "@/lib/senegal-regions";
 import { optionsPaiementPourTotal, paiementAutorise, type OptionsPaiement } from "@/lib/checkout/montants";
 import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wave/client";
+import { jetonClient, verifierJetonClient } from "@/lib/client-auth";
 import type { LignePanier } from "@/lib/local/panier";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
 
@@ -58,7 +59,11 @@ function formaterEnfantsEbook(entrees: EnfantEbook[] | undefined): string | null
   return texte || null;
 }
 
-export type CheckoutResult = { ok: true; commandeId: number } | { ok: false; error: string };
+// `jeton` : à ranger sur l'appareil (voir lib/client-auth.ts), il conditionne
+// la relecture de l'historique / des messages / de la position du client.
+export type CheckoutResult =
+  | { ok: true; commandeId: number; jeton: string }
+  | { ok: false; error: string };
 
 type LigneResolue = {
   produitId: number;
@@ -120,6 +125,12 @@ async function resoudreCommande(
     const variante = ligne.varianteId ? variantesById.get(ligne.varianteId) : null;
     if (ligne.varianteId && !variante) {
       return { ok: false, error: "Une option choisie n'existe plus." };
+    }
+    // Intégrité prix (AUDIT_SECURITE_2 D4) : la variante doit bien appartenir au
+    // produit de la ligne — sinon on pourrait envoyer varianteId d'un produit
+    // pas cher pour un produit cher et payer le mauvais prix.
+    if (variante && variante.produit_id !== produit.id) {
+      return { ok: false, error: "Cette option ne correspond pas à ce produit." };
     }
 
     lignesResolues.push({
@@ -360,7 +371,11 @@ export async function passerCommande(
   }
 
   await annoterEnfantsEbook(commandeId as number, input.enfantsEbook);
-  return { ok: true, commandeId: commandeId as number };
+  return {
+    ok: true,
+    commandeId: commandeId as number,
+    jeton: jetonClient(client.clientId),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -368,7 +383,7 @@ export async function passerCommande(
 // ---------------------------------------------------------------------------
 
 export type PaiementWaveResult =
-  | { ok: true; waveLaunchUrl: string; commandeId: number }
+  | { ok: true; waveLaunchUrl: string; commandeId: number; jeton: string }
   | { ok: false; error: string };
 
 // Origine publique du site, pour construire les URLs de retour passées à Wave.
@@ -484,7 +499,12 @@ export async function demarrerPaiementWave(
   }
 
   await annoterEnfantsEbook(commandeId as number, input.enfantsEbook);
-  return { ok: true, waveLaunchUrl: session.session.waveLaunchUrl, commandeId: commandeId as number };
+  return {
+    ok: true,
+    waveLaunchUrl: session.session.waveLaunchUrl,
+    commandeId: commandeId as number,
+    jeton: jetonClient(client.clientId),
+  };
 }
 
 // Rejoue un paiement Wave sur une commande existante restée 'paiement_en_attente'
@@ -517,7 +537,12 @@ async function relancerSessionPourCommande(commande: Commande): Promise<Paiement
     .update({ wave_session_id: session.session.id, statut_paiement: "en_attente" })
     .eq("id", commande.id);
 
-  return { ok: true, waveLaunchUrl: session.session.waveLaunchUrl, commandeId: commande.id };
+  return {
+    ok: true,
+    waveLaunchUrl: session.session.waveLaunchUrl,
+    commandeId: commande.id,
+    jeton: jetonClient(commande.client_id),
+  };
 }
 
 // Lecture d'une commande par sa référence de checkout — utilisée par les écrans
@@ -567,18 +592,23 @@ export type DernierePosition = {
   precisionLivreur: string | null;
 };
 
-// Dernière position validée par le client (via son numéro) pour pré-remplir le
-// checkout. clients n'a aucune policy publique → lecture service_role seule.
-export async function getDernierePosition(telephone: string): Promise<DernierePosition | null> {
+// Dernière position validée par le client, pour pré-remplir le checkout.
+// Exige le jeton client (AUDIT_SECURITE_2 C3) : sans lui, on ne révèle pas la
+// position GPS enregistrée pour un numéro.
+export async function getDernierePosition(
+  telephone: string,
+  jeton: string,
+): Promise<DernierePosition | null> {
   const numero = telephone.trim();
-  if (!numero) return null;
+  if (!numero || !jeton) return null;
   const { data } = await supabaseAdmin
     .from("clients")
-    .select("derniere_lat, derniere_lng, derniere_precision_livreur")
+    .select("id, derniere_lat, derniere_lng, derniere_precision_livreur")
     .eq("telephone", numero)
     .maybeSingle();
 
-  if (!data || data.derniere_lat == null || data.derniere_lng == null) return null;
+  if (!data || !verifierJetonClient(data.id, jeton)) return null;
+  if (data.derniere_lat == null || data.derniere_lng == null) return null;
   return {
     lat: data.derniere_lat,
     lng: data.derniere_lng,

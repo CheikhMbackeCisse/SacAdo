@@ -20,20 +20,23 @@ function formatDate(iso: string) {
 export default function MessagesPage() {
   const { identite } = useIdentite();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [charge, setCharge] = useState(false);
   const [ouvert, setOuvert] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!identite) return;
-    getMessagesParTelephone(identite.telephone)
+    if (!identite?.jeton) return;
+    getMessagesParTelephone(identite.telephone, identite.jeton)
       .then(setMessages)
-      .finally(() => setLoading(false));
+      .finally(() => setCharge(true));
   }, [identite]);
+
+  const sansHistorique = Boolean(identite) && !identite?.jeton;
+  const loading = Boolean(identite?.jeton) && !charge;
 
   const ouvrir = async (message: Message) => {
     setOuvert((current) => (current === message.id ? null : message.id));
-    if (!message.lu && identite) {
-      await marquerMessageLu(message.id, identite.telephone);
+    if (!message.lu && identite?.jeton) {
+      await marquerMessageLu(message.id, identite.telephone, identite.jeton);
       setMessages((current) => current.map((m) => (m.id === message.id ? { ...m, lu: true } : m)));
     }
   };
@@ -46,6 +49,12 @@ export default function MessagesPage() {
         <IdentitePrompt contexte="vos messages" />
       ) : loading ? (
         <p className="text-sm text-ink/50">Chargement…</p>
+      ) : sansHistorique ? (
+        <EmptyState
+          icon={Inbox}
+          title="Boîte liée à cet appareil"
+          description="Passez une commande depuis cet appareil pour recevoir vos messages ici."
+        />
       ) : messages.length === 0 ? (
         <EmptyState
           icon={Inbox}

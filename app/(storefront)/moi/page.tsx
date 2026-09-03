@@ -35,9 +35,9 @@ export default function MoiPage() {
   const [autresProduits, setAutresProduits] = useState<Produit[]>([]);
 
   useEffect(() => {
-    if (!identite) return;
+    if (!identite?.jeton) return;
     let active = true;
-    getMessagesParTelephone(identite.telephone).then((messages) => {
+    getMessagesParTelephone(identite.telephone, identite.jeton).then((messages) => {
       if (active) setNonLus(messages.filter((m) => !m.lu).length);
     });
     return () => {

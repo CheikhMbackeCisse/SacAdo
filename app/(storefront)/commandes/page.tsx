@@ -24,14 +24,17 @@ function formatDate(iso: string) {
 export default function MesCommandesPage() {
   const { identite } = useIdentite();
   const [commandes, setCommandes] = useState<Commande[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [charge, setCharge] = useState(false);
 
   useEffect(() => {
-    if (!identite) return;
-    getCommandesParTelephone(identite.telephone)
+    if (!identite?.jeton) return;
+    getCommandesParTelephone(identite.telephone, identite.jeton)
       .then(setCommandes)
-      .finally(() => setLoading(false));
+      .finally(() => setCharge(true));
   }, [identite]);
+
+  const sansHistorique = Boolean(identite) && !identite?.jeton;
+  const loading = Boolean(identite?.jeton) && !charge;
 
   return (
     <div className="flex flex-col gap-4 px-4 py-4">
@@ -41,6 +44,12 @@ export default function MesCommandesPage() {
         <IdentitePrompt contexte="vos commandes" />
       ) : loading ? (
         <p className="text-sm text-ink/50">Chargement…</p>
+      ) : sansHistorique ? (
+        <EmptyState
+          icon={ClipboardList}
+          title="Historique lié à cet appareil"
+          description="Passez une commande depuis cet appareil pour retrouver votre suivi ici."
+        />
       ) : commandes.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
@@ -52,7 +61,7 @@ export default function MesCommandesPage() {
           {commandes.map((commande) => (
             <Link
               key={commande.id}
-              href={`/suivi/${commande.id}`}
+              href={`/suivi/${commande.id}?t=${identite?.jeton ?? ""}`}
               className="flex flex-col gap-1 rounded-2xl border border-ink/10 bg-elevated p-3 active:bg-ink/5"
             >
               <div className="flex items-center justify-between">

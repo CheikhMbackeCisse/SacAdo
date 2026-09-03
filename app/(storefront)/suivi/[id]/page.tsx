@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { verifierJetonClient } from "@/lib/client-auth";
 import { formatPrice } from "@/lib/format";
 import { OrderStepper } from "@/components/suivi/order-stepper";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
@@ -8,6 +9,7 @@ import type { Commande } from "@/lib/supabase/types";
 
 export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
   const { id } = await props.params;
+  const { t } = await props.searchParams;
   const commandeId = Number(id);
   if (!Number.isFinite(commandeId)) notFound();
 
@@ -20,6 +22,12 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
     .maybeSingle<Commande>();
 
   if (error || !commande) notFound();
+
+  // Id de commande = séquentiel : sans jeton du client, on ne montre pas la
+  // commande (nom, GPS, montants) — AUDIT_SECURITE_2 C3. Le jeton arrive via
+  // « Mes commandes » ou la redirection après paiement.
+  const jeton = typeof t === "string" ? t : "";
+  if (!verifierJetonClient(commande.client_id, jeton)) notFound();
 
   const enAttentePaiement = commande.statut === "paiement_en_attente";
 

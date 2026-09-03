@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { getCommandeParReference } from "@/lib/checkout/actions";
+import { jetonClient } from "@/lib/client-auth";
 import { formatPrice } from "@/lib/format";
 import { ViderPanierAuMontage } from "@/components/checkout/paiement-retour";
 
@@ -83,7 +84,7 @@ export default async function ConfirmationPaiementPage(props: {
       </section>
 
       <Link
-        href={`/suivi/${commande.id}`}
+        href={`/suivi/${commande.id}?t=${jetonClient(commande.client_id)}`}
         className="flex h-12 items-center justify-center rounded-full bg-brand text-sm font-semibold text-on-brand"
       >
         Suivre ma commande

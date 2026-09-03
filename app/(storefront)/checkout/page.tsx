@@ -83,17 +83,20 @@ export default function CheckoutPage() {
   }, []);
 
   // Pré-remplissage : dernière position validée par ce numéro de client.
+  // Nécessite le jeton de l'identité mémorisée (et donc que le numéro affiché
+  // soit bien celui de cette identité).
   const prefillFait = useRef(false);
   useEffect(() => {
     const numero = telephone.trim();
-    if (prefillFait.current || !numero) return;
+    const jeton = identite?.jeton;
+    if (prefillFait.current || !numero || !jeton || numero !== identite?.telephone) return;
     prefillFait.current = true;
-    getDernierePosition(numero).then((pos) => {
+    getDernierePosition(numero, jeton).then((pos) => {
       if (!pos) return;
       setPosition({ lat: pos.lat, lng: pos.lng });
       setPrecisionLivreur((actuel) => actuel || pos.precisionLivreur || "");
     });
-  }, [telephone]);
+  }, [telephone, identite]);
 
   // La région (donc le tarif) est déduite de l'épingle — le client ne la choisit
   // plus. Le serveur refait la déduction de son côté (jamais confiance au client).
@@ -188,7 +191,7 @@ export default function CheckoutPage() {
           setSubmitting(false);
           return;
         }
-        setIdentite({ nom, telephone });
+        setIdentite({ nom, telephone, jeton: result.jeton });
         setModifie(false);
         autoriserProchaineNavigation();
         window.location.href = result.waveLaunchUrl;
@@ -202,11 +205,11 @@ export default function CheckoutPage() {
         return;
       }
 
-      setIdentite({ nom, telephone });
+      setIdentite({ nom, telephone, jeton: result.jeton });
       setModifie(false);
       vider();
       viderEnfantsEbook();
-      router.push(`/suivi/${result.commandeId}`);
+      router.push(`/suivi/${result.commandeId}?t=${result.jeton}`);
     } catch {
       // Coupure réseau / erreur inattendue : ne jamais laisser le bouton
       // bloqué sur "Confirmation…" sans retour visible pour le client.
