@@ -219,13 +219,23 @@ gammes `/kits/[cycle]/[niveau]`) :
 Ce n'est pas forcément deux nouvelles tables : `cycle` + `niveau` sur `kits`
 suffisent. L'écran 10 filtre les kits par cycle puis par niveau.
 
-## Catégories de l'accueil (grille 2x5)
-Ordre proposé (avec image chacune) :
-1. Kits scolaires  2. Cahiers & papeterie  3. Écriture  4. Géométrie
-5. Cartables & sacs  6. Livres & manuels  7. Ordinateurs
-8. Électronique & Arduino  9. Art & dessin  10. Fournitures d'école
-Affichage : 2 rangées x 5 colonnes, scroll horizontal, 3 colonnes visibles + amorce
-de la 4e. "Kits scolaires" -> écran 10 (cycle/classe).
+## Catégories de l'accueil (grille 2 rangées, scroll horizontal)
+Référentiel en base (`categories`, 14 lignes). Ordre validé — CORRECTIONS_V7 §4,
+appliqué via `categories.ordre` (migration 0026). La grille se remplit **colonne
+par colonne** (`grid-flow-col grid-rows-2`), d'où l'`ordre` séquentiel :
+
+| Colonne | Haut (`ordre`) | Bas (`ordre`) |
+|---|---|---|
+| 1 | Kits scolaires (1) | Cahiers & papeterie (2) |
+| 2 | Cartables & sacs (3) | Livres & manuels (4) |
+| 3 | Informatique (5) | Électronique (6) |
+| 4 | Matériel géométrique (7) | Mobilier (8) |
+| 5 | Hygiène & cantine (9) | Sport & EPS (10) |
+| 6 | Fournitures d'école (11) | Art & dessin (12) |
+| 7 | Écriture (13) | Ebooks (14) |
+
+Affichage : 3 colonnes visibles + amorce de la 4e (`auto-cols-[28%]`). Même ordre
+sur l'accueil et sur la page Catégories. "Kits scolaires" -> parcours cycle/classe.
 
 ## Note build (Claude Code)
 Prévoir l'usage du MCP 21st.dev (Magic) et de skills UI/UX au moment du build front
