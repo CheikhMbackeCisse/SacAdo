@@ -11,8 +11,8 @@ export default function PolitiqueConfidentialitePage() {
         <p className="text-sm text-ink/70">
           Uniquement ce qui est nécessaire pour traiter une commande : ton nom, ton numéro de
           téléphone, ton adresse de livraison et l&apos;historique de tes commandes. Nous ne
-          demandons ni email, ni mot de passe, ni moyen de paiement — le paiement se fait
-          uniquement à la livraison.
+          demandons ni email, ni mot de passe. Un éventuel paiement en ligne passe par Wave —
+          nous ne voyons ni ne conservons tes informations bancaires.
         </p>
       </section>
 

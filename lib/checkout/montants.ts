@@ -16,7 +16,16 @@ export type OptionsPaiement = {
   waveImpose: boolean;
 };
 
-export function optionsPaiementPourTotal(total: number): OptionsPaiement {
+// `waveDisponible` = false quand Wave n'est pas branché (prod sans clés
+// marchand) : on retombe alors sur le paiement à la livraison quel que soit le
+// montant, la règle du seuil ne s'applique pas.
+export function optionsPaiementPourTotal(
+  total: number,
+  waveDisponible = true,
+): OptionsPaiement {
+  if (!waveDisponible) {
+    return { total, seuil: SEUIL_PAIEMENT_AVANCE, options: ["livraison"], waveImpose: false };
+  }
   const waveImpose = total >= SEUIL_PAIEMENT_AVANCE;
   return {
     total,
@@ -28,6 +37,10 @@ export function optionsPaiementPourTotal(total: number): OptionsPaiement {
 
 // Un mode de paiement est-il autorisé pour ce total ? (contrôle serveur : le
 // mode envoyé par le client n'est jamais pris pour argent comptant.)
-export function paiementAutorise(mode: ModePaiement, total: number): boolean {
-  return optionsPaiementPourTotal(total).options.includes(mode);
+export function paiementAutorise(
+  mode: ModePaiement,
+  total: number,
+  waveDisponible = true,
+): boolean {
+  return optionsPaiementPourTotal(total, waveDisponible).options.includes(mode);
 }

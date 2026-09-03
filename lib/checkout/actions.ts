@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getClientIp, verifierLimite } from "@/lib/security/rate-limit";
 import { regionLaPlusProche } from "@/lib/senegal-regions";
 import { optionsPaiementPourTotal, paiementAutorise, type OptionsPaiement } from "@/lib/checkout/montants";
-import { creerSessionWave, waveEnModeSimulation } from "@/lib/wave/client";
+import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wave/client";
 import type { LignePanier } from "@/lib/local/panier";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
 
@@ -176,7 +176,7 @@ export async function getOptionsPaiement(
   const resolu = await resoudreCommande(lignes, params);
   if (!resolu.ok) return { ok: false, error: resolu.error };
 
-  return { ok: true, ...optionsPaiementPourTotal(resolu.data.total) };
+  return { ok: true, ...optionsPaiementPourTotal(resolu.data.total, waveDisponible()) };
 }
 
 // Validation commune du formulaire de checkout (livraison comme Wave).
@@ -316,7 +316,8 @@ export async function passerCommande(
   // Au-dessus du seuil, le paiement à la livraison n'est plus permis
   // (INTEGRATION_WAVE.md, W2). Contrôle serveur : le client a beau envoyer
   // "livraison", on refuse. Le checkout bascule alors sur demarrerPaiementWave.
-  if (!paiementAutorise("livraison", total)) {
+  // (Si Wave n'est pas branché, waveDisponible()=false => tout reste "livraison".)
+  if (!paiementAutorise("livraison", total, waveDisponible())) {
     return { ok: false, error: "Pour ce montant, le paiement se fait d'avance par Wave." };
   }
 
@@ -400,6 +401,10 @@ export async function demarrerPaiementWave(
 ): Promise<PaiementWaveResult> {
   const erreurValidation = validerCheckout(input, lignes);
   if (erreurValidation) return { ok: false, error: erreurValidation };
+
+  if (!waveDisponible()) {
+    return { ok: false, error: "Le paiement en ligne n'est pas disponible pour le moment." };
+  }
 
   const precisionLivreur = (input.precisionLivreur ?? "").trim() || null;
 

@@ -37,3 +37,13 @@ test("gros panier : la livraison n'est plus autorisée", () => {
 test("le seuil renvoyé correspond à la constante", () => {
   assert.equal(optionsPaiementPourTotal(0).seuil, SEUIL_PAIEMENT_AVANCE);
 });
+
+test("Wave non branché : livraison uniquement, quel que soit le montant", () => {
+  const petit = optionsPaiementPourTotal(5000, false);
+  const gros = optionsPaiementPourTotal(50000, false);
+  assert.deepEqual(petit.options, ["livraison"]);
+  assert.equal(gros.waveImpose, false);
+  assert.deepEqual(gros.options, ["livraison"]);
+  assert.equal(paiementAutorise("livraison", 50000, false), true);
+  assert.equal(paiementAutorise("wave", 50000, false), false);
+});

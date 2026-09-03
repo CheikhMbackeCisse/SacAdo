@@ -15,6 +15,14 @@ export function waveEnModeSimulation(): boolean {
   return !process.env.WAVE_API_KEY;
 }
 
+// Wave n'est proposé aux clients QUE si les vraies clés marchand sont
+// configurées — sauf en dev local, où le mode simulation reste actif pour
+// dérouler le parcours. Évite de déployer un paiement en ligne « factice » en
+// production tant que le compte Wave n'est pas prêt (CORRECTIONS_V7).
+export function waveDisponible(): boolean {
+  return Boolean(process.env.WAVE_API_KEY) || process.env.NODE_ENV !== "production";
+}
+
 export type SessionWave = {
   // id de session Wave — stocké dans commandes.wave_session_id.
   id: string;

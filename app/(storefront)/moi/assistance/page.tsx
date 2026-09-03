@@ -1,3 +1,13 @@
+import { Mail, MessageCircle } from "lucide-react";
+
+// Numéro d'assistance (format wa.me : indicatif + numéro, sans + ni espaces).
+const WHATSAPP_NUMERO = "221703202150";
+const WHATSAPP_AFFICHE = "70 320 21 50";
+const WHATSAPP_MESSAGE = "Bonjour SacAdo, j'ai besoin d'aide : ";
+const EMAIL = "service-client@sacado.sn";
+
+const lienWhatsApp = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+
 const FAQ = [
   {
     q: "Comment suivre ma commande ?",
@@ -9,7 +19,7 @@ const FAQ = [
   },
   {
     q: "Comment payer ?",
-    r: "Uniquement à la livraison : espèces, Wave ou Orange Money directement auprès du livreur.",
+    r: "Le mode de paiement disponible s'affiche au moment de commander : à la livraison (espèces, Wave ou Orange Money auprès du livreur) et/ou paiement d'avance par Wave selon le montant.",
   },
   {
     q: "Puis-je changer d'adresse après avoir commandé ?",
@@ -33,10 +43,34 @@ export default function AssistancePage() {
         ))}
       </section>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <span className="text-xs font-medium text-ink/60">Nous contacter</span>
-        <p className="text-sm text-ink">WhatsApp : 77 000 00 00</p>
-        <p className="text-sm text-ink">Email : contact@sacado.sn</p>
+      <section className="flex flex-col gap-3 rounded-2xl border border-ink/10 bg-elevated p-4">
+        <div>
+          <span className="text-xs font-medium text-ink/60">Nous contacter</span>
+          <p className="mt-0.5 text-sm text-ink/70">
+            Une question ? Dites-nous en quoi SacAdo peut vous aider.
+          </p>
+        </div>
+
+        <a
+          href={lienWhatsApp}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex h-11 items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-on-brand transition-transform active:scale-95"
+        >
+          <MessageCircle size={16} aria-hidden="true" />
+          Écrire sur WhatsApp
+        </a>
+
+        <div className="flex flex-col gap-1.5 text-sm text-ink/75">
+          <p className="flex items-center gap-2">
+            <MessageCircle size={14} className="shrink-0 text-ink/40" aria-hidden="true" />
+            WhatsApp : <span className="font-medium text-ink">{WHATSAPP_AFFICHE}</span>
+          </p>
+          <a href={`mailto:${EMAIL}`} className="flex items-center gap-2 hover:underline">
+            <Mail size={14} className="shrink-0 text-ink/40" aria-hidden="true" />
+            {EMAIL}
+          </a>
+        </div>
       </section>
     </div>
   );

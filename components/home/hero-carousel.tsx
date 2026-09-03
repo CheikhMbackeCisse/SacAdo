@@ -35,7 +35,7 @@ const SLIDES: Slide[] = [
   },
   {
     title: "Vous commandez, on vous l'apporte",
-    subtitle: "Partout au Sénégal, paiement à la réception",
+    subtitle: "Livré partout au Sénégal, en 24h ou 6 jours",
     cta: "Commander",
     href: "/categories",
     image: "/images/hero-livraison.jpg",
