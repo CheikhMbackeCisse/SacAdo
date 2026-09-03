@@ -22,11 +22,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Le chrome admin (sidebar) n'apparaît que pour un vrai admin. Un compte
   // connecté mais non-admin voit la page nue (le proxy le redirige déjà).
-  const { data: admin, error: adminError } = user
+  const { data: admin } = user
     ? await supabaseAdmin.from("admins").select("user_id").eq("user_id", user.id).maybeSingle()
-    : { data: null, error: null };
-  // Repli tant que la migration 0012 n'est pas passée (table `admins` absente).
-  const estAdmin = Boolean(user) && (Boolean(admin) || adminError?.code === "42P01");
+    : { data: null };
+  const estAdmin = Boolean(user) && Boolean(admin);
 
   return (
     <html

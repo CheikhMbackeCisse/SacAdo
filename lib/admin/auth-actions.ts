@@ -22,14 +22,13 @@ export async function signIn(email: string, password: string): Promise<SignInRes
   if (error || !data.user) return { ok: false, error: "Email ou mot de passe incorrect." };
 
   // Un compte vendeur (même méthode d'auth) ne doit jamais ouvrir l'admin.
-  const { data: admin, error: adminError } = await supabaseAdmin
+  const { data: admin } = await supabaseAdmin
     .from("admins")
     .select("user_id")
     .eq("user_id", data.user.id)
     .maybeSingle();
 
-  // Repli tant que la migration 0012 n'est pas passée (table `admins` absente).
-  if (!admin && adminError?.code !== "42P01") {
+  if (!admin) {
     await supabase.auth.signOut();
     return { ok: false, error: "Ce compte n'est pas autorisé à accéder à l'administration." };
   }

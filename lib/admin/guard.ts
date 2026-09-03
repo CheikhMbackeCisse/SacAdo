@@ -19,16 +19,13 @@ export async function requireAdmin() {
     throw new Error("Non autorisé.");
   }
 
-  const { data: admin, error } = await supabaseAdmin
+  const { data: admin } = await supabaseAdmin
     .from("admins")
     .select("user_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  // Repli tant que la migration 0012 n'est pas passée (table `admins` absente).
-  const tableAbsente = error?.code === "42P01";
-
-  if (!admin && !tableAbsente) {
+  if (!admin) {
     throw new Error("Non autorisé.");
   }
 

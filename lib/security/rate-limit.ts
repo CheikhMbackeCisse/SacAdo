@@ -2,13 +2,26 @@ import "server-only";
 import { headers } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-// L'IP vient de x-forwarded-for, posé par Vercel (le premier maillon de la
-// chaîne est le vrai client). En local ce header est souvent absent, d'où le
-// repli sur "local" — sans impact en production.
+// IP du client pour le rate limiting. IMPORTANT : sur Vercel, la 1re valeur de
+// `x-forwarded-for` peut être FALSIFIÉE par le client (il suffit d'envoyer son
+// propre en-tête, Vercel se contente d'y ajouter la vraie IP). On privilégie
+// donc `x-vercel-forwarded-for` / `x-real-ip`, posés par l'infra Vercel et non
+// contrôlables par le client ; en dernier recours on prend la DERNIÈRE valeur
+// de `x-forwarded-for` (celle ajoutée par le proxy de confiance).
+// En local ces en-têtes sont absents → repli "local" (sans impact en prod).
 export async function getClientIp(): Promise<string> {
   const hdrs = await headers();
+
+  const vercel = hdrs.get("x-vercel-forwarded-for") ?? hdrs.get("x-real-ip");
+  if (vercel) return vercel.split(",")[0].trim();
+
   const forwarded = hdrs.get("x-forwarded-for");
-  return forwarded?.split(",")[0]?.trim() || "local";
+  if (forwarded) {
+    const parts = forwarded.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+
+  return "local";
 }
 
 // true = autorisé, false = limite atteinte (à qui appelle de refuser l'action

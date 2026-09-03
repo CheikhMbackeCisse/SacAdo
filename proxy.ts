@@ -76,19 +76,16 @@ export default async function proxy(request: NextRequest) {
     return isLoginPage ? response : redirectTo("/admin/login");
   }
 
-  const { data: admin, error: adminError } = await supabase
+  // Le client `supabase` ici est lié à la session (rôle anon) : la policy RLS
+  // « Admin lit sa ligne » (0012) ne renvoie la ligne que si l'utilisateur est
+  // bien admin. Un vendeur / simple connecté n'obtient rien -> pas d'accès.
+  const { data: admin } = await supabase
     .from("admins")
     .select("user_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  // Repli : tant que la migration 0012 n'est pas passée (table absente), on
-  // garde l'ancien comportement (connecté = admin) pour ne pas verrouiller le
-  // back-office pendant la fenêtre de déploiement.
-  const tableAdminsAbsente = adminError?.code === "42P01";
-
-  if (!admin && !tableAdminsAbsente) {
-    // Connecté mais pas admin (ex. un vendeur) : jamais d'accès à /admin.
+  if (!admin) {
     return isLoginPage ? response : redirectTo("/admin/login");
   }
 
