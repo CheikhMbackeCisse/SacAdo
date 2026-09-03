@@ -7,7 +7,7 @@ import { GAMMES } from "@/lib/gammes";
 import { ChampSelect } from "@/components/ui/champ-select";
 import type { Cycle, Gamme } from "@/lib/supabase/types";
 
-const CHAMP = "rounded-lg border border-ink/15 px-2 py-1.5 text-sm";
+const CHAMP = "rounded-lg border border-ink/15 min-h-11 px-3 text-sm";
 
 export function NouveauKitForm() {
   const router = useRouter();
@@ -45,15 +45,15 @@ export function NouveauKitForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-3 rounded-2xl border border-ink/10 bg-white p-4"
+      className="flex flex-col gap-3 rounded-2xl border border-ink/10 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-end"
     >
-      <label className="flex flex-col gap-1 text-xs">
+      <label className="flex flex-col gap-1 text-xs sm:w-auto">
         <span className="text-ink/60">Cycle</span>
         <ChampSelect
           ariaLabel="Cycle"
           placeholder="Choisir un cycle…"
           className={CHAMP}
-          wrapperClassName="w-40"
+          wrapperClassName="w-full sm:w-40"
           value={cycle}
           onChange={(v) => setCycle(v as Cycle | "")}
           options={[
@@ -65,27 +65,27 @@ export function NouveauKitForm() {
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-xs">
+      <label className="flex flex-col gap-1 text-xs sm:w-auto">
         <span className="text-ink/60">Gamme</span>
         <ChampSelect
           ariaLabel="Gamme"
           placeholder="Choisir une gamme…"
           className={CHAMP}
-          wrapperClassName="w-40"
+          wrapperClassName="w-full sm:w-40"
           value={gamme}
           onChange={(v) => setGamme(v as Gamme | "")}
           options={GAMMES.map((g) => ({ value: g.value, label: g.label }))}
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-xs">
+      <label className="flex flex-col gap-1 text-xs sm:w-auto">
         <span className="text-ink/60">Niveau</span>
         <input
           required
           value={niveau}
           onChange={(event) => setNiveau(event.target.value)}
           placeholder="CE2"
-          className="w-28 rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+          className="min-h-11 w-full rounded-lg border border-ink/15 px-3 text-sm sm:w-28"
         />
       </label>
 
@@ -96,14 +96,14 @@ export function NouveauKitForm() {
           value={nom}
           onChange={(event) => setNom(event.target.value)}
           placeholder="Kit CE2"
-          className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+          className="rounded-lg border border-ink/15 min-h-11 px-3 text-sm"
         />
       </label>
 
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
+        className="rounded-full bg-brand min-h-11 px-4 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
       >
         Créer
       </button>

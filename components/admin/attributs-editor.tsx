@@ -38,7 +38,7 @@ export function AttributsEditor({ attributs }: { attributs: Attribut[] }) {
   };
 
   const champ =
-    "rounded-lg border border-ink/15 px-2 py-1.5 text-sm focus:border-brand focus:outline-none";
+    "rounded-lg border border-ink/15 min-h-11 px-3 text-sm focus:border-brand focus:outline-none";
 
   return (
     <div className="flex max-w-2xl flex-col gap-5">
@@ -135,7 +135,7 @@ export function AttributsEditor({ attributs }: { attributs: Attribut[] }) {
                       renommerAttribut(attribut.id, event.target.value).then(apres);
                     }
                   }}
-                  className="flex-1 rounded-lg border border-ink/15 px-2 py-1 text-sm"
+                  className="flex-1 rounded-lg border border-ink/15 min-h-10 px-3 text-sm"
                 />
                 <button
                   type="button"
@@ -168,7 +168,7 @@ export function AttributsEditor({ attributs }: { attributs: Attribut[] }) {
               });
             }}
             disabled={!nouveau.trim()}
-            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface active:scale-95 disabled:opacity-40"
+            className="rounded-full bg-brand min-h-11 px-4 text-sm font-semibold text-surface active:scale-95 disabled:opacity-40"
           >
             Ajouter
           </button>

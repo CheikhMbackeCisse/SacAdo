@@ -125,19 +125,19 @@ function CarteModeration({ item }: { item: ProduitAModererer }) {
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
-      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
         <button
           type="button"
           disabled={busy}
           onClick={() => lancer(() => accepterPrix(produit.id), "accepter")}
-          className="flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-brand px-4 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
         >
           {action === "accepter" ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
           Publier à {formatPrice(prixEnJeu)}
         </button>
 
         <div className="flex items-end gap-2">
-          <label className="flex flex-col gap-1 text-xs text-ink/55">
+          <label className="flex flex-1 flex-col gap-1 text-xs text-ink/55 sm:flex-none">
             Contre-proposer
             <input
               type="number"
@@ -146,21 +146,21 @@ function CarteModeration({ item }: { item: ProduitAModererer }) {
               value={contrePrix}
               onChange={(e) => setContrePrix(e.target.value)}
               disabled={busy || limiteAtteinte}
-              className="no-spinner w-32 rounded-lg border border-ink/15 px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none disabled:opacity-50"
+              className="no-spinner min-h-11 w-full rounded-lg border border-ink/15 px-2 text-sm text-ink focus:border-brand focus:outline-none disabled:opacity-50 sm:w-32"
             />
           </label>
           <button
             type="button"
             disabled={busy || limiteAtteinte}
             onClick={() => lancer(() => contreProposer(produit.id, Number(contrePrix)), "contre")}
-            className="rounded-full border border-ink/15 px-3 py-1.5 text-sm font-medium text-ink/70 hover:bg-ink/5 disabled:opacity-50"
+            className="min-h-11 shrink-0 rounded-full border border-ink/15 px-3 text-sm font-medium text-ink/70 hover:bg-ink/5 disabled:opacity-50"
           >
             {action === "contre" ? <Loader2 size={14} className="animate-spin" /> : "Envoyer"}
           </button>
         </div>
 
         <div className="flex items-end gap-2">
-          <label className="flex flex-col gap-1 text-xs text-ink/55">
+          <label className="flex flex-1 flex-col gap-1 text-xs text-ink/55 sm:flex-none">
             Refuser — motif (facultatif)
             <input
               type="text"
@@ -168,14 +168,14 @@ function CarteModeration({ item }: { item: ProduitAModererer }) {
               onChange={(e) => setMotif(e.target.value)}
               disabled={busy}
               maxLength={300}
-              className="w-52 rounded-lg border border-ink/15 px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none disabled:opacity-50"
+              className="min-h-11 w-full rounded-lg border border-ink/15 px-2 text-sm text-ink focus:border-brand focus:outline-none disabled:opacity-50 sm:w-52"
             />
           </label>
           <button
             type="button"
             disabled={busy}
             onClick={() => lancer(() => refuserProduit(produit.id, motif), "refuser")}
-            className="rounded-full border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="min-h-11 shrink-0 rounded-full border border-red-200 px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
           >
             {action === "refuser" ? <Loader2 size={14} className="animate-spin" /> : "Refuser"}
           </button>

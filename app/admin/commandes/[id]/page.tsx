@@ -5,6 +5,7 @@ import { formatPrice } from "@/lib/format";
 import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
 import { StatutSelect } from "@/components/admin/statut-select";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
+import { TableauDesktop } from "@/components/admin/liste-mobile";
 
 export default async function AdminCommandeDetailPage(props: PageProps<"/admin/commandes/[id]">) {
   const { id } = await props.params;
@@ -82,7 +83,23 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
         )}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-ink/10 bg-white">
+      <ul className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white px-4 text-sm lg:hidden">
+        {items.map((item) => (
+          <li key={item.id} className="flex items-baseline justify-between gap-3 py-3">
+            <span className="min-w-0 text-ink">
+              {item.produit_nom}
+              <span className="block text-xs text-ink/45">
+                {item.quantite} × {formatPrice(item.prix_unitaire)}
+              </span>
+            </span>
+            <span className="shrink-0 font-medium text-ink">
+              {formatPrice(item.prix_unitaire * item.quantite)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <TableauDesktop>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink/10 text-left text-xs text-ink/50">
@@ -105,7 +122,7 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
             ))}
           </tbody>
         </table>
-      </div>
+      </TableauDesktop>
 
       <div className="flex flex-col gap-1 rounded-2xl border border-ink/10 bg-white p-4 text-sm">
         <div className="flex justify-between text-ink/70">

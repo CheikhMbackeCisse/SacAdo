@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { chercherClientParTelephone, type ClientAvecCommandes } from "@/lib/admin/reporting-actions";
 import { formatPrice } from "@/lib/format";
+import { CarteListe, CartesListe, ChampCarte, TableauDesktop } from "@/components/admin/liste-mobile";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -29,21 +30,23 @@ export default function AdminClientsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-heading text-xl font-bold text-ink">Commandes par client</h1>
 
-      <form onSubmit={handleSubmit} className="flex items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <label className="flex flex-1 flex-col gap-1 text-xs sm:max-w-xs">
           <span className="text-ink/60">Téléphone</span>
           <input
             required
+            type="tel"
+            inputMode="tel"
             value={telephone}
             onChange={(event) => setTelephone(event.target.value)}
             placeholder="77 123 45 67"
-            className="rounded-lg border border-ink/15 px-3 py-2 text-sm"
+            className="min-h-11 rounded-lg border border-ink/15 px-3 text-sm"
           />
         </label>
         <button
           type="submit"
           disabled={recherche}
-          className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface active:scale-95"
+          className="min-h-11 rounded-full bg-brand px-4 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
         >
           Rechercher
         </button>
@@ -62,7 +65,25 @@ export default function AdminClientsPage() {
             </p>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-ink/10 bg-white">
+          <CartesListe>
+            {client.commandes.map((commande) => (
+              <CarteListe key={commande.id}>
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    href={`/admin/commandes/${commande.id}`}
+                    className="font-semibold text-brand hover:underline"
+                  >
+                    Commande #{commande.id}
+                  </Link>
+                  <span className="text-xs text-ink/50">{formatDate(commande.date)}</span>
+                </div>
+                <ChampCarte label="Total">{formatPrice(commande.total)}</ChampCarte>
+                <ChampCarte label="Statut">{commande.statut}</ChampCarte>
+              </CarteListe>
+            ))}
+          </CartesListe>
+
+          <TableauDesktop>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ink/10 text-left text-xs text-ink/50">
@@ -89,7 +110,7 @@ export default function AdminClientsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableauDesktop>
         </div>
       )}
     </div>

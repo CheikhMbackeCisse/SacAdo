@@ -8,7 +8,7 @@ import { ChampSelect } from "@/components/ui/champ-select";
 import type { Categorie, Produit, SousCategorie } from "@/lib/supabase/types";
 
 const CHAMP =
-  "rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25";
+  "min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25";
 
 type Props = {
   produit?: Produit;
@@ -155,11 +155,11 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
           required
           value={nom}
           onChange={(event) => setNom(event.target.value)}
-          className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          className="min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
         />
       </label>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-ink/60">Catégorie</span>
           <ChampSelect
@@ -223,7 +223,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
         </span>
       </label>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-ink/60">Prix (FCFA)</span>
           <input
@@ -233,7 +233,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
             min={0}
             value={prix}
             onChange={(event) => setPrix(event.target.value)}
-            className="no-spinner rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+            className="no-spinner min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>
 
@@ -245,7 +245,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
             min={0}
             value={stock}
             onChange={(event) => setStock(event.target.value)}
-            className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+            className="min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>
 
@@ -257,7 +257,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
             min={0}
             value={seuilAlerte}
             onChange={(event) => setSeuilAlerte(event.target.value)}
-            className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+            className="min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>
       </div>
@@ -267,7 +267,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
         <select
           value={statut}
           onChange={(event) => setStatut(event.target.value as ProduitInput["statut"])}
-          className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          className="min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
         >
           <option value="dispo">Disponible</option>
           <option value="sur_commande">Sur commande</option>
@@ -283,7 +283,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
         <input
           value={photo}
           onChange={(event) => setPhoto(event.target.value)}
-          className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          className="min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
         />
       </label>
 
@@ -299,7 +299,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
       <button
         type="submit"
         disabled={submitting}
-        className="self-start rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-surface transition-transform active:scale-95 disabled:opacity-50"
+        className="self-start min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-surface transition-transform active:scale-95 disabled:opacity-50"
       >
         {submitting ? "Enregistrement…" : produit ? "Enregistrer" : "Créer le produit"}
       </button>

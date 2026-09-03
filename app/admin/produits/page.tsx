@@ -4,6 +4,7 @@ import { getProduitsAdminPage } from "@/lib/admin/produits-actions";
 import { getCategoriesAdmin } from "@/lib/admin/categories-actions";
 import { formatPrice } from "@/lib/format";
 import { DeleteProduitButton } from "@/components/admin/delete-produit-button";
+import { CarteListe, CartesListe, ChampCarte, TableauDesktop } from "@/components/admin/liste-mobile";
 
 const TAILLE_PAGE = 50;
 
@@ -31,7 +32,44 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white">
+      {produits.length === 0 ? (
+        <p className="rounded-2xl border border-ink/10 bg-white px-4 py-8 text-center text-sm text-ink/50">
+          Aucun produit.
+        </p>
+      ) : (
+        <CartesListe>
+          {produits.map((produit) => {
+            const stockBas = produit.stock <= produit.seuil_alerte;
+            return (
+              <CarteListe key={produit.id}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-ink">{produit.nom}</p>
+                  <span className="shrink-0 text-xs text-ink/50">{produit.statut}</span>
+                </div>
+                <ChampCarte label="Catégorie">
+                  {nomCategorie.get(produit.categorie_id) ?? "—"}
+                </ChampCarte>
+                <ChampCarte label="Prix">{formatPrice(produit.prix)}</ChampCarte>
+                <ChampCarte label="Stock / délai">
+                  <span className={stockBas ? "font-medium text-red-600" : ""}>{produit.stock}</span>
+                  <span className="text-ink/50"> · {produit.delai}</span>
+                </ChampCarte>
+                <div className="mt-1.5 flex justify-end gap-4 border-t border-ink/10 pt-2">
+                  <Link
+                    href={`/admin/produits/${produit.id}`}
+                    className="text-sm font-medium text-brand hover:underline"
+                  >
+                    Modifier
+                  </Link>
+                  <DeleteProduitButton id={produit.id} nom={produit.nom} />
+                </div>
+              </CarteListe>
+            );
+          })}
+        </CartesListe>
+      )}
+
+      <TableauDesktop>
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-ink/10 text-left text-xs text-ink/50">
@@ -70,16 +108,9 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
                 </tr>
               );
             })}
-            {produits.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-ink/50">
-                  Aucun produit.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
-      </div>
+      </TableauDesktop>
 
       {(page > 1 || hasMore) && (
         <div className="flex items-center justify-between text-sm">

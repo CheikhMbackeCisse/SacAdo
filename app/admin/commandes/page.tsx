@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCommandesAdmin } from "@/lib/admin/commandes-actions";
 import { formatPrice } from "@/lib/format";
 import { StatutSelect } from "@/components/admin/statut-select";
+import { CarteListe, CartesListe, ChampCarte, TableauDesktop } from "@/components/admin/liste-mobile";
 import type { StatutCommande } from "@/lib/supabase/types";
 
 const STATUTS: { value: StatutCommande | "toutes"; label: string }[] = [
@@ -57,7 +58,45 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white">
+      {commandes.length === 0 ? (
+        <p className="rounded-2xl border border-ink/10 bg-white px-4 py-8 text-center text-sm text-ink/50">
+          Aucune commande.
+        </p>
+      ) : (
+        <CartesListe>
+          {commandes.map((commande) => (
+            <CarteListe key={commande.id}>
+              <div className="flex items-center justify-between gap-2">
+                <Link
+                  href={`/admin/commandes/${commande.id}`}
+                  className="font-semibold text-brand hover:underline"
+                >
+                  Commande #{commande.id}
+                </Link>
+                <span className="text-xs text-ink/50">{formatDate(commande.date)}</span>
+              </div>
+              <ChampCarte label="Client">
+                {commande.client_nom}
+                <span className="block text-xs text-ink/40">{commande.client_telephone}</span>
+              </ChampCarte>
+              <ChampCarte label="Total">
+                {formatPrice(commande.total)}
+                {commande.mode_paiement === "wave" && (
+                  <span className="ml-1.5 rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium text-ink/50">
+                    Wave{commande.statut_paiement === "payee" ? " ✓" : ""}
+                  </span>
+                )}
+              </ChampCarte>
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <span className="text-xs text-ink/50">Statut</span>
+                <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
+              </div>
+            </CarteListe>
+          ))}
+        </CartesListe>
+      )}
+
+      <TableauDesktop>
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-ink/10 text-left text-xs text-ink/50">
@@ -95,16 +134,9 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
                 </td>
               </tr>
             ))}
-            {commandes.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-ink/50">
-                  Aucune commande.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
-      </div>
+      </TableauDesktop>
 
       {(page > 1 || hasMore) && (
         <div className="flex items-center justify-between text-sm">

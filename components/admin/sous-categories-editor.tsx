@@ -108,7 +108,7 @@ export function SousCategoriesEditor({ sousCategories, categories }: Props) {
           <ChampSelect
             ariaLabel="Catégorie"
             placeholder="Choisir une catégorie…"
-            className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-ink/15 min-h-11 px-3 text-sm"
             wrapperClassName="w-48"
             value={nouvelleCategorie === null ? "" : String(nouvelleCategorie)}
             onChange={(v) => setNouvelleCategorie(v === "" ? null : Number(v))}
@@ -122,14 +122,14 @@ export function SousCategoriesEditor({ sousCategories, categories }: Props) {
             value={nouveauNom}
             onChange={(event) => setNouveauNom(event.target.value)}
             placeholder="Ex. : Mathématiques"
-            className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-ink/15 min-h-11 px-3 text-sm"
           />
         </label>
 
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
+          className="rounded-full bg-brand min-h-11 px-4 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
         >
           Ajouter
         </button>
@@ -155,13 +155,13 @@ export function SousCategoriesEditor({ sousCategories, categories }: Props) {
                       defaultValue={sc.ordre}
                       aria-label={`Ordre de ${sc.nom}`}
                       onBlur={(event) => changerOrdre(sc, Number(event.target.value))}
-                      className="w-14 rounded-lg border border-ink/15 px-2 py-1 text-sm"
+                      className="w-14 rounded-lg border border-ink/15 min-h-10 px-3 text-sm"
                     />
                     <input
                       defaultValue={sc.nom}
                       aria-label={`Nom de ${sc.nom}`}
                       onBlur={(event) => renommer(sc, event.target.value)}
-                      className="flex-1 rounded-lg border border-ink/15 px-2 py-1 text-sm"
+                      className="flex-1 rounded-lg border border-ink/15 min-h-10 px-3 text-sm"
                     />
                     <code className="hidden text-[11px] text-ink/35 sm:inline">{sc.slug}</code>
                     <button

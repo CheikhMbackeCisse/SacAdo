@@ -67,13 +67,13 @@ export function CategoriesEditor({ categories }: { categories: Categorie[] }) {
             value={nouveauNom}
             onChange={(event) => setNouveauNom(event.target.value)}
             placeholder="Ex. : Instruments de musique"
-            className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-ink/15 min-h-11 px-3 text-sm"
           />
         </label>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
+          className="rounded-full bg-brand min-h-11 px-4 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50"
         >
           Ajouter
         </button>
@@ -81,7 +81,7 @@ export function CategoriesEditor({ categories }: { categories: Categorie[] }) {
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
-      <div className="overflow-hidden rounded-2xl border border-ink/10 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink/10 text-left text-xs text-ink/50">
@@ -101,7 +101,7 @@ export function CategoriesEditor({ categories }: { categories: Categorie[] }) {
                     defaultValue={cat.ordre}
                     aria-label={`Ordre de ${cat.nom}`}
                     onBlur={(event) => enregistrer(cat, { ordre: Number(event.target.value) })}
-                    className="w-14 rounded-lg border border-ink/15 px-2 py-1 text-sm"
+                    className="w-14 rounded-lg border border-ink/15 min-h-10 px-3 text-sm"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -109,7 +109,7 @@ export function CategoriesEditor({ categories }: { categories: Categorie[] }) {
                     defaultValue={cat.nom}
                     aria-label={`Nom de ${cat.nom}`}
                     onBlur={(event) => enregistrer(cat, { nom: event.target.value })}
-                    className="w-full rounded-lg border border-ink/15 px-2 py-1 text-sm"
+                    className="w-full rounded-lg border border-ink/15 min-h-10 px-3 text-sm"
                   />
                   <code className="text-[11px] text-ink/35">{cat.slug}</code>
                 </td>

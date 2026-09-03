@@ -79,7 +79,7 @@ export function KitItemsManager({
                   min={1}
                   defaultValue={item.quantite_defaut}
                   onBlur={(event) => changerQuantite(item.id, Number(event.target.value))}
-                  className="w-16 rounded-lg border border-ink/15 px-2 py-1 text-sm"
+                  className="w-16 rounded-lg border border-ink/15 min-h-10 px-3 text-sm"
                 />
                 <button type="button" onClick={() => retirer(item.id)} className="text-red-600 hover:underline">
                   Retirer
@@ -91,35 +91,37 @@ export function KitItemsManager({
       )}
 
       {produitsDisponibles.length > 0 && (
-        <div className="flex items-end gap-2 border-t border-ink/10 pt-3">
+        <div className="flex flex-col gap-3 border-t border-ink/10 pt-3 sm:flex-row sm:items-end sm:gap-2">
           <label className="flex flex-1 flex-col gap-1 text-xs">
             <span className="text-ink/60">Ajouter un article</span>
             <ChampSelect
               ariaLabel="Article à ajouter au kit"
               placeholder="Choisir un article…"
-              className="rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
+              className="min-h-11 rounded-lg border border-ink/15 px-3 text-sm"
               value={produitId === "" ? "" : String(produitId)}
               onChange={(v) => setProduitId(v === "" ? "" : Number(v))}
               options={produitsDisponibles.map((p) => ({ value: String(p.id), label: p.nom }))}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="text-ink/60">Qté</span>
-            <input
-              type="number"
-              min={1}
-              value={quantite}
-              onChange={(event) => setQuantite(event.target.value)}
-              className="w-16 rounded-lg border border-ink/15 px-2 py-1.5 text-sm"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={ajouter}
-            className="rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-surface active:scale-95"
-          >
-            Ajouter
-          </button>
+          <div className="flex items-end gap-2">
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="text-ink/60">Qté</span>
+              <input
+                type="number"
+                min={1}
+                value={quantite}
+                onChange={(event) => setQuantite(event.target.value)}
+                className="min-h-11 w-16 rounded-lg border border-ink/15 px-3 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={ajouter}
+              className="min-h-11 flex-1 rounded-full bg-brand px-4 text-sm font-semibold text-surface active:scale-95 sm:flex-none"
+            >
+              Ajouter
+            </button>
+          </div>
         </div>
       )}
 
