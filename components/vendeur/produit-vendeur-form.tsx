@@ -174,7 +174,10 @@ export function ProduitVendeurForm({
       return;
     }
 
-    router.push("/vendeur/produits");
+    // Après création, on ouvre la fiche du produit : c'est là que se trouve la
+    // section « Variantes » (Couleur, Taille…), qui a besoin de son id.
+    const idCree = !produit && "id" in result ? result.id : undefined;
+    router.push(idCree ? `/vendeur/produits/${idCree}` : "/vendeur/produits");
     router.refresh();
   };
 
@@ -371,6 +374,13 @@ export function ProduitVendeurForm({
       </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
+
+      {!produit && (
+        <p className="text-[11px] text-[#001314]/45">
+          Les variantes (Couleur, Taille…) et leurs stocks se déclarent juste après, sur la
+          fiche du produit.
+        </p>
+      )}
 
       <div className="flex items-center gap-3">
         <button

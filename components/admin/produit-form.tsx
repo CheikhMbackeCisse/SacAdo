@@ -136,7 +136,11 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
       return;
     }
 
-    router.push("/admin/produits");
+    // Après création, on ouvre directement la fiche du produit : c'est là que
+    // se trouve la section « Variantes » (Couleur, Taille…), qui a besoin de
+    // l'id du produit.
+    const idCree = !produit && "id" in result ? result.id : undefined;
+    router.push(idCree ? `/admin/produits/${idCree}` : "/admin/produits");
     router.refresh();
   };
 
@@ -284,6 +288,13 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
       </label>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
+
+      {!produit && (
+        <p className="text-[11px] text-ink/45">
+          Les variantes (Couleur, Taille…) et leurs stocks se configurent juste après, sur
+          la fiche du produit.
+        </p>
+      )}
 
       <button
         type="submit"
