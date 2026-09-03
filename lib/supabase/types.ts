@@ -227,6 +227,16 @@ export type Vendeur = {
   date_creation: string;
 };
 
+// Point de retrait de marchandise, saisi dans l'admin (migration 0028).
+export type Fournisseur = {
+  id: number;
+  nom: string;
+  adresse: string | null;
+  lat: number | null;
+  lng: number | null;
+  created_at: string;
+};
+
 export type TypeMessage = "commande" | "info" | "promo";
 
 export type Message = {

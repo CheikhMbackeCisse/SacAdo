@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Tags,
+  Truck,
+  Warehouse,
   Users,
   X,
 } from "lucide-react";
@@ -23,6 +25,7 @@ import { signOut } from "@/lib/admin/auth-actions";
 
 const LIENS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/admin/livraisons", label: "Livraisons", icon: Truck },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },
   { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/moderation", label: "Modération vendeurs", icon: ShieldCheck },
@@ -31,6 +34,7 @@ const LIENS = [
   { href: "/admin/attributs", label: "Attributs", icon: SlidersHorizontal },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
   { href: "/admin/zones", label: "Zones", icon: MapPin },
+  { href: "/admin/fournisseurs", label: "Fournisseurs", icon: Warehouse },
   { href: "/admin/ventes", label: "Articles vendus", icon: BarChart3 },
   { href: "/admin/clients", label: "Clients", icon: Users },
 ] as const;
