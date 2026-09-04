@@ -17,18 +17,18 @@ via RPC `suggestions_recherche(p_terme)` et `rechercher_produits(...)`.
 
 | Lot | Contenu | État | Commit |
 |-----|---------|------|--------|
-| 1 | Migration `0030` : table `sous_sous_categories` + `produits.sous_sous_categorie_id` (nullable) + seed ciblé (Électronique) + trigger de cohérence. Types TS + requêtes lecture. | ✅ livré (migration à exécuter) | `TBD` |
-| 2 | Formulaire produit **vendeur** + **admin** : 3e select en cascade, affiché seulement si la sous-catégorie a des sous-sous-catégories, obligatoire seulement s'il apparaît. Règle selects CORRECTION_SELECTS_V2 (placeholder neutre, rien de présélectionné). | ✅ livré | `TBD` |
-| 3 | Recherche : RPC + suggestions renvoient aussi **catégories** et **sous-sous-catégories** ; terme large → rayons d'abord. Page catégorie : filtre `?ssc=`. Indexation nom produit + cat + sous-cat + sous-sous-cat. | ✅ livré | `TBD` |
-| 4 | Admin : vue arbre 3 niveaux dans « Catégories » (créer / renommer / réordonner / supprimer à chaque niveau). Responsive. | ✅ livré | `TBD` |
-| 5 | Vérif finale + liste des migrations à exécuter + checklist de test. | ✅ livré (vérif humaine restante) | `TBD` |
+| 1 | Migration `0030` : table `sous_sous_categories` + `produits.sous_sous_categorie_id` (nullable) + seed ciblé (Électronique) + trigger de cohérence. Types TS + requêtes lecture. | ✅ livré, migration exécutée | `f460346` |
+| 2 | Formulaire produit **vendeur** + **admin** : 3e select en cascade, affiché seulement si la sous-catégorie a des sous-sous-catégories, obligatoire seulement s'il apparaît. Règle selects CORRECTION_SELECTS_V2 (placeholder neutre, rien de présélectionné). | ✅ livré | `b0c3cad` |
+| 3 | Recherche : RPC + suggestions renvoient aussi **catégories** et **sous-sous-catégories** ; terme large → rayons d'abord. Page catégorie : filtre `?ssc=`. Indexation nom produit + cat + sous-cat + sous-sous-cat. | ✅ livré, migration exécutée | `25d2d01` |
+| 4 | Admin : vue arbre 3 niveaux dans « Catégories » (créer / renommer / réordonner / supprimer à chaque niveau). Responsive. | ✅ livré | `70d7dab` |
+| 5 | Vérif finale + liste des migrations à exécuter + checklist de test. | ✅ livré ; migrations EXÉCUTÉES 2026-09-04, vérif fonctionnelle + push/déploiement restants | — |
 
 ## Migrations à exécuter par le fondateur (dans le SQL Editor Supabase)
 
-- [ ] `0030_sous_sous_categories.sql` — (Lot 1)
-- [ ] `0031_recherche_multi_niveaux.sql` — (Lot 3)
+- [x] `0030_sous_sous_categories.sql` — (Lot 1) — EXÉCUTÉE 2026-09-04
+- [x] `0031_recherche_multi_niveaux.sql` — (Lot 3) — EXÉCUTÉE 2026-09-04
 
-## Vérifications finales (spec §Vérification) — à faire après exécution des migrations
+## Vérifications finales (spec §Vérification) — migrations exécutées, à vérifier en conditions réelles
 
 - [ ] Un produit d'électronique se range Catégorie > Sous-cat > Sous-sous-cat
       (ex. Électronique > Capteurs > Capteurs de température).
@@ -88,6 +88,6 @@ via RPC `suggestions_recherche(p_terme)` et `rechercher_produits(...)`.
   `/admin/categories` (compat liens/favoris existants) ; entrée de nav
   « Sous-catégories » retirée. Anciens `categories-editor.tsx` /
   `sous-categories-editor.tsx` supprimés (remplacés). `tsc` + `eslint` OK.
-- **Lot 5** — ce fichier. Reste une vérification humaine en conditions réelles
-  après exécution des migrations 0030 et 0031 (voir cases à cocher plus haut) :
-  je n'ai pas pu me connecter à l'admin ni exécuter de SQL depuis cette session.
+- **Lot 5** — ce fichier. Migrations 0030 et 0031 **EXÉCUTÉES par le fondateur
+  le 2026-09-04**. Reste : vérifier la checklist ci-dessus en conditions
+  réelles, puis push/déploiement.
