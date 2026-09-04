@@ -4,8 +4,9 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { creerProduit, modifierProduit, type ProduitInput } from "@/lib/admin/produits-actions";
 import { creerSousCategorie } from "@/lib/admin/sous-categories-actions";
+import { creerSousSousCategorie } from "@/lib/admin/sous-sous-categories-actions";
 import { ChampSelect } from "@/components/ui/champ-select";
-import type { Categorie, Produit, SousCategorie } from "@/lib/supabase/types";
+import type { Categorie, Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
 const CHAMP =
   "min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25";
@@ -14,9 +15,10 @@ type Props = {
   produit?: Produit;
   categories: Categorie[];
   sousCategories: SousCategorie[];
+  sousSousCategories: SousSousCategorie[];
 };
 
-export function ProduitForm({ produit, categories, sousCategories }: Props) {
+export function ProduitForm({ produit, categories, sousCategories, sousSousCategories }: Props) {
   const router = useRouter();
 
   // "Kits scolaires" ne porte pas de produits (ils vivent dans la table kits).
@@ -32,6 +34,9 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
   const [sousCategorieId, setSousCategorieId] = useState<number | null>(
     produit?.sous_categorie_id ?? null,
   );
+  const [sousSousCategorieId, setSousSousCategorieId] = useState<number | null>(
+    produit?.sous_sous_categorie_id ?? null,
+  );
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
   const [delai, setDelai] = useState<ProduitInput["delai"] | "">(produit?.delai ?? "");
   const [photo, setPhoto] = useState(produit?.photo ?? "");
@@ -46,9 +51,19 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
   const [nouvelleSousCat, setNouvelleSousCat] = useState("");
   const [creationEnCours, setCreationEnCours] = useState(false);
 
+  // Idem pour le 3e niveau, optionnel (SOUS_SOUS_CATEGORIES.md).
+  const [sousSousCatsAjoutees, setSousSousCatsAjoutees] = useState<SousSousCategorie[]>([]);
+  const [nouvelleSousSousCat, setNouvelleSousSousCat] = useState("");
+  const [creationSousSousEnCours, setCreationSousSousEnCours] = useState(false);
+
   const toutesSousCats = useMemo(
     () => [...sousCategories, ...sousCatsAjoutees],
     [sousCategories, sousCatsAjoutees],
+  );
+
+  const toutesSousSousCats = useMemo(
+    () => [...sousSousCategories, ...sousSousCatsAjoutees],
+    [sousSousCategories, sousSousCatsAjoutees],
   );
 
   const sousCatsDeLaCategorie = useMemo(
@@ -59,7 +74,17 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
     [toutesSousCats, categorieId],
   );
 
+  const sousSousCatsDeLaSousCategorie = useMemo(
+    () =>
+      toutesSousSousCats
+        .filter((ssc) => ssc.sous_categorie_id === sousCategorieId)
+        .sort((a, b) => a.ordre - b.ordre || a.nom.localeCompare(b.nom)),
+    [toutesSousSousCats, sousCategorieId],
+  );
+
   const sousCategorieRequise = categorieId !== "" && sousCatsDeLaCategorie.length > 0;
+  const sousSousCategorieRequise =
+    sousCategorieId != null && sousSousCatsDeLaSousCategorie.length > 0;
 
   const changerCategorie = (valeur: number | "") => {
     setCategorieId(valeur);
@@ -67,6 +92,15 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
       (sc) => sc.id === sousCategorieId && sc.categorie_id === valeur,
     );
     if (!encoreValide) setSousCategorieId(null);
+    setSousSousCategorieId(null);
+  };
+
+  const changerSousCategorie = (valeur: number | null) => {
+    setSousCategorieId(valeur);
+    const encoreValide = toutesSousSousCats.some(
+      (ssc) => ssc.id === sousSousCategorieId && ssc.sous_categorie_id === valeur,
+    );
+    if (!encoreValide) setSousSousCategorieId(null);
   };
 
   const ajouterSousCat = async () => {
@@ -97,6 +131,34 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
     setNouvelleSousCat("");
   };
 
+  const ajouterSousSousCat = async () => {
+    const nomSSC = nouvelleSousSousCat.trim();
+    if (!nomSSC || sousCategorieId == null) return;
+    setCreationSousSousEnCours(true);
+    setError(null);
+    const result = await creerSousSousCategorie({
+      nom: nomSSC,
+      sous_categorie_id: sousCategorieId,
+      ordre: 0,
+    });
+    setCreationSousSousEnCours(false);
+    if (!result.ok || !result.id) {
+      setError(result.ok ? "Création impossible." : result.error);
+      return;
+    }
+    const creee: SousSousCategorie = {
+      id: result.id,
+      nom: nomSSC,
+      sous_categorie_id: sousCategorieId,
+      slug: "",
+      ordre: 0,
+      created_at: new Date().toISOString(),
+    };
+    setSousSousCatsAjoutees((current) => [...current, creee]);
+    setSousSousCategorieId(result.id);
+    setNouvelleSousSousCat("");
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -107,6 +169,10 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
     }
     if (sousCategorieRequise && sousCategorieId == null) {
       setError("Veuillez choisir une sous-catégorie.");
+      return;
+    }
+    if (sousSousCategorieRequise && sousSousCategorieId == null) {
+      setError("Veuillez choisir une sous-sous-catégorie.");
       return;
     }
     if (delai === "") {
@@ -120,6 +186,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
       nom: nom.trim(),
       categorie_id: categorieId,
       sous_categorie_id: sousCategorieId,
+      sous_sous_categorie_id: sousSousCategorieId,
       prix: Number(prix),
       delai,
       photo: photo.trim() || null,
@@ -202,7 +269,7 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
           }
           className={`${CHAMP} disabled:bg-ink/[0.04] disabled:text-ink/40`}
           value={sousCategorieId ? String(sousCategorieId) : ""}
-          onChange={(v) => setSousCategorieId(v ? Number(v) : null)}
+          onChange={(v) => changerSousCategorie(v ? Number(v) : null)}
           options={sousCatsDeLaCategorie.map((sc) => ({ value: String(sc.id), label: sc.nom }))}
         />
         <span className="flex flex-wrap items-center gap-2 pt-1">
@@ -222,6 +289,41 @@ export function ProduitForm({ produit, categories, sousCategories }: Props) {
           </button>
         </span>
       </label>
+
+      {/* 3e niveau : n'apparaît QUE si la sous-catégorie choisie en propose un
+          (SOUS_SOUS_CATEGORIES.md §2). */}
+      {sousCategorieId != null && sousSousCatsDeLaSousCategorie.length > 0 && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-ink/60">Sous-sous-catégorie</span>
+          <ChampSelect
+            ariaLabel="Sous-sous-catégorie"
+            placeholder="Choisir une sous-sous-catégorie…"
+            className={CHAMP}
+            value={sousSousCategorieId ? String(sousSousCategorieId) : ""}
+            onChange={(v) => setSousSousCategorieId(v ? Number(v) : null)}
+            options={sousSousCatsDeLaSousCategorie.map((ssc) => ({
+              value: String(ssc.id),
+              label: ssc.nom,
+            }))}
+          />
+          <span className="flex flex-wrap items-center gap-2 pt-1">
+            <input
+              value={nouvelleSousSousCat}
+              onChange={(event) => setNouvelleSousSousCat(event.target.value)}
+              placeholder="Nouvelle sous-sous-catégorie"
+              className="flex-1 rounded-lg border border-ink/15 px-2 py-1 text-xs focus:border-brand focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={ajouterSousSousCat}
+              disabled={creationSousSousEnCours || !nouvelleSousSousCat.trim()}
+              className="rounded-full border border-brand/40 px-3 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand/5 disabled:opacity-40"
+            >
+              Créer
+            </button>
+          </span>
+        </label>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">

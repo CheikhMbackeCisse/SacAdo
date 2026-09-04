@@ -46,6 +46,9 @@ export type ProduitInput = {
   nom: string;
   categorie_id: number;
   sous_categorie_id: number | null;
+  // 3e niveau, optionnel (SOUS_SOUS_CATEGORIES.md). Renseigné seulement si la
+  // sous-catégorie choisie en propose.
+  sous_sous_categorie_id: number | null;
   prix: number;
   delai: Delai;
   photo: string | null;
@@ -60,10 +63,22 @@ function validerProduitInput(input: ProduitInput): string | null {
   if (input.sous_categorie_id !== null && !Number.isInteger(input.sous_categorie_id)) {
     return "Sous-catégorie invalide.";
   }
+  if (input.sous_sous_categorie_id !== null && !Number.isInteger(input.sous_sous_categorie_id)) {
+    return "Sous-sous-catégorie invalide.";
+  }
   if (!estNombrePositifValide(input.prix)) return "Le prix doit être un nombre positif.";
   if (!estNombrePositifValide(input.stock)) return "Le stock doit être un nombre positif.";
   if (!estNombrePositifValide(input.seuil_alerte)) return "Le seuil d'alerte doit être un nombre positif.";
   return null;
+}
+
+// Postgres 42703 = « column does not exist » : repli tant que la migration 0030
+// (colonne sous_sous_categorie_id) n'est pas passée en prod.
+const COLONNE_ABSENTE = "42703";
+function sansSousSousCategorie(input: ProduitInput): Omit<ProduitInput, "sous_sous_categorie_id"> {
+  const reste: Partial<ProduitInput> = { ...input };
+  delete reste.sous_sous_categorie_id;
+  return reste as Omit<ProduitInput, "sous_sous_categorie_id">;
 }
 
 export async function creerProduit(input: ProduitInput): Promise<ActionResult & { id?: number }> {
@@ -71,7 +86,14 @@ export async function creerProduit(input: ProduitInput): Promise<ActionResult & 
   const erreur = validerProduitInput(input);
   if (erreur) return { ok: false, error: erreur };
 
-  const { data, error } = await supabaseAdmin.from("produits").insert(input).select().single();
+  let { data, error } = await supabaseAdmin.from("produits").insert(input).select().single();
+  if (error?.code === COLONNE_ABSENTE) {
+    ({ data, error } = await supabaseAdmin
+      .from("produits")
+      .insert(sansSousSousCategorie(input))
+      .select()
+      .single());
+  }
   if (error || !data) return { ok: false, error: "Impossible de créer le produit." };
   return { ok: true, id: data.id };
 }
@@ -81,7 +103,13 @@ export async function modifierProduit(id: number, input: ProduitInput): Promise<
   const erreur = validerProduitInput(input);
   if (erreur) return { ok: false, error: erreur };
 
-  const { error } = await supabaseAdmin.from("produits").update(input).eq("id", id);
+  let { error } = await supabaseAdmin.from("produits").update(input).eq("id", id);
+  if (error?.code === COLONNE_ABSENTE) {
+    ({ error } = await supabaseAdmin
+      .from("produits")
+      .update(sansSousSousCategorie(input))
+      .eq("id", id));
+  }
   if (error) return { ok: false, error: "Impossible de modifier le produit." };
   return { ok: true };
 }

@@ -29,6 +29,7 @@ import type {
   Commission,
   Produit,
   SousCategorie,
+  SousSousCategorie,
   VarianteAvecAttributs,
 } from "@/lib/supabase/types";
 import { calculerCommission, tauxCommission } from "@/lib/commissions";
@@ -43,6 +44,7 @@ export function ProduitVendeurForm({
   produit,
   categories,
   sousCategories,
+  sousSousCategories,
   commissions,
   attributs,
   variantesInitiales = [],
@@ -50,6 +52,7 @@ export function ProduitVendeurForm({
   produit?: Produit;
   categories: Categorie[];
   sousCategories: SousCategorie[];
+  sousSousCategories: SousSousCategorie[];
   commissions: Commission[];
   attributs: Attribut[];
   variantesInitiales?: VarianteAvecAttributs[];
@@ -70,6 +73,9 @@ export function ProduitVendeurForm({
   const [categorieId, setCategorieId] = useState<number | "">(produit?.categorie_id ?? "");
   const [sousCategorieId, setSousCategorieId] = useState<number | null>(
     produit?.sous_categorie_id ?? null,
+  );
+  const [sousSousCategorieId, setSousSousCategorieId] = useState<number | null>(
+    produit?.sous_sous_categorie_id ?? null,
   );
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
@@ -96,6 +102,7 @@ export function ProduitVendeurForm({
     commentaire: produit?.commentaire_vendeur ?? "",
     categorieId: (produit?.categorie_id ?? "") as number | "",
     sousCategorieId: produit?.sous_categorie_id ?? null,
+    sousSousCategorieId: produit?.sous_sous_categorie_id ?? null,
     prix: produit?.prix?.toString() ?? "",
     stock: produit?.stock?.toString() ?? "0",
     photos: (produit?.photos?.length
@@ -115,6 +122,7 @@ export function ProduitVendeurForm({
       commentaire !== initial.commentaire ||
       categorieId !== initial.categorieId ||
       sousCategorieId !== initial.sousCategorieId ||
+      sousSousCategorieId !== initial.sousSousCategorieId ||
       prix !== initial.prix ||
       stock !== initial.stock ||
       photos.join("|") !== initial.photos ||
@@ -129,6 +137,17 @@ export function ProduitVendeurForm({
         .sort((a, b) => a.ordre - b.ordre || a.nom.localeCompare(b.nom)),
     [sousCategories, categorieId],
   );
+
+  // 3e niveau : n'existe que pour certaines sous-catégories (SOUS_SOUS_CATEGORIES.md §2).
+  const sousSousCatsDeLaSousCategorie = useMemo(
+    () =>
+      sousSousCategories
+        .filter((ssc) => ssc.sous_categorie_id === sousCategorieId)
+        .sort((a, b) => a.ordre - b.ordre || a.nom.localeCompare(b.nom)),
+    [sousSousCategories, sousCategorieId],
+  );
+  const sousSousCategorieRequise =
+    sousCategorieId != null && sousSousCatsDeLaSousCategorie.length > 0;
 
   // Taux applicable à la catégorie / sous-catégorie choisie — affiché en
   // permanence dès qu'une catégorie est sélectionnée, même sans prix.
@@ -159,6 +178,16 @@ export function ProduitVendeurForm({
       (sc) => sc.id === sousCategorieId && sc.categorie_id === valeur,
     );
     if (!encoreValide) setSousCategorieId(null);
+    // Un changement de catégorie invalide de toute façon le 3e niveau choisi.
+    setSousSousCategorieId(null);
+  };
+
+  const changerSousCategorie = (valeur: number | null) => {
+    setSousCategorieId(valeur);
+    const encoreValide = sousSousCategories.some(
+      (ssc) => ssc.id === sousSousCategorieId && ssc.sous_categorie_id === valeur,
+    );
+    if (!encoreValide) setSousSousCategorieId(null);
   };
 
   const placesLibres = MAX_PHOTOS_PRODUIT - photos.length;
@@ -210,6 +239,10 @@ export function ProduitVendeurForm({
       setError("Veuillez choisir une sous-catégorie.");
       return;
     }
+    if (sousSousCategorieRequise && sousSousCategorieId == null) {
+      setError("Veuillez choisir une sous-sous-catégorie.");
+      return;
+    }
     const erreurVariantes = etatVariantesValide(variantes);
     if (erreurVariantes) {
       setError(erreurVariantes);
@@ -223,6 +256,7 @@ export function ProduitVendeurForm({
       description: description.trim() || null,
       categorie_id: categorieId,
       sous_categorie_id: sousCategorieId,
+      sous_sous_categorie_id: sousSousCategorieId,
       prix: Number(prix),
       delai,
       photos,
@@ -312,11 +346,30 @@ export function ProduitVendeurForm({
             }
             className={`${CHAMP} disabled:bg-[#001314]/[0.04] disabled:text-[#001314]/40`}
             value={sousCategorieId ? String(sousCategorieId) : ""}
-            onChange={(v) => setSousCategorieId(v ? Number(v) : null)}
+            onChange={(v) => changerSousCategorie(v ? Number(v) : null)}
             options={sousCatsDeLaCategorie.map((sc) => ({ value: String(sc.id), label: sc.nom }))}
           />
         </label>
       </div>
+
+      {/* 3e niveau : n'apparaît QUE si la sous-catégorie choisie en propose un
+          (SOUS_SOUS_CATEGORIES.md §2). */}
+      {sousSousCatsDeLaSousCategorie.length > 0 && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-[#001314]/60">Sous-sous-catégorie</span>
+          <ChampSelect
+            ariaLabel="Sous-sous-catégorie"
+            placeholder="Choisir une sous-sous-catégorie…"
+            className={CHAMP}
+            value={sousSousCategorieId ? String(sousSousCategorieId) : ""}
+            onChange={(v) => setSousSousCategorieId(v ? Number(v) : null)}
+            options={sousSousCatsDeLaSousCategorie.map((ssc) => ({
+              value: String(ssc.id),
+              label: ssc.nom,
+            }))}
+          />
+        </label>
+      )}
 
       {nomCategorie && (
         <p className="-mt-1 text-xs text-[#001314]/55">

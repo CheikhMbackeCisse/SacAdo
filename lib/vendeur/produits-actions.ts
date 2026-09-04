@@ -5,28 +5,40 @@ import { requireVendeur } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { estNombrePositifValide, texteNonVide } from "@/lib/admin/validation";
 import { MAX_PHOTOS_PRODUIT } from "./produits-shared";
-import type { Attribut, Categorie, Commission, Delai, Produit, SousCategorie } from "@/lib/supabase/types";
+import type {
+  Attribut,
+  Categorie,
+  Commission,
+  Delai,
+  Produit,
+  SousCategorie,
+  SousSousCategorie,
+} from "@/lib/supabase/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-// Référentiel catégories + sous-catégories (lecture publique, mais on passe par
-// service_role pour rester cohérent avec le reste de l'espace vendeur).
+// Référentiel catégories + sous-catégories + sous-sous-catégories (lecture
+// publique, mais on passe par service_role pour rester cohérent avec le reste
+// de l'espace vendeur). Tolère l'absence de la table 0030 (repli []).
 export async function getReferentiel(): Promise<{
   categories: Categorie[];
   sousCategories: SousCategorie[];
+  sousSousCategories: SousSousCategorie[];
   commissions: Commission[];
   attributs: Attribut[];
 }> {
   await requireVendeur();
-  const [cats, sousCats, commissions, attributs] = await Promise.all([
+  const [cats, sousCats, sousSousCats, commissions, attributs] = await Promise.all([
     supabaseAdmin.from("categories").select("*").eq("actif", true).order("ordre").order("nom"),
     supabaseAdmin.from("sous_categories").select("*").order("ordre").order("nom"),
+    supabaseAdmin.from("sous_sous_categories").select("*").order("ordre").order("nom"),
     supabaseAdmin.from("commissions").select("*"),
     supabaseAdmin.from("attributs").select("*").eq("statut", "valide").order("nom"),
   ]);
   return {
     categories: cats.data ?? [],
     sousCategories: sousCats.data ?? [],
+    sousSousCategories: sousSousCats.data ?? [],
     commissions: commissions.data ?? [],
     attributs: attributs.data ?? [],
   };
@@ -58,6 +70,10 @@ export type ProduitVendeurInput = {
   description: string | null;
   categorie_id: number;
   sous_categorie_id: number | null;
+  // 3e niveau, optionnel : seulement si la sous-catégorie choisie en propose.
+  // Le vendeur ne CRÉE jamais de niveau, il choisit parmi l'existant
+  // (SOUS_SOUS_CATEGORIES.md §1).
+  sous_sous_categorie_id: number | null;
   prix: number;
   delai: Delai;
   // Galerie ordonnée : photos[0] = principale. 0 à 4 URLs.
@@ -91,6 +107,9 @@ function valider(input: ProduitVendeurInput): string | null {
   if (input.sous_categorie_id !== null && !Number.isInteger(input.sous_categorie_id)) {
     return "Sous-catégorie invalide.";
   }
+  if (input.sous_sous_categorie_id !== null && !Number.isInteger(input.sous_sous_categorie_id)) {
+    return "Sous-sous-catégorie invalide.";
+  }
   if (!estNombrePositifValide(input.prix) || input.prix === 0) {
     return "Le prix doit être un nombre positif.";
   }
@@ -114,6 +133,7 @@ function versColonnes(input: ProduitVendeurInput) {
     description: input.description?.trim() || null,
     categorie_id: input.categorie_id,
     sous_categorie_id: input.sous_categorie_id,
+    sous_sous_categorie_id: input.sous_sous_categorie_id,
     prix: Math.round(input.prix),
     delai: input.delai,
     photos,
@@ -125,12 +145,14 @@ function versColonnes(input: ProduitVendeurInput) {
 }
 
 // Retire les colonnes ajoutées par des migrations récentes (`photos` = 0019,
-// `commentaire_vendeur` = 0029) : repli si la migration n'est pas encore passée
-// en prod — Postgres renvoie alors 42703 « column does not exist ».
+// `commentaire_vendeur` = 0029, `sous_sous_categorie_id` = 0030) : repli si la
+// migration n'est pas encore passée en prod — Postgres renvoie alors 42703
+// « column does not exist ».
 function sansColonnesOptionnelles(colonnes: Record<string, unknown>): Record<string, unknown> {
   const reste = { ...colonnes };
   delete reste.photos;
   delete reste.commentaire_vendeur;
+  delete reste.sous_sous_categorie_id;
   return reste;
 }
 const COLONNE_ABSENTE = "42703";

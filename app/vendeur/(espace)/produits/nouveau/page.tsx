@@ -4,7 +4,8 @@ import { getReferentiel } from "@/lib/vendeur/produits-actions";
 import { ProduitVendeurForm } from "@/components/vendeur/produit-vendeur-form";
 
 export default async function NouveauProduitVendeurPage() {
-  const { categories, sousCategories, commissions, attributs } = await getReferentiel();
+  const { categories, sousCategories, sousSousCategories, commissions, attributs } =
+    await getReferentiel();
 
   return (
     <div className="flex flex-col gap-4">
@@ -19,6 +20,7 @@ export default async function NouveauProduitVendeurPage() {
       <ProduitVendeurForm
         categories={categories}
         sousCategories={sousCategories}
+        sousSousCategories={sousSousCategories}
         commissions={commissions}
         attributs={attributs}
       />

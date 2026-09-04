@@ -18,7 +18,7 @@ via RPC `suggestions_recherche(p_terme)` et `rechercher_produits(...)`.
 | Lot | Contenu | État | Commit |
 |-----|---------|------|--------|
 | 1 | Migration `0030` : table `sous_sous_categories` + `produits.sous_sous_categorie_id` (nullable) + seed ciblé (Électronique) + trigger de cohérence. Types TS + requêtes lecture. | ✅ livré (migration à exécuter) | `TBD` |
-| 2 | Formulaire produit **vendeur** + **admin** : 3e select en cascade, affiché seulement si la sous-catégorie a des sous-sous-catégories, obligatoire seulement s'il apparaît. Règle selects CORRECTION_SELECTS_V2 (placeholder neutre, rien de présélectionné). | ⬜ à faire | — |
+| 2 | Formulaire produit **vendeur** + **admin** : 3e select en cascade, affiché seulement si la sous-catégorie a des sous-sous-catégories, obligatoire seulement s'il apparaît. Règle selects CORRECTION_SELECTS_V2 (placeholder neutre, rien de présélectionné). | ✅ livré | `TBD` |
 | 3 | Recherche : RPC + suggestions renvoient aussi **catégories** et **sous-sous-catégories** ; terme large → rayons d'abord. Page catégorie : filtre `?ssc=`. Indexation nom produit + cat + sous-cat + sous-sous-cat. | ⬜ à faire | — |
 | 4 | Admin : vue arbre 3 niveaux dans « Catégories » (créer / renommer / réordonner / supprimer à chaque niveau). Responsive. | ⬜ à faire | — |
 | 5 | Vérif finale + liste des migrations à exécuter + checklist de test. | ⬜ à faire | — |
@@ -46,3 +46,14 @@ via RPC `suggestions_recherche(p_terme)` et `rechercher_produits(...)`.
   `Produit.sous_sous_categorie_id`. Requêtes `getSousSousCategoriesBySousCategorie`
   + filtre `sousSousCategorieId` dans `getProduitsByCategorie`. `tsc` + `eslint`
   OK. **Rien ne casse sans la migration** (repli `console.warn` + `[]`).
+- **Lot 2** — livré. `ProduitForm` (admin) et `ProduitVendeurForm` (vendeur) : 3e
+  select `Sous-sous-catégorie` conditionnel (n'apparaît que si la sous-catégorie
+  choisie en a), obligatoire seulement s'il apparaît, se réinitialise si la
+  catégorie/sous-catégorie change. Admin peut créer une sous-sous-catégorie à la
+  volée (une fois qu'il en existe déjà au moins une pour cette sous-catégorie —
+  démarrer un 3e niveau sur une sous-catégorie qui n'en a encore aucune se fait
+  depuis l'écran Catégories, Lot 4) ; le vendeur choisit seulement parmi
+  l'existant (spec §1). `lib/admin/sous-sous-categories-actions.ts` (CRUD,
+  repli si table absente). `ProduitInput` / `ProduitVendeurInput` +
+  `sous_sous_categorie_id`, avec repli 42703 (colonne absente) comme pour les
+  autres colonnes ajoutées par migration récente. `tsc` + `eslint` OK.
