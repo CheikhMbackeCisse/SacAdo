@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Heart, Search, Settings, Tag, User } from "lucide-react";
+import { Heart, LayoutGrid, Search, Settings, Tag, User } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavIcon } from "@/components/layout/nav-icon";
 import { InstallHeaderButton } from "@/components/pwa/install-header-button";
@@ -21,7 +21,12 @@ import {
 const PLACEHOLDER_INTERVAL_MS = 15000;
 const SUGGESTIONS_DEBOUNCE_MS = 250;
 
-const SUGGESTIONS_VIDES: SuggestionsRecherche = { produits: [], sousCategories: [] };
+const SUGGESTIONS_VIDES: SuggestionsRecherche = {
+  produits: [],
+  categories: [],
+  sousCategories: [],
+  sousSousCategories: [],
+};
 
 export function Header() {
   const router = useRouter();
@@ -102,7 +107,10 @@ export function Header() {
   }, [query]);
 
   const aDesSuggestions =
-    suggestions.produits.length > 0 || suggestions.sousCategories.length > 0;
+    suggestions.produits.length > 0 ||
+    suggestions.categories.length > 0 ||
+    suggestions.sousCategories.length > 0 ||
+    suggestions.sousSousCategories.length > 0;
   const afficherPanneau = ouvert && query.trim().length >= 2;
 
   // Nav horizontale desktop (lg+) : identique quel que soit l'écran, y compris
@@ -226,6 +234,21 @@ export function Header() {
                 <p className="px-4 py-3 text-sm text-ink/50">Aucune suggestion.</p>
               ) : (
                 <div className="max-h-[42vh] overflow-y-auto py-1">
+                  {/* Rayons d'abord (catégorie -> sous-catégorie -> sous-sous-catégorie),
+                      pour aider à affiner un terme large, puis les produits
+                      (SOUS_SOUS_CATEGORIES.md §3). */}
+                  {suggestions.categories.slice(0, 3).map((c) => (
+                    <button
+                      key={`c-${c.id}`}
+                      type="button"
+                      onClick={() => allerVers(`/categorie/${c.slug}`)}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"
+                    >
+                      <LayoutGrid size={15} className="shrink-0 text-ink/35" aria-hidden="true" />
+                      <span className="truncate text-ink">{c.nom}</span>
+                    </button>
+                  ))}
+
                   {suggestions.sousCategories.slice(0, 3).map((sc) => (
                     <button
                       key={`sc-${sc.id}`}
@@ -236,6 +259,25 @@ export function Header() {
                       <Tag size={15} className="shrink-0 text-ink/35" aria-hidden="true" />
                       <span className="truncate text-ink">{sc.nom}</span>
                       <span className="shrink-0 text-xs text-ink/40">dans {sc.categorie_nom}</span>
+                    </button>
+                  ))}
+
+                  {suggestions.sousSousCategories.slice(0, 3).map((ssc) => (
+                    <button
+                      key={`ssc-${ssc.id}`}
+                      type="button"
+                      onClick={() =>
+                        allerVers(
+                          `/categorie/${ssc.categorie_slug}?sc=${ssc.sous_categorie_slug}&ssc=${ssc.slug}`,
+                        )
+                      }
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"
+                    >
+                      <Tag size={15} className="shrink-0 text-ink/35" aria-hidden="true" />
+                      <span className="truncate text-ink">{ssc.nom}</span>
+                      <span className="shrink-0 text-xs text-ink/40">
+                        dans {ssc.categorie_nom} › {ssc.sous_categorie_nom}
+                      </span>
                     </button>
                   ))}
 

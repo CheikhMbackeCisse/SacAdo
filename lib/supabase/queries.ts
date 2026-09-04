@@ -236,31 +236,74 @@ export async function searchProduits(
 }
 
 export type SuggestionProduit = Pick<Produit, "id" | "nom" | "photo" | "prix" | "statut">;
+export type SuggestionCategorie = Pick<Categorie, "id" | "nom" | "slug">;
 export type SuggestionSousCategorie = Pick<SousCategorie, "id" | "nom" | "slug"> & {
+  categorie_slug: string;
+  categorie_nom: string;
+};
+// 3e niveau (SOUS_SOUS_CATEGORIES.md §3) : porte aussi le chemin complet
+// (slugs + noms de la catégorie et de la sous-catégorie parentes), nécessaire
+// pour construire le lien /categorie/[slug]?sc=...&ssc=... et le sous-titre.
+export type SuggestionSousSousCategorie = Pick<SousSousCategorie, "id" | "nom" | "slug"> & {
+  sous_categorie_slug: string;
+  sous_categorie_nom: string;
   categorie_slug: string;
   categorie_nom: string;
 };
 export type SuggestionsRecherche = {
   produits: SuggestionProduit[];
+  categories: SuggestionCategorie[];
   sousCategories: SuggestionSousCategorie[];
+  sousSousCategories: SuggestionSousSousCategorie[];
+};
+
+const SUGGESTIONS_VIDES: SuggestionsRecherche = {
+  produits: [],
+  categories: [],
+  sousCategories: [],
+  sousSousCategories: [],
 };
 
 export async function getSuggestionsRecherche(query: string): Promise<SuggestionsRecherche> {
   const trimmed = query.trim();
-  if (trimmed.length < 2) return { produits: [], sousCategories: [] };
+  if (trimmed.length < 2) return SUGGESTIONS_VIDES;
   const { data, error } = await supabase.rpc("suggestions_recherche", { p_terme: trimmed });
   if (error) {
     console.warn("suggestions_recherche indisponible :", error.message);
-    return { produits: [], sousCategories: [] };
+    return SUGGESTIONS_VIDES;
   }
   const brut = (data ?? {}) as {
     produits?: SuggestionProduit[];
+    categories?: SuggestionCategorie[];
     sous_categories?: SuggestionSousCategorie[];
+    sous_sous_categories?: SuggestionSousSousCategorie[];
   };
   return {
     produits: brut.produits ?? [],
+    categories: brut.categories ?? [],
     sousCategories: brut.sous_categories ?? [],
+    sousSousCategories: brut.sous_sous_categories ?? [],
   };
+}
+
+// Toutes les sous-sous-catégories des sous-catégories données (utilisé par la
+// page catégorie : elle connaît déjà ses sous-catégories, on récupère leur
+// éventuel 3e niveau en un seul aller-retour). Tolère la table absente.
+export async function getSousSousCategoriesBySousCategories(
+  sousCategorieIds: number[],
+): Promise<SousSousCategorie[]> {
+  if (sousCategorieIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("sous_sous_categories")
+    .select("*")
+    .in("sous_categorie_id", sousCategorieIds)
+    .order("ordre", { ascending: true })
+    .order("nom", { ascending: true });
+  if (error) {
+    console.warn("sous_sous_categories indisponible :", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 // Les gammes disponibles pour une classe, triées Essentiel -> Confort -> Complet.
