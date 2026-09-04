@@ -22,3 +22,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/panier", label: "Panier", icon: ShoppingCart },
   { href: "/moi", label: "Moi", icon: User },
 ];
+
+// Écrans "tunnel" : on y confirme une action et le bouton principal est fixé
+// tout en bas de l'écran. La bottom nav y est masquée (elle volerait de la
+// place au bouton et distrairait de la validation) et le <main> n'y réserve
+// plus la gouttière basse habituelle.
+export const ROUTES_SANS_BOTTOM_NAV: readonly string[] = ["/checkout"];

@@ -221,7 +221,7 @@ export function Header() {
             // Suggestions en TEXTE uniquement (CORRECTIONS_V8 §1). Panneau bas et
             // large pour tenir au-dessus du clavier mobile (§2) : max ~42vh,
             // nombre de suggestions limité, scroll interne si besoin.
-            <div className="absolute -left-1 -right-1 top-full z-50 mt-1 overflow-hidden rounded-xl border border-ink/10 bg-elevated shadow-lg sm:left-0 sm:right-0">
+            <div className="absolute -left-12 -right-12 top-full z-50 mt-1 overflow-hidden rounded-xl border border-ink/10 bg-elevated shadow-lg sm:-left-16 sm:-right-16">
               {!aDesSuggestions ? (
                 <p className="px-4 py-3 text-sm text-ink/50">Aucune suggestion.</p>
               ) : (

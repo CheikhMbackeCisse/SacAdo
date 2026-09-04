@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "../globals.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
 import { Header } from "@/components/layout/header";
+import { AppMain } from "@/components/layout/app-main";
 import { CartToast } from "@/components/panier/cart-toast";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { WelcomeScreen } from "@/components/onboarding/welcome-screen";
@@ -59,12 +60,9 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         </a>
         <Header />
         <CartToast />
-        <main
-          id="main-content"
-          className="mx-auto flex w-full max-w-6xl flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
-        >
+        <AppMain>
           <NavigationGuardProvider>{children}</NavigationGuardProvider>
-        </main>
+        </AppMain>
         <BottomNav />
         <WelcomeScreen />
         <InstallBanner />

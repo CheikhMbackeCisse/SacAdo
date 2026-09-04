@@ -143,18 +143,25 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
         )}
         <div className="absolute right-3 top-3 flex flex-col gap-2">
           <FavoriteButton produitId={produit.id} size={20} />
-          <ShareButton path={`/produit/${produit.id}`} title={produit.nom} size={18} />
         </div>
       </div>
 
       <div className="flex flex-col gap-3 px-4">
-        <div>
-          {categorieNom && (
-            <span className="text-[11px] font-medium uppercase tracking-wide text-ink/40">
-              {categorieNom}
-            </span>
-          )}
-          <h1 className="font-heading text-lg font-bold text-ink">{produit.nom}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            {categorieNom && (
+              <span className="text-[11px] font-medium uppercase tracking-wide text-ink/40">
+                {categorieNom}
+              </span>
+            )}
+            <h1 className="font-heading text-lg font-bold text-ink">{produit.nom}</h1>
+          </div>
+          <ShareButton
+            path={`/produit/${produit.id}`}
+            title={produit.nom}
+            className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-ink/15 text-ink/70 transition-transform active:scale-90"
+            size={17}
+          />
         </div>
 
         <div className="flex items-center gap-2">

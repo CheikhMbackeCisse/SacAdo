@@ -223,7 +223,10 @@ export default function CheckoutPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="animate-fade-in-up flex flex-col gap-6 px-4 py-4 pb-28">
+    <form
+      onSubmit={handleSubmit}
+      className="animate-fade-in-up flex flex-1 flex-col gap-6 px-4 pb-[env(safe-area-inset-bottom)] pt-4"
+    >
       <h1 className="font-heading text-xl font-bold text-ink">Livraison</h1>
 
       <section className="flex flex-col gap-3">
@@ -447,11 +450,13 @@ export default function CheckoutPage() {
 
       {error && <p className="rounded-xl bg-ink/5 px-3 py-2 text-xs text-ink/80">{error}</p>}
 
-      <div className="sticky bottom-16 z-30 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:bottom-0">
+      {/* Écran "tunnel" : pas de bottom nav ici (voir ROUTES_SANS_BOTTOM_NAV),
+          le bouton reste collé tout en bas de l'écran. */}
+      <div className="sticky bottom-0 z-40 mt-auto border-t border-ink/10 bg-surface/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-surface/80">
         <button
           type="submit"
           disabled={submitting || !position}
-          className="flex h-12 w-full items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+          className="mx-auto flex h-12 w-full max-w-6xl items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
           {submitting
             ? modePaiementEffectif === "wave"

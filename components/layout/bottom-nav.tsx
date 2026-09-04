@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "@/lib/nav-items";
+import { NAV_ITEMS, ROUTES_SANS_BOTTOM_NAV } from "@/lib/nav-items";
 import { NavIcon } from "@/components/layout/nav-icon";
 import { useNavVisible } from "@/lib/local/use-scroll-direction";
 
@@ -24,6 +24,9 @@ export function BottomNav() {
   );
   const scrollVisible = useNavVisible();
   const visible = navFixe || scrollVisible;
+
+  // Écrans "tunnel" (checkout…) : pas de bottom nav du tout.
+  if (ROUTES_SANS_BOTTOM_NAV.includes(pathname)) return null;
 
   return (
     <nav
