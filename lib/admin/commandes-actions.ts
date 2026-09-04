@@ -97,6 +97,54 @@ export async function changerStatutCommande(id: number, statut: StatutCommande):
   return { ok: true };
 }
 
+// Nombre de commandes 'recue', tous filtres/pagination confondus — alimente le
+// bouton raccourci de CORRECTIONS_V9 §1.
+export async function compterCommandesRecues(): Promise<number> {
+  await requireAdmin();
+  const { count, error } = await supabaseAdmin
+    .from("commandes")
+    .select("id", { count: "exact", head: true })
+    .eq("statut", "recue");
+  return error ? 0 : (count ?? 0);
+}
+
+// Action groupée : passe une sélection de commandes au même statut en un
+// aller. Le trigger DB (for each row) envoie le message habituel à chaque
+// client concerné, exactement comme un changement individuel.
+export async function changerStatutCommandesGroupe(
+  ids: number[],
+  statut: StatutCommande,
+): Promise<ActionResult> {
+  await requireAdmin();
+  if (ids.length === 0) return { ok: false, error: "Aucune commande sélectionnée." };
+  if (statut === "paiement_en_attente") {
+    return { ok: false, error: "Statut réservé au paiement Wave." };
+  }
+
+  // Une commande Wave en attente ne doit pas être basculée par une action
+  // groupée (même règle que le changement individuel) : on l'exclut plutôt
+  // que de faire échouer tout le lot.
+  const { error } = await supabaseAdmin
+    .from("commandes")
+    .update({ statut })
+    .in("id", ids)
+    .neq("statut", "paiement_en_attente");
+  if (error) return { ok: false, error: "Impossible de changer le statut des commandes sélectionnées." };
+  return { ok: true };
+}
+
+// Raccourci CORRECTIONS_V9 §1 : traite d'un coup toutes les commandes 'recue'
+// (indépendamment de la page/filtre affiché), pas seulement celles visibles.
+export async function passerRecuesEnPreparation(): Promise<ActionResult> {
+  await requireAdmin();
+  const { error } = await supabaseAdmin
+    .from("commandes")
+    .update({ statut: "preparation" })
+    .eq("statut", "recue");
+  if (error) return { ok: false, error: "Impossible de passer les commandes reçues en préparation." };
+  return { ok: true };
+}
+
 export type CommandeItemAvecProduit = CommandeItem & { produit_nom: string };
 
 export async function getCommandeItemsAdmin(commandeId: number): Promise<CommandeItemAvecProduit[]> {
