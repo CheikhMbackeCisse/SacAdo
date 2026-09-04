@@ -17,6 +17,9 @@ export type Produit = {
   categorie_id: number;
   // FK vers sous_categories ; null = produit sans sous-catégorie
   sous_categorie_id: number | null;
+  // FK vers sous_sous_categories ; null = la sous-catégorie n'a pas de 3e niveau
+  // (ou produit pas encore rangé). Le 3e niveau est optionnel (SOUS_SOUS_CATEGORIES.md).
+  sous_sous_categorie_id: number | null;
   prix: number;
   delai: Delai;
   // Photo principale (= photos[0], maintenue par le serveur). Reste la source
@@ -55,6 +58,17 @@ export type SousCategorie = {
   nom: string;
   categorie_id: number;
   slug: string;
+  ordre: number;
+  created_at: string;
+};
+
+// 3e niveau, optionnel : n'existe que pour les sous-catégories où c'est pertinent
+// (SOUS_SOUS_CATEGORIES.md). Table `sous_sous_categories`, migration 0030.
+export type SousSousCategorie = {
+  id: number;
+  nom: string;
+  slug: string;
+  sous_categorie_id: number;
   ordre: number;
   created_at: string;
 };

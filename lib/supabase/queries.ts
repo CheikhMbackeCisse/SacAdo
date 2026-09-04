@@ -7,6 +7,7 @@ import type {
   Kit,
   Produit,
   SousCategorie,
+  SousSousCategorie,
   VarianteAvecAttributs,
   Zone,
 } from "./types";
@@ -75,12 +76,21 @@ export async function getProduitsByCategorie(
     offset = 0,
     limit = TAILLE_PAGE_CATALOGUE,
     sousCategorieId,
-  }: { offset?: number; limit?: number; sousCategorieId?: number | null } = {},
+    sousSousCategorieId,
+  }: {
+    offset?: number;
+    limit?: number;
+    sousCategorieId?: number | null;
+    sousSousCategorieId?: number | null;
+  } = {},
 ): Promise<PageResultat<Produit>> {
   // .range() est inclusif : on demande une ligne de plus que "limit" pour
   // savoir s'il reste une page suivante, sans requête de comptage séparée.
   let requete = supabase.from("produits").select("*").eq("categorie_id", categorieId);
   if (sousCategorieId != null) requete = requete.eq("sous_categorie_id", sousCategorieId);
+  if (sousSousCategorieId != null) {
+    requete = requete.eq("sous_sous_categorie_id", sousSousCategorieId);
+  }
 
   const { data, error } = await requete
     .order("nom", { ascending: true })
@@ -102,6 +112,25 @@ export async function getSousCategoriesByCategorie(
     .order("nom", { ascending: true });
   if (error) {
     console.warn("sous_categories indisponible :", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+// 3e niveau (optionnel). Renvoie [] si la sous-catégorie n'en a pas — c'est le
+// signal que le formulaire produit n'affiche pas le 3e select (SOUS_SOUS_CATEGORIES.md §2).
+// `console.warn` + [] tant que la migration 0030 n'est pas passée.
+export async function getSousSousCategoriesBySousCategorie(
+  sousCategorieId: number,
+): Promise<SousSousCategorie[]> {
+  const { data, error } = await supabase
+    .from("sous_sous_categories")
+    .select("*")
+    .eq("sous_categorie_id", sousCategorieId)
+    .order("ordre", { ascending: true })
+    .order("nom", { ascending: true });
+  if (error) {
+    console.warn("sous_sous_categories indisponible :", error.message);
     return [];
   }
   return data ?? [];

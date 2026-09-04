@@ -1,0 +1,48 @@
+# SacAdo — Suivi du chantier « sous-sous-catégories » (3e niveau)
+
+Spec : `../SOUS_SOUS_CATEGORIES.md`. Notes de fond : `../NOTE_CATEGORIES_EN_BASE.md`,
+`../NOTE_SOUS_CATEGORIES.md`. Respecter `CLAUDE.md`.
+
+Hiérarchie cible : **Catégorie → Sous-catégorie → Sous-sous-catégorie (optionnelle)**.
+Le 3e niveau n'existe QUE pour les sous-catégories où il est pertinent (ex.
+Électronique → Capteurs → Capteurs de température…). Jamais imposé.
+
+État de la base au démarrage : tables `categories`, `sous_categories`
+(`categorie_id` FK), `produits` (`categorie_id` + `sous_categorie_id`). Recherche
+via RPC `suggestions_recherche(p_terme)` et `rechercher_produits(...)`.
+
+---
+
+## Découpage en lots
+
+| Lot | Contenu | État | Commit |
+|-----|---------|------|--------|
+| 1 | Migration `0030` : table `sous_sous_categories` + `produits.sous_sous_categorie_id` (nullable) + seed ciblé (Électronique) + trigger de cohérence. Types TS + requêtes lecture. | ✅ livré (migration à exécuter) | `TBD` |
+| 2 | Formulaire produit **vendeur** + **admin** : 3e select en cascade, affiché seulement si la sous-catégorie a des sous-sous-catégories, obligatoire seulement s'il apparaît. Règle selects CORRECTION_SELECTS_V2 (placeholder neutre, rien de présélectionné). | ⬜ à faire | — |
+| 3 | Recherche : RPC + suggestions renvoient aussi **catégories** et **sous-sous-catégories** ; terme large → rayons d'abord. Page catégorie : filtre `?ssc=`. Indexation nom produit + cat + sous-cat + sous-sous-cat. | ⬜ à faire | — |
+| 4 | Admin : vue arbre 3 niveaux dans « Catégories » (créer / renommer / réordonner / supprimer à chaque niveau). Responsive. | ⬜ à faire | — |
+| 5 | Vérif finale + liste des migrations à exécuter + checklist de test. | ⬜ à faire | — |
+
+## Migrations à exécuter par le fondateur (dans le SQL Editor Supabase)
+
+- [ ] `0030_sous_sous_categories.sql` — (Lot 1)
+- [ ] `0031_recherche_multi_niveaux.sql` — (Lot 3, à venir)
+
+## Vérifications finales (spec §Vérification)
+
+- [ ] Un produit d'électronique se range Catégorie > Sous-cat > Sous-sous-cat.
+- [ ] Un cahier se range Catégorie > Sous-cat, sans 3e select.
+- [ ] Taper « capteur » propose les rayons capteurs (sous / sous-sous) + produits.
+- [ ] L'admin voit et gère toute l'arborescence à 3 niveaux dans « Catégories ».
+
+## Journal
+
+- **Lot 1** — livré. Migration `0030_sous_sous_categories.sql` : table
+  `sous_sous_categories` (nom, slug, `sous_categorie_id` FK, ordre), colonne
+  nullable `produits.sous_sous_categorie_id`, index trgm, RLS lecture publique,
+  seed ciblé (Électronique → Capteurs / Cartes Arduino / Composants), trigger
+  `trg_produit_coherence_sous_sous_categorie` (le 3e niveau posé sur un produit
+  doit appartenir à sa sous-catégorie). Types `SousSousCategorie` +
+  `Produit.sous_sous_categorie_id`. Requêtes `getSousSousCategoriesBySousCategorie`
+  + filtre `sousSousCategorieId` dans `getProduitsByCategorie`. `tsc` + `eslint`
+  OK. **Rien ne casse sans la migration** (repli `console.warn` + `[]`).
