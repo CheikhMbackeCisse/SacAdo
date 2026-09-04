@@ -203,6 +203,43 @@ export async function getProduitsSimilaires(
   return data ?? [];
 }
 
+// Sacs proposés dans le sélecteur du kit (KIT_AMELIORATIONS.md §3) : les
+// sous-catégories "Sacs à dos" et "Sacs à roulettes" de "Cartables & sacs".
+// Pas de cartables ici : le kit propose un SAC, distinct du cartable rigide.
+const SLUGS_SOUS_CATEGORIES_SACS = ["sacs-a-dos", "sacs-a-roulettes"];
+
+export async function getSacsDisponibles({
+  offset = 0,
+  limit = 5,
+  excludeIds = [],
+}: {
+  offset?: number;
+  limit?: number;
+  excludeIds?: number[];
+} = {}): Promise<PageResultat<Produit>> {
+  const { data: sousCats, error: erreurSousCats } = await supabase
+    .from("sous_categories")
+    .select("id")
+    .in("slug", SLUGS_SOUS_CATEGORIES_SACS);
+  if (erreurSousCats) throw erreurSousCats;
+  const sousCategorieIds = (sousCats ?? []).map((row) => row.id as number);
+  if (sousCategorieIds.length === 0) return { items: [], hasMore: false };
+
+  let requete = supabase
+    .from("produits")
+    .select("*")
+    .in("sous_categorie_id", sousCategorieIds);
+  if (excludeIds.length > 0) requete = requete.not("id", "in", `(${excludeIds.join(",")})`);
+
+  const { data, error } = await requete
+    .order("nom", { ascending: true })
+    .range(offset, offset + limit);
+  if (error) throw error;
+  const rows = data ?? [];
+  const hasMore = rows.length > limit;
+  return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
+}
+
 export async function searchProduits(
   query: string,
   { offset = 0, limit = TAILLE_PAGE_CATALOGUE }: { offset?: number; limit?: number } = {},

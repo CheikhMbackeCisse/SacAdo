@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen, Package } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
 import { getGammeDef, isGamme } from "@/lib/gammes";
-import { getKitByCycleNiveauGamme, getKitItemsAvecProduits } from "@/lib/supabase/queries";
+import {
+  getKitByCycleNiveauGamme,
+  getKitItemsAvecProduits,
+  getSacsDisponibles,
+} from "@/lib/supabase/queries";
 import { KitBuilder } from "@/components/kits/kit-builder";
 import { ShareButton } from "@/components/ui/share-button";
 
@@ -36,6 +40,7 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
   }
 
   const items = await getKitItemsAvecProduits(kit.id);
+  const sacParDefaut = (await getSacsDisponibles({ limit: 1 })).items[0] ?? null;
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-1 py-4">
@@ -71,7 +76,11 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
       <p className="px-4 pb-2 text-xs text-ink/50">
         Liste pré-cochée : décochez ce que vous avez déjà, ajustez les quantités.
       </p>
-      <KitBuilder kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()} items={items} />
+      <KitBuilder
+        kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()}
+        items={items}
+        sacParDefaut={sacParDefaut}
+      />
     </div>
   );
 }
