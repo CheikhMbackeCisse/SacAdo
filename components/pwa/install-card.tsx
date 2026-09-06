@@ -14,7 +14,7 @@ type Statut = "idle" | "accepte" | "refuse";
 //   déclenche l'invite NATIVE du navigateur (aucune fausse barre de progression)
 // - iOS Safari -> marche à suivre illustrée (Apple n'expose pas d'invite)
 // - autre navigateur -> marche à suivre manuelle
-export function InstallCard() {
+export function InstallCard({ appName = "SacAdo" }: { appName?: string }) {
   const { canPrompt, installed } = useInstallState();
   const [statut, setStatut] = useState<Statut>("idle");
   const ios = useSyncExternalStore(
@@ -39,7 +39,7 @@ export function InstallCard() {
           <Check size={18} aria-hidden="true" />
         </span>
         <div className="flex flex-col">
-          <span className="text-sm font-medium text-ink">SacAdo est installé ✓</span>
+          <span className="text-sm font-medium text-ink">{appName} est installé ✓</span>
           <span className="text-xs text-ink/55">
             Ouvrez-le depuis votre écran d&apos;accueil, en plein écran.
           </span>

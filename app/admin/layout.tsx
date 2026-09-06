@@ -1,12 +1,33 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "../globals.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
+// PWA admin (MODULE_EBOOKS.md, Partie 2) : manifeste dédié `scope: /admin`, avec
+// sa propre identité (`id: /admin`) pour que le navigateur l'installe comme une
+// app SÉPARÉE de l'app client. Le service worker (public/sw.js, scope "/")
+// couvre déjà /admin ; on l'enregistre aussi ici car ce layout est indépendant
+// de celui du client. La protection serveur (middleware + requireAdmin) est
+// inchangée : « installable » ne veut pas dire « moins protégé ».
 export const metadata: Metadata = {
   title: "Administration — SacAdo",
+  applicationName: "SacAdo Admin",
+  manifest: "/manifest-admin.webmanifest",
+  // iOS ne lit pas le manifeste pour « Ajouter à l'écran d'accueil ».
+  icons: { apple: "/images/logo.jpg" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SacAdo Admin",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0B3D91",
+  viewportFit: "cover",
 };
 
 // Second root layout indépendant du site client (voir app/(storefront)/layout.tsx) :
@@ -41,6 +62,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ) : (
           children
         )}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

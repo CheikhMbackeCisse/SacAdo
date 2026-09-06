@@ -2,6 +2,7 @@ import { AlertTriangle, ClipboardList, Package, TrendingUp, Wallet } from "lucid
 import { getDashboardStats } from "@/lib/admin/reporting-actions";
 import { formatPrice } from "@/lib/format";
 import { StatCard } from "@/components/admin/stat-card";
+import { InstallCard } from "@/components/pwa/install-card";
 
 export default async function AdminDashboardPage() {
   const stats = await getDashboardStats();
@@ -9,6 +10,10 @@ export default async function AdminDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-heading text-xl font-bold text-ink">Tableau de bord</h1>
+
+      <div className="lg:max-w-md">
+        <InstallCard appName="SacAdo Admin" />
+      </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard icon={Wallet} label="CA du jour" value={formatPrice(stats.caDuJour)} />
