@@ -5,8 +5,10 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { aplatirAttributs, libelleVariante } from "@/lib/variantes";
 import { estVendeurSacAdo } from "@/lib/vendeurs/constants";
 import { STATUTS_COMMANDE_A_PREPARER } from "@/lib/preparations";
+import { chargerBonPreparation } from "@/lib/preparation-bon";
 import type { ActionResult } from "./produits-actions";
 import type { DemandePreparation, StatutDemandePreparation } from "@/lib/supabase/types";
+import type { GroupeClient, LigneTotal, DemandePreparationDetail } from "@/lib/preparations";
 
 type Rel<T> = T | T[] | null;
 function un<T>(v: Rel<T>): T | null {
@@ -125,20 +127,8 @@ export async function getVendeursAvecArticlesEnAttente(): Promise<VendeurEnAtten
     .sort((a, b) => b.nbArticles - a.nbArticles);
 }
 
-export type ArticleAPreparer = {
-  produitNom: string;
-  varianteLabel: string | null;
-  produitPhoto: string | null;
-  quantite: number;
-};
-export type GroupeClient = {
-  commandeId: number;
-  clientNom: string;
-  modeLivraison: string | null;
-  zoneNom: string | null;
-  articles: ArticleAPreparer[];
-};
-export type LigneTotal = { produitNom: string; varianteLabel: string | null; quantite: number };
+// `ArticleAPreparer`, `GroupeClient`, `LigneTotal`, `DemandePreparationDetail`
+// vivent dans `@/lib/preparations` (partagés avec le bon de préparation public).
 
 export type ApercuPreparation = {
   vendeurId: string;
@@ -341,93 +331,9 @@ export async function listerDemandesPreparation(): Promise<DemandePreparationRes
   });
 }
 
-export type DemandePreparationDetail = {
-  id: number;
-  vendeurNom: string;
-  statut: StatutDemandePreparation;
-  declenchement: DemandePreparation["declenchement"];
-  note: string | null;
-  creeLe: string;
-  prepareeLe: string | null;
-  groupes: GroupeClient[];
-  totaux: LigneTotal[];
-  nbArticles: number;
-};
-
 export async function getDemandePreparation(id: number): Promise<DemandePreparationDetail | null> {
   await requireAdmin();
-
-  const { data: demande } = await supabaseAdmin
-    .from("demandes_preparation")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (!demande) return null;
-  const d = demande as DemandePreparation;
-
-  const { data: vendeur } = await supabaseAdmin
-    .from("vendeurs")
-    .select("nom_boutique")
-    .eq("id", d.vendeur_id)
-    .maybeSingle();
-
-  const { data: itemsRows } = await supabaseAdmin
-    .from("demande_preparation_items")
-    .select("*")
-    .eq("demande_id", id);
-  const items = (itemsRows ?? []) as {
-    commande_id: number;
-    quantite: number;
-    produit_nom: string;
-    variante_label: string | null;
-    produit_photo: string | null;
-    client_nom: string;
-    mode_livraison: string | null;
-    zone_nom: string | null;
-  }[];
-
-  const groupesParCommande = new Map<number, GroupeClient>();
-  const totaux = new Map<string, LigneTotal>();
-  let nbArticles = 0;
-
-  for (const it of items) {
-    let groupe = groupesParCommande.get(it.commande_id);
-    if (!groupe) {
-      groupe = {
-        commandeId: it.commande_id,
-        clientNom: it.client_nom,
-        modeLivraison: it.mode_livraison,
-        zoneNom: it.zone_nom,
-        articles: [],
-      };
-      groupesParCommande.set(it.commande_id, groupe);
-    }
-    groupe.articles.push({
-      produitNom: it.produit_nom,
-      varianteLabel: it.variante_label,
-      produitPhoto: it.produit_photo,
-      quantite: it.quantite,
-    });
-
-    const cle = `${it.produit_nom}|${it.variante_label ?? ""}`;
-    const t = totaux.get(cle) ?? { produitNom: it.produit_nom, varianteLabel: it.variante_label, quantite: 0 };
-    t.quantite += it.quantite;
-    totaux.set(cle, t);
-    nbArticles += it.quantite;
-  }
-
-  return {
-    id: d.id,
-    vendeurNom: (vendeur as { nom_boutique: string } | null)?.nom_boutique ?? "Vendeur",
-    statut: d.statut,
-    declenchement: d.declenchement,
-    note: d.note,
-    creeLe: d.cree_le,
-    prepareeLe: d.preparee_le,
-    groupes: [...groupesParCommande.values()].sort((a, b) => a.clientNom.localeCompare(b.clientNom)),
-    totaux: [...totaux.values()].sort((a, b) => a.produitNom.localeCompare(b.produitNom)),
-    nbArticles,
-  };
+  return chargerBonPreparation(id);
 }
 
 export async function supprimerDemandePreparation(id: number): Promise<ActionResult> {

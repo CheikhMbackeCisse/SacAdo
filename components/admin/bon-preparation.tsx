@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Package } from "lucide-react";
-import type { GroupeClient, LigneTotal } from "@/lib/admin/preparations-actions";
+import type { GroupeClient, LigneTotal } from "@/lib/preparations";
 
 const MODE_LABEL: Record<string, string> = { "24h": "Livraison 24h", "6j": "Livraison 6 jours", "5j": "Livraison 5 jours" };
 

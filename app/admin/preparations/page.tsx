@@ -1,21 +1,17 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { listerDemandesPreparation } from "@/lib/admin/preparations-actions";
-import { refPreparation, LIBELLES_STATUT_DEMANDE } from "@/lib/preparations";
+import {
+  refPreparation,
+  LIBELLES_STATUT_DEMANDE,
+  formatDateHeureDakar,
+} from "@/lib/preparations";
 import { CarteListe, CartesListe, ChampCarte, TableauDesktop } from "@/components/admin/liste-mobile";
 import { SupprimerDemandeBouton } from "@/components/admin/preparation-supprimer";
 
 export const dynamic = "force-dynamic";
 
-function formatDateHeure(iso: string) {
-  return new Date(iso).toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const formatDateHeure = formatDateHeureDakar;
 
 function Pastille({ statut }: { statut: "a_preparer" | "preparee" }) {
   return (

@@ -2,20 +2,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getDemandePreparation } from "@/lib/admin/preparations-actions";
-import { refPreparation, LIBELLES_STATUT_DEMANDE } from "@/lib/preparations";
+import {
+  refPreparation,
+  LIBELLES_STATUT_DEMANDE,
+  formatDateHeureDakar,
+  numeroWhatsapp,
+} from "@/lib/preparations";
+import { jetonPreparation } from "@/lib/preparation-auth";
+import { origineSite } from "@/lib/site-url";
 import { BonPreparation } from "@/components/admin/bon-preparation";
+import { LienFournisseur } from "@/components/admin/lien-fournisseur";
 
 export const dynamic = "force-dynamic";
 
-function formatDateHeure(iso: string) {
-  return new Date(iso).toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const formatDateHeure = formatDateHeureDakar;
 
 export default async function AdminPreparationDetailPage({
   params,
@@ -25,6 +25,13 @@ export default async function AdminPreparationDetailPage({
   const { id } = await params;
   const demande = await getDemandePreparation(Number(id));
   if (!demande) notFound();
+
+  const lien = `${await origineSite()}/preparation/${demande.id}?t=${jetonPreparation(demande.id)}`;
+  const messageWa = `Bonjour, une préparation vous attend sur SacAdo (${refPreparation(
+    demande.id,
+  )}). Détails et validation ici : ${lien}`;
+  const numero = numeroWhatsapp(demande.vendeurTelephone);
+  const urlWhatsapp = `https://wa.me/${numero ?? ""}?text=${encodeURIComponent(messageWa)}`;
 
   return (
     <div className="flex max-w-2xl flex-col gap-4">
@@ -73,6 +80,8 @@ export default async function AdminPreparationDetailPage({
           </div>
         )}
       </dl>
+
+      <LienFournisseur lien={lien} urlWhatsapp={urlWhatsapp} />
 
       <div>
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink/40">
