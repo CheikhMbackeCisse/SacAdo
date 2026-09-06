@@ -265,7 +265,33 @@ export async function creerDemandePreparation(
     return { ok: false, error: "Un article vient d'être inclus dans une autre demande. Recommence." };
   }
 
+  // Notification in-app dans la boîte de réception du vendeur (canal de base,
+  // NOTIFICATIONS_FOURNISSEURS §1). Le lien WhatsApp reste le canal de secours.
+  const nbArticles = lignes.reduce((s, l) => s + l.quantite, 0);
+  const nbClients = new Set(lignes.map((l) => l.commande_id)).size;
+  await supabaseAdmin.from("messages_vendeur").insert({
+    vendeur_id: vendeurId,
+    type: "preparation",
+    titre: "Préparation demandée",
+    corps: `${nbArticles} article${nbArticles > 1 ? "s" : ""} à préparer pour ${nbClients} client${
+      nbClients > 1 ? "s" : ""
+    }. Ouvrez le bon de préparation pour le détail.`,
+    demande_preparation_id: demande.id,
+  });
+
   return { ok: true, id: demande.id };
+}
+
+// L'admin marque la demande comme récupérée (livreur passé chez le fournisseur).
+export async function marquerDemandeRecuperee(id: number): Promise<ActionResult> {
+  await requireAdmin();
+  const { error } = await supabaseAdmin
+    .from("demandes_preparation")
+    .update({ recuperee_le: new Date().toISOString() })
+    .eq("id", id)
+    .is("recuperee_le", null);
+  if (error) return { ok: false, error: "Impossible d'enregistrer." };
+  return { ok: true };
 }
 
 // --- Consultation des demandes ---------------------------------------------
@@ -278,6 +304,7 @@ export type DemandePreparationResume = {
   declenchement: DemandePreparation["declenchement"];
   creeLe: string;
   prepareeLe: string | null;
+  recupereeLe: string | null;
   nbArticles: number;
   nbClients: number;
 };
@@ -325,6 +352,7 @@ export async function listerDemandesPreparation(): Promise<DemandePreparationRes
       declenchement: d.declenchement,
       creeLe: d.cree_le,
       prepareeLe: d.preparee_le,
+      recupereeLe: d.recuperee_le ?? null,
       nbArticles: e?.articles ?? 0,
       nbClients: e?.commandes.size ?? 0,
     };

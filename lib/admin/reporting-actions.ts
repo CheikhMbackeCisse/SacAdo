@@ -11,7 +11,18 @@ export type DashboardStats = {
   panierMoyenDuJour: number;
   topProduits: { nom: string; quantite: number }[];
   alertesStock: Produit[];
+  // Demandes de préparation prêtes chez un fournisseur, pas encore récupérées.
+  preparationsPretes: number;
 };
+
+async function compterPreparationsPretes(): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("demandes_preparation")
+    .select("id", { count: "exact", head: true })
+    .eq("statut", "preparee")
+    .is("recuperee_le", null);
+  return error ? 0 : (count ?? 0);
+}
 
 function debutJournee(): string {
   const debut = new Date();
@@ -24,18 +35,20 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   // Les commandes Wave non encore payées (statut 'paiement_en_attente') sont
   // exclues du CA et des ventes : elles ne comptent qu'une fois le webhook reçu.
-  const [{ data: commandesDuJour }, { data: items }, { data: produits }] = await Promise.all([
-    supabaseAdmin
-      .from("commandes")
-      .select("total")
-      .gte("date", debutJournee())
-      .neq("statut", STATUT_EN_ATTENTE_PAIEMENT),
-    supabaseAdmin
-      .from("commande_items")
-      .select("quantite, produit:produits(nom), commande:commandes!inner(statut)")
-      .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT),
-    supabaseAdmin.from("produits").select("*"),
-  ]);
+  const [{ data: commandesDuJour }, { data: items }, { data: produits }, preparationsPretes] =
+    await Promise.all([
+      supabaseAdmin
+        .from("commandes")
+        .select("total")
+        .gte("date", debutJournee())
+        .neq("statut", STATUT_EN_ATTENTE_PAIEMENT),
+      supabaseAdmin
+        .from("commande_items")
+        .select("quantite, produit:produits(nom), commande:commandes!inner(statut)")
+        .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT),
+      supabaseAdmin.from("produits").select("*"),
+      compterPreparationsPretes(),
+    ]);
 
   const commandes = commandesDuJour ?? [];
   const caDuJour = commandes.reduce((sum, c) => sum + c.total, 0);
@@ -56,7 +69,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const alertesStock = (produits ?? []).filter((p) => p.stock <= p.seuil_alerte);
 
-  return { caDuJour, nbCommandesDuJour, panierMoyenDuJour, topProduits, alertesStock };
+  return {
+    caDuJour,
+    nbCommandesDuJour,
+    panierMoyenDuJour,
+    topProduits,
+    alertesStock,
+    preparationsPretes,
+  };
 }
 
 export type VenteAgregee = { produitId: number; nom: string; quantiteVendue: number };

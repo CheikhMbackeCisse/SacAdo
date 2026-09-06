@@ -1,29 +1,14 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { listerDemandesPreparation } from "@/lib/admin/preparations-actions";
-import {
-  refPreparation,
-  LIBELLES_STATUT_DEMANDE,
-  formatDateHeureDakar,
-} from "@/lib/preparations";
+import { refPreparation, formatDateHeureDakar } from "@/lib/preparations";
 import { CarteListe, CartesListe, ChampCarte, TableauDesktop } from "@/components/admin/liste-mobile";
+import { PastilleDemande } from "@/components/admin/pastille-demande";
 import { SupprimerDemandeBouton } from "@/components/admin/preparation-supprimer";
 
 export const dynamic = "force-dynamic";
 
 const formatDateHeure = formatDateHeureDakar;
-
-function Pastille({ statut }: { statut: "a_preparer" | "preparee" }) {
-  return (
-    <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-        statut === "preparee" ? "bg-success/10 text-success" : "bg-ink/[0.06] text-ink/60"
-      }`}
-    >
-      {LIBELLES_STATUT_DEMANDE[statut]}
-    </span>
-  );
-}
 
 export default async function AdminPreparationsPage() {
   const demandes = await listerDemandesPreparation();
@@ -63,7 +48,7 @@ export default async function AdminPreparationsPage() {
                   >
                     {refPreparation(d.id)}
                   </Link>
-                  <Pastille statut={d.statut} />
+                  <PastilleDemande statut={d.statut} recupereeLe={d.recupereeLe} />
                 </div>
                 <ChampCarte label="Fournisseur">{d.vendeurNom}</ChampCarte>
                 <ChampCarte label="Articles">
@@ -109,7 +94,7 @@ export default async function AdminPreparationsPage() {
                     <td className="px-4 py-3 text-ink/60">{d.nbClients}</td>
                     <td className="px-4 py-3 text-ink/60">{formatDateHeure(d.creeLe)}</td>
                     <td className="px-4 py-3">
-                      <Pastille statut={d.statut} />
+                      <PastilleDemande statut={d.statut} recupereeLe={d.recupereeLe} />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <SupprimerDemandeBouton id={d.id} reference={refPreparation(d.id)} />

@@ -13,6 +13,21 @@ export const LIBELLES_STATUT_DEMANDE: Record<StatutDemandePreparation, string> =
   preparee: "Préparée",
 };
 
+// État affiché d'une demande : « Récupérée » prime sur le statut du vendeur.
+export type EtatDemande = "a_preparer" | "preparee" | "recuperee";
+export function etatDemande(
+  statut: StatutDemandePreparation,
+  recupereeLe: string | null,
+): EtatDemande {
+  if (recupereeLe) return "recuperee";
+  return statut;
+}
+export const LIBELLES_ETAT_DEMANDE: Record<EtatDemande, string> = {
+  a_preparer: "À préparer",
+  preparee: "Préparée",
+  recuperee: "Récupérée",
+};
+
 // Statuts de commande dont les articles sont « à préparer » : la commande est
 // confirmée mais pas encore partie en livraison.
 export const STATUTS_COMMANDE_A_PREPARER = ["recue", "preparation"] as const;
@@ -72,6 +87,7 @@ export type DemandePreparationDetail = {
   note: string | null;
   creeLe: string;
   prepareeLe: string | null;
+  recupereeLe: string | null;
   groupes: GroupeClient[];
   totaux: LigneTotal[];
   nbArticles: number;

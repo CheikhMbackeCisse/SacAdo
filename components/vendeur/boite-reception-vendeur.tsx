@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Inbox } from "lucide-react";
+import { ArrowRight, Inbox } from "lucide-react";
 import { marquerMessageVendeurLu } from "@/lib/vendeur/messages-actions";
 import type { MessageVendeur } from "@/lib/supabase/types";
 
@@ -46,29 +47,41 @@ export function BoiteReceptionVendeur({ messages }: { messages: MessageVendeur[]
       {messages.map((message) => {
         const lu = message.lu || lus.has(message.id);
         return (
-          <button
-            key={message.id}
-            type="button"
-            onClick={() => ouvrir(message)}
-            className="flex flex-col gap-1 px-4 py-3 text-left hover:bg-[#001314]/[0.02]"
-          >
-            <div className="flex items-center gap-2">
-              {!lu && (
-                <span className="size-2 shrink-0 rounded-full bg-[#0B3D91]" aria-hidden="true" />
-              )}
-              <span
-                className={`flex-1 text-sm ${lu ? "text-[#001314]/70" : "font-semibold text-[#001314]"}`}
-              >
-                {message.titre}
-              </span>
-              <span className="shrink-0 text-[11px] text-[#001314]/40">
-                {formatDate(message.date)}
-              </span>
-            </div>
+          <div key={message.id} className="flex flex-col">
+            <button
+              type="button"
+              onClick={() => ouvrir(message)}
+              className="flex flex-col gap-1 px-4 py-3 text-left hover:bg-[#001314]/[0.02]"
+            >
+              <div className="flex items-center gap-2">
+                {!lu && (
+                  <span className="size-2 shrink-0 rounded-full bg-[#0B3D91]" aria-hidden="true" />
+                )}
+                <span
+                  className={`flex-1 text-sm ${lu ? "text-[#001314]/70" : "font-semibold text-[#001314]"}`}
+                >
+                  {message.titre}
+                </span>
+                <span className="shrink-0 text-[11px] text-[#001314]/40">
+                  {formatDate(message.date)}
+                </span>
+              </div>
+            </button>
             {ouvert === message.id && (
-              <p className="pl-4 text-xs text-[#001314]/60">{message.corps}</p>
+              <div className="flex flex-col gap-2 px-4 pb-3 pl-8">
+                <p className="text-xs text-[#001314]/60">{message.corps}</p>
+                {message.type === "preparation" && message.demande_preparation_id && (
+                  <Link
+                    href={`/vendeur/preparations/${message.demande_preparation_id}`}
+                    className="inline-flex w-fit items-center gap-1 text-xs font-semibold text-[#0B3D91] hover:underline"
+                  >
+                    Ouvrir le bon de préparation
+                    <ArrowRight size={12} aria-hidden="true" />
+                  </Link>
+                )}
+              </div>
             )}
-          </button>
+          </div>
         );
       })}
     </div>

@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   Package,
+  PackageCheck,
   PlusCircle,
   Store,
   TrendingUp,
@@ -25,7 +26,7 @@ type Entree = {
   label: string;
   icon: typeof Package;
   exact?: boolean;
-  badge?: "messages";
+  badge?: "messages" | "preparations";
   bientot?: boolean;
 };
 
@@ -33,6 +34,7 @@ const ENTREES: Entree[] = [
   { href: "/vendeur", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
   { href: "/vendeur/produits", label: "Mes produits", icon: Package },
   { href: "/vendeur/produits/nouveau", label: "Ajouter un produit", icon: PlusCircle },
+  { href: "/vendeur/preparations", label: "Préparations", icon: PackageCheck, badge: "preparations" },
   { href: "/vendeur/ventes", label: "Mes ventes", icon: TrendingUp },
   { href: "/vendeur/negociations", label: "Négociations", icon: Handshake },
   { href: "/vendeur/messages", label: "Boîte de réception", icon: Inbox, badge: "messages" },
@@ -52,10 +54,12 @@ function estActif(pathname: string, entree: Entree): boolean {
 export function VendeurShell({
   nomBoutique,
   nbMessagesNonLus = 0,
+  nbPreparations = 0,
   children,
 }: {
   nomBoutique: string;
   nbMessagesNonLus?: number;
+  nbPreparations?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -89,7 +93,7 @@ export function VendeurShell({
             className="relative flex size-10 shrink-0 items-center justify-center rounded-xl text-[#001314]/70 transition-colors hover:bg-[#001314]/[0.05] active:scale-90"
           >
             <Menu size={22} aria-hidden="true" />
-            {nbMessagesNonLus > 0 && (
+            {nbMessagesNonLus + nbPreparations > 0 && (
               <span
                 className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#E07B39]"
                 aria-hidden="true"
@@ -162,6 +166,11 @@ export function VendeurShell({
                   {badge === "messages" && nbMessagesNonLus > 0 && (
                     <span className="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-[#E07B39] px-1 text-[10px] font-bold text-[#001314]">
                       {nbMessagesNonLus}
+                    </span>
+                  )}
+                  {badge === "preparations" && nbPreparations > 0 && (
+                    <span className="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-[#E07B39] px-1 text-[10px] font-bold text-[#001314]">
+                      {nbPreparations}
                     </span>
                   )}
                 </Link>

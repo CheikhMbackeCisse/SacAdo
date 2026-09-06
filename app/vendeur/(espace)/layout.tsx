@@ -1,5 +1,6 @@
 import { requireVendeur } from "@/lib/vendeur/guard";
 import { getNbMessagesNonLus } from "@/lib/vendeur/messages-actions";
+import { getNbPreparationsAPreparer } from "@/lib/vendeur/preparations-actions";
 import { VendeurShell } from "@/components/vendeur/vendeur-shell";
 
 // Layout de l'espace vendeur connecté (tableau de bord, produits, ventes).
@@ -11,9 +12,16 @@ export default async function EspaceVendeurLayout({
   children: React.ReactNode;
 }) {
   const { vendeur } = await requireVendeur();
-  const nbMessagesNonLus = await getNbMessagesNonLus();
+  const [nbMessagesNonLus, nbPreparations] = await Promise.all([
+    getNbMessagesNonLus(),
+    getNbPreparationsAPreparer(),
+  ]);
   return (
-    <VendeurShell nomBoutique={vendeur.nom_boutique} nbMessagesNonLus={nbMessagesNonLus}>
+    <VendeurShell
+      nomBoutique={vendeur.nom_boutique}
+      nbMessagesNonLus={nbMessagesNonLus}
+      nbPreparations={nbPreparations}
+    >
       {children}
     </VendeurShell>
   );

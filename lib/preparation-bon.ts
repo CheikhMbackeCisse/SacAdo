@@ -79,6 +79,7 @@ export async function chargerBonPreparation(id: number): Promise<DemandePreparat
     note: d.note,
     creeLe: d.cree_le,
     prepareeLe: d.preparee_le,
+    recupereeLe: d.recuperee_le,
     groupes: [...groupesParCommande.values()].sort((a, b) => a.clientNom.localeCompare(b.clientNom)),
     totaux: [...totaux.values()].sort((a, b) => a.produitNom.localeCompare(b.produitNom)),
     nbArticles,

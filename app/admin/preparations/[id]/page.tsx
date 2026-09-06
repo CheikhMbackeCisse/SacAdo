@@ -2,16 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getDemandePreparation } from "@/lib/admin/preparations-actions";
-import {
-  refPreparation,
-  LIBELLES_STATUT_DEMANDE,
-  formatDateHeureDakar,
-  numeroWhatsapp,
-} from "@/lib/preparations";
+import { refPreparation, formatDateHeureDakar, numeroWhatsapp } from "@/lib/preparations";
 import { jetonPreparation } from "@/lib/preparation-auth";
 import { origineSite } from "@/lib/site-url";
 import { BonPreparation } from "@/components/admin/bon-preparation";
 import { LienFournisseur } from "@/components/admin/lien-fournisseur";
+import { PastilleDemande } from "@/components/admin/pastille-demande";
+import { MarquerRecupereeBouton } from "@/components/admin/preparation-recuperee";
 
 export const dynamic = "force-dynamic";
 
@@ -45,13 +42,7 @@ export default async function AdminPreparationDetailPage({
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="font-heading text-xl font-bold text-ink">{refPreparation(demande.id)}</h1>
-          <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-              demande.statut === "preparee" ? "bg-success/10 text-success" : "bg-ink/[0.06] text-ink/60"
-            }`}
-          >
-            {LIBELLES_STATUT_DEMANDE[demande.statut]}
-          </span>
+          <PastilleDemande statut={demande.statut} recupereeLe={demande.recupereeLe} />
         </div>
         <p className="mt-1 text-sm text-ink/55">
           Fournisseur : <span className="font-medium text-ink/80">{demande.vendeurNom}</span>
@@ -73,6 +64,12 @@ export default async function AdminPreparationDetailPage({
             <dd className="text-ink">{formatDateHeure(demande.prepareeLe)}</dd>
           </div>
         )}
+        {demande.recupereeLe && (
+          <div>
+            <dt className="text-xs text-ink/50">Récupérée le</dt>
+            <dd className="text-ink">{formatDateHeure(demande.recupereeLe)}</dd>
+          </div>
+        )}
         {demande.note && (
           <div className="col-span-2">
             <dt className="text-xs text-ink/50">Note</dt>
@@ -82,6 +79,10 @@ export default async function AdminPreparationDetailPage({
       </dl>
 
       <LienFournisseur lien={lien} urlWhatsapp={urlWhatsapp} />
+
+      {demande.statut === "preparee" && (
+        <MarquerRecupereeBouton id={demande.id} recupereeLe={demande.recupereeLe} />
+      )}
 
       <div>
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink/40">

@@ -102,7 +102,12 @@ export type NegociationProposition = {
   date: string;
 };
 
-export type TypeMessageVendeur = "negociation" | "publication" | "refus" | "info";
+export type TypeMessageVendeur =
+  | "negociation"
+  | "publication"
+  | "refus"
+  | "info"
+  | "preparation";
 
 export type MessageVendeur = {
   id: number;
@@ -111,6 +116,8 @@ export type MessageVendeur = {
   titre: string;
   corps: string;
   produit_id: number | null;
+  // Lien vers la demande de préparation (type 'preparation', migration 0039).
+  demande_preparation_id: number | null;
   lu: boolean;
   date: string;
 };
@@ -349,6 +356,8 @@ export type DemandePreparation = {
   note: string | null;
   cree_le: string;
   preparee_le: string | null;
+  // Récupérée par SacAdo (livreur passé chez le fournisseur) — migration 0039.
+  recuperee_le: string | null;
 };
 
 export type DemandePreparationItem = {
