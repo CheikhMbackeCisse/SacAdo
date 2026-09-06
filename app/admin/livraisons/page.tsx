@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { MapPinned } from "lucide-react";
 import { getLivraisons } from "@/lib/admin/livraisons-actions";
 import { getFournisseurs } from "@/lib/admin/fournisseurs-actions";
 import { CarteLivraisons } from "@/components/admin/carte-livraisons";
@@ -8,13 +10,22 @@ export default async function AdminLivraisonsPage() {
   const [commandes, fournisseurs] = await Promise.all([getLivraisons(), getFournisseurs()]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-heading text-xl font-bold text-ink">Livraisons</h1>
-        <p className="mt-1 text-sm text-ink/55">
-          Commandes à livrer et points de retrait, pour organiser les tournées. Une
-          commande disparaît de la carte dès qu&apos;elle est marquée « livrée ».
-        </p>
+    <div className="flex h-[calc(100dvh-5.5rem)] flex-col gap-3 lg:h-[calc(100dvh-3rem)]">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="font-heading text-xl font-bold text-ink">Livraisons</h1>
+          <p className="mt-1 text-sm text-ink/55">
+            Commandes à livrer et points de retrait, pour organiser les tournées. Une
+            commande disparaît de la carte dès qu&apos;elle est marquée « livrée ».
+          </p>
+        </div>
+        <Link
+          href="/admin/lieux"
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 transition-colors hover:border-brand hover:text-brand"
+        >
+          <MapPinned size={14} aria-hidden="true" />
+          Lieux connus
+        </Link>
       </div>
 
       {commandes.length === 0 && fournisseurs.length === 0 ? (

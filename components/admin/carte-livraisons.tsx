@@ -7,6 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Check, Loader2, MapPin, Phone, X } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { changerStatutCommande } from "@/lib/admin/commandes-actions";
+import { regionLaPlusProche } from "@/lib/senegal-regions";
 import type { LivraisonCommande } from "@/lib/admin/livraisons-actions";
 import type { Fournisseur, ModeLivraison } from "@/lib/supabase/types";
 
@@ -16,6 +17,16 @@ const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const DAKAR: [number, number] = [-17.4467, 14.6928];
 const COULEUR_COMMANDE = "#0B3D91"; // bleu marque
 const COULEUR_FOURNISSEUR = "#64B6AC"; // turquoise décoratif
+
+// Filtre région : on regroupe les 14 régions en 3 zones logistiques.
+const FILTRES_REGION = ["Dakar", "Thiès", "Autres régions"] as const;
+type FiltreRegion = (typeof FILTRES_REGION)[number];
+
+function regroupeRegion(nom: string): FiltreRegion {
+  if (nom === "Dakar") return "Dakar";
+  if (nom === "Thiès") return "Thiès";
+  return "Autres régions";
+}
 
 type Selection =
   | { kind: "commande"; c: LivraisonCommande }
@@ -34,11 +45,13 @@ export function CarteLivraisons({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const marqueursRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const cadreFait = useRef(false);
+  const cadreSignatureRef = useRef("");
 
   const [prete, setPrete] = useState(false);
   const [carteHs, setCarteHs] = useState(false);
   const [filtreZone, setFiltreZone] = useState("");
   const [filtreMode, setFiltreMode] = useState<ModeLivraison | "">("");
+  const [filtreRegion, setFiltreRegion] = useState<FiltreRegion | "">("");
   const [selection, setSelection] = useState<Selection>(null);
   const [marquage, setMarquage] = useState(false);
 
@@ -52,14 +65,22 @@ export function CarteLivraisons({
       commandes.filter(
         (c) =>
           (!filtreZone || c.zoneNom === filtreZone) &&
-          (!filtreMode || c.modeLivraison === filtreMode),
+          (!filtreMode || c.modeLivraison === filtreMode) &&
+          (!filtreRegion || regroupeRegion(c.zoneNom) === filtreRegion),
       ),
-    [commandes, filtreZone, filtreMode],
+    [commandes, filtreZone, filtreMode, filtreRegion],
   );
 
-  const fournisseursAvecPos = useMemo(
-    () => fournisseurs.filter((f) => f.lat != null && f.lng != null),
-    [fournisseurs],
+  const fournisseursFiltres = useMemo(
+    () =>
+      fournisseurs.filter(
+        (f) =>
+          f.lat != null &&
+          f.lng != null &&
+          (!filtreRegion ||
+            regroupeRegion(regionLaPlusProche(f.lat, f.lng)) === filtreRegion),
+      ),
+    [fournisseurs, filtreRegion],
   );
 
   // Init carte, une fois.
@@ -99,7 +120,7 @@ export function CarteLivraisons({
     for (const c of commandesFiltrees) {
       voulus.set(`c-${c.id}`, { lng: c.lng, lat: c.lat, couleur: COULEUR_COMMANDE });
     }
-    for (const f of fournisseursAvecPos) {
+    for (const f of fournisseursFiltres) {
       voulus.set(`f-${f.id}`, { lng: f.lng as number, lat: f.lat as number, couleur: COULEUR_FOURNISSEUR });
     }
 
@@ -122,21 +143,24 @@ export function CarteLivraisons({
           const c = commandesFiltrees.find((x) => `c-${x.id}` === cle);
           if (c) setSelection({ kind: "commande", c });
         } else {
-          const f = fournisseursAvecPos.find((x) => `f-${x.id}` === cle);
+          const f = fournisseursFiltres.find((x) => `f-${x.id}` === cle);
           if (f) setSelection({ kind: "fournisseur", f });
         }
       });
       marqueursRef.current.set(cle, marqueur);
     }
 
-    // Cadrage initial sur l'ensemble des points.
-    if (!cadreFait.current && voulus.size > 0) {
+    // Cadrage sur l'ensemble des points : à la première pose, puis à chaque
+    // changement de filtre (la sélection visible bouge).
+    const signature = `${filtreZone}|${filtreMode}|${filtreRegion}`;
+    if (voulus.size > 0 && (!cadreFait.current || cadreSignatureRef.current !== signature)) {
       const bounds = new maplibregl.LngLatBounds();
       for (const p of voulus.values()) bounds.extend([p.lng, p.lat]);
-      map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 0 });
+      map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: cadreFait.current ? 400 : 0 });
       cadreFait.current = true;
+      cadreSignatureRef.current = signature;
     }
-  }, [prete, commandesFiltrees, fournisseursAvecPos]);
+  }, [prete, commandesFiltrees, fournisseursFiltres, filtreZone, filtreMode, filtreRegion]);
 
   const marquerLivree = async (id: number) => {
     setMarquage(true);
@@ -147,9 +171,23 @@ export function CarteLivraisons({
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
       {/* Filtres */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
+        <div className="flex overflow-hidden rounded-full border border-ink/15">
+          {FILTRES_REGION.map((r, i) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setFiltreRegion((cur) => (cur === r ? "" : r))}
+              className={`min-h-10 px-3 text-xs font-medium ${i > 0 ? "border-l border-ink/15" : ""} ${
+                filtreRegion === r ? "bg-brand text-surface" : "text-ink/70"
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
         <select
           value={filtreZone}
           onChange={(e) => setFiltreZone(e.target.value)}
@@ -179,11 +217,11 @@ export function CarteLivraisons({
         </span>
       </div>
 
-      {/* Carte */}
-      <div className="relative">
+      {/* Carte : occupe toute la hauteur restante */}
+      <div className="relative min-h-0 flex-1">
         <div
           ref={conteneurRef}
-          className="h-[60vh] min-h-72 w-full overflow-hidden rounded-2xl border border-ink/15 bg-ink/5"
+          className="h-full min-h-72 w-full overflow-hidden rounded-2xl border border-ink/15 bg-ink/5"
           role="application"
           aria-label="Carte des livraisons"
         />
@@ -209,29 +247,32 @@ export function CarteLivraisons({
             Fournisseur
           </span>
         </div>
-      </div>
 
-      {/* Panneau détail */}
-      {selection?.kind === "commande" && (
-        <PanneauCommande
-          c={selection.c}
-          marquage={marquage}
-          onMarquerLivree={() => marquerLivree(selection.c.id)}
-          onFermer={() => setSelection(null)}
-        />
-      )}
-      {selection?.kind === "fournisseur" && (
-        <div className="rounded-2xl border border-ink/10 bg-white p-4 text-sm">
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold text-ink">{selection.f.nom}</p>
-            <button type="button" onClick={() => setSelection(null)} aria-label="Fermer">
-              <X size={16} className="text-ink/40" />
-            </button>
+        {/* Panneau détail : superposé à la carte (bas sur mobile, droite sur desktop) */}
+        {selection && (
+          <div className="absolute inset-x-2 bottom-2 z-10 max-h-[calc(100%-1rem)] overflow-y-auto sm:left-auto sm:right-2 sm:w-80">
+            {selection.kind === "commande" ? (
+              <PanneauCommande
+                c={selection.c}
+                marquage={marquage}
+                onMarquerLivree={() => marquerLivree(selection.c.id)}
+                onFermer={() => setSelection(null)}
+              />
+            ) : (
+              <div className="rounded-2xl border border-ink/10 bg-white p-4 text-sm shadow-lg">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-ink">{selection.f.nom}</p>
+                  <button type="button" onClick={() => setSelection(null)} aria-label="Fermer">
+                    <X size={16} className="text-ink/40" />
+                  </button>
+                </div>
+                {selection.f.adresse && <p className="mt-1 text-ink/60">{selection.f.adresse}</p>}
+                <p className="mt-1 text-xs text-ink/40">Point de retrait de marchandise</p>
+              </div>
+            )}
           </div>
-          {selection.f.adresse && <p className="mt-1 text-ink/60">{selection.f.adresse}</p>}
-          <p className="mt-1 text-xs text-ink/40">Point de retrait de marchandise</p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -248,7 +289,7 @@ function PanneauCommande({
   onFermer: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4 text-sm">
+    <div className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4 text-sm shadow-lg">
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold text-ink">Commande #{c.id}</p>
         <button type="button" onClick={onFermer} aria-label="Fermer">
