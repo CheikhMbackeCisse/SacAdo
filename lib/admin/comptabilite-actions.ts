@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { calculerCommission } from "@/lib/commissions";
 import { estCommandeConfirmee } from "@/lib/commandes";
 import { CATEGORIES_DEPENSE } from "./comptabilite-constants";
+import { estVendeurSacAdo } from "@/lib/vendeurs/constants";
 import type { ActionResult } from "./produits-actions";
 import type {
   CategorieDepense,
@@ -128,7 +129,8 @@ export async function getRecapComptabilite(periode: Periode): Promise<RecapCompt
     reverse_le: string | null;
   }[]) {
     const produit = produitParId.get(ligne.produit_id);
-    if (!produit?.vendeur_id) continue;
+    // Pas de vendeur, ou vendeur « SacAdo » (produit en propre) : aucune dette.
+    if (!produit?.vendeur_id || estVendeurSacAdo(produit.vendeur_id)) continue;
     const { net } = calculerCommission(
       ligne.quantite * ligne.prix_unitaire,
       commissions,

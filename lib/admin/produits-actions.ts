@@ -4,6 +4,7 @@ import { requireAdmin } from "./guard";
 import { estNombrePositifValide, texteNonVide } from "./validation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { aplatirAttributs } from "@/lib/variantes";
+import { VENDEUR_SACADO_ID } from "@/lib/vendeurs/constants";
 import type { Delai, Produit, StatutProduit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -75,6 +76,9 @@ function validerProduitInput(input: ProduitInput): string | null {
 // Postgres 42703 = « column does not exist » : repli tant que la migration 0030
 // (colonne sous_sous_categorie_id) n'est pas passée en prod.
 const COLONNE_ABSENTE = "42703";
+// Postgres 23503 = violation de clé étrangère : repli tant que la migration 0036
+// (vendeur « SacAdo ») n'est pas passée en prod.
+const FK_ABSENTE = "23503";
 function sansSousSousCategorie(input: ProduitInput): Omit<ProduitInput, "sous_sous_categorie_id"> {
   const reste: Partial<ProduitInput> = { ...input };
   delete reste.sous_sous_categorie_id;
@@ -86,7 +90,14 @@ export async function creerProduit(input: ProduitInput): Promise<ActionResult & 
   const erreur = validerProduitInput(input);
   if (erreur) return { ok: false, error: erreur };
 
-  let { data, error } = await supabaseAdmin.from("produits").insert(input).select().single();
+  // Produit publié par l'admin : rattaché au vendeur « SacAdo », en ligne direct.
+  const avecVendeur = { ...input, vendeur_id: VENDEUR_SACADO_ID, publie_par: "admin" as const };
+
+  let { data, error } = await supabaseAdmin.from("produits").insert(avecVendeur).select().single();
+  if (error?.code === COLONNE_ABSENTE || error?.code === FK_ABSENTE) {
+    // Migration 0036 pas encore passée : on retombe sur l'ancien comportement.
+    ({ data, error } = await supabaseAdmin.from("produits").insert(input).select().single());
+  }
   if (error?.code === COLONNE_ABSENTE) {
     ({ data, error } = await supabaseAdmin
       .from("produits")

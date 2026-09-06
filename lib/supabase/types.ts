@@ -39,6 +39,10 @@ export type Produit = {
   motif_refus: string | null;
   // Remarque libre laissée par le vendeur à l'attention de SacAdo (migration 0029).
   commentaire_vendeur: string | null;
+  // Qui a mis le produit en ligne (migration 0036) :
+  //   'admin'   : publié par l'admin au nom d'un vendeur -> en ligne direct ;
+  //   'vendeur' : soumis par le vendeur -> passe par la validation admin.
+  publie_par: "admin" | "vendeur";
 };
 
 // Catégories : source de vérité en base (table `categories`). Les icônes Lucide
@@ -298,30 +302,39 @@ export type Depense = {
   created_at: string;
 };
 
-// Marketplace V2 — comptes back-office et vendeurs (id = auth.users.id).
+// Marketplace V2 — comptes back-office. (id = auth.users.id)
 export type Admin = {
   user_id: string;
   email: string | null;
   created_at: string;
 };
 
+// Vendeur = fournisseur (NOTE_UNIFICATION). Une seule entité qui fournit des
+// produits. `user_id` NULL = vendeur géré par l'admin, sans compte de connexion
+// (migration 0036). `adresse`/`lat`/`lng` = point de retrait de la marchandise.
 export type Vendeur = {
   id: string;
+  user_id: string | null;
   nom_boutique: string;
   contact_nom: string | null;
   contact_telephone: string | null;
   infos_reversement: string | null;
+  adresse: string | null;
+  lat: number | null;
+  lng: number | null;
+  actif: boolean;
   date_creation: string;
 };
 
-// Point de retrait de marchandise, saisi dans l'admin (migration 0028).
+// Vue « fournisseur » de l'admin : un vendeur vu comme point de retrait de
+// marchandise (écran /admin/fournisseurs, carte /admin/livraisons). Depuis
+// l'unification (migration 0036) c'est une projection de `vendeurs`.
 export type Fournisseur = {
-  id: number;
+  id: string;
   nom: string;
   adresse: string | null;
   lat: number | null;
   lng: number | null;
-  created_at: string;
 };
 
 export type TypeMessage = "commande" | "info" | "promo";

@@ -73,9 +73,14 @@ export async function signUpVendeur(
   }
 
   // Fiche vendeur créée côté serveur (service_role) : pas de policy INSERT anon.
+  // id = user_id : vendeur avec compte (par opposition aux fournisseurs gérés
+  // par l'admin, dont `user_id` reste NULL — migration 0036).
   const { error: ficheError } = await supabaseAdmin
     .from("vendeurs")
-    .upsert({ id: data.user.id, nom_boutique: boutique }, { onConflict: "id" });
+    .upsert(
+      { id: data.user.id, user_id: data.user.id, nom_boutique: boutique },
+      { onConflict: "id" },
+    );
 
   if (ficheError) {
     if (estViolationUnicite(ficheError)) {
@@ -136,6 +141,7 @@ export async function enregistrerProfilVendeur(input: {
   const { error } = await supabaseAdmin.from("vendeurs").upsert(
     {
       id: user.id,
+      user_id: user.id,
       nom_boutique: boutique,
       contact_nom: contactNom,
       contact_telephone: contactTelephone,
