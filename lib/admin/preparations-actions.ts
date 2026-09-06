@@ -2,78 +2,17 @@
 
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { aplatirAttributs, libelleVariante } from "@/lib/variantes";
 import { estVendeurSacAdo } from "@/lib/vendeurs/constants";
-import { STATUTS_COMMANDE_A_PREPARER } from "@/lib/preparations";
 import { chargerBonPreparation } from "@/lib/preparation-bon";
+import {
+  un,
+  labelsVariantes,
+  lignesEnAttente,
+  creerDemandePourVendeur,
+} from "@/lib/preparation-creer";
 import type { ActionResult } from "./produits-actions";
 import type { DemandePreparation, StatutDemandePreparation } from "@/lib/supabase/types";
 import type { GroupeClient, LigneTotal, DemandePreparationDetail } from "@/lib/preparations";
-
-type Rel<T> = T | T[] | null;
-function un<T>(v: Rel<T>): T | null {
-  return Array.isArray(v) ? (v[0] ?? null) : v;
-}
-
-const STATUTS = [...STATUTS_COMMANDE_A_PREPARER];
-
-// --- Articles en attente de préparation --------------------------------------
-
-// Libellé « Bleu · M » par variante_id, pour un lot d'ids donné.
-async function labelsVariantes(varianteIds: number[]): Promise<Map<number, string>> {
-  const ids = [...new Set(varianteIds)];
-  if (ids.length === 0) return new Map();
-  const { data } = await supabaseAdmin
-    .from("produit_variantes")
-    .select("id, variante_attributs(attribut_id, valeur, attributs(nom))")
-    .in("id", ids);
-  const map = new Map<number, string>();
-  type Ligne = {
-    id: number;
-    variante_attributs?:
-      | { attribut_id: number; valeur: string; attributs: { nom: string } | { nom: string }[] | null }[]
-      | null;
-  };
-  for (const row of (data ?? []) as Ligne[]) {
-    const label = libelleVariante({ attributs: aplatirAttributs(row) });
-    if (label) map.set(row.id, label);
-  }
-  return map;
-}
-
-// commande_item_id déjà rattachés à une demande (donc plus « en attente »).
-async function itemsDejaDemandes(): Promise<Set<number>> {
-  const { data } = await supabaseAdmin.from("demande_preparation_items").select("commande_item_id");
-  return new Set((data ?? []).map((r) => r.commande_item_id as number));
-}
-
-type LigneEnAttente = {
-  id: number;
-  commande_id: number;
-  produit_id: number;
-  variante_id: number | null;
-  quantite: number;
-  commande: Rel<{
-    statut: string;
-    mode_livraison: string | null;
-    client: Rel<{ nom: string }>;
-    zone: Rel<{ nom: string }>;
-  }>;
-};
-
-async function lignesEnAttente(produitIds: number[]): Promise<LigneEnAttente[]> {
-  if (produitIds.length === 0) return [];
-  const { data } = await supabaseAdmin
-    .from("commande_items")
-    .select(
-      `id, commande_id, produit_id, variante_id, quantite,
-       commande:commandes!inner(statut, mode_livraison, client:clients(nom), zone:zones(nom))`,
-    )
-    .in("produit_id", produitIds)
-    .in("commande.statut", STATUTS);
-  const assignes = await itemsDejaDemandes();
-  return ((data ?? []) as unknown as LigneEnAttente[]).filter((l) => !assignes.has(l.id));
-}
 
 export type VendeurEnAttente = {
   vendeurId: string;
@@ -214,72 +153,8 @@ export async function creerDemandePreparation(
   note?: string,
 ): Promise<ActionResult & { id?: number }> {
   await requireAdmin();
-
-  // On relit les articles éligibles au moment du clic (rien de figé côté client).
-  const { data: produitsRows } = await supabaseAdmin
-    .from("produits")
-    .select("id, nom, photo")
-    .eq("vendeur_id", vendeurId);
-  const produits = (produitsRows ?? []) as { id: number; nom: string; photo: string | null }[];
-  if (produits.length === 0 || estVendeurSacAdo(vendeurId)) {
-    return { ok: false, error: "Ce vendeur n'a aucun article à préparer." };
-  }
-  const produitParId = new Map(produits.map((p) => [p.id, p]));
-
-  const lignes = await lignesEnAttente(produits.map((p) => p.id));
-  if (lignes.length === 0) {
-    return { ok: false, error: "Plus aucun article en attente pour ce vendeur." };
-  }
-  const labels = await labelsVariantes(lignes.map((l) => l.variante_id).filter((v): v is number => v != null));
-
-  const { data: demande, error: errDemande } = await supabaseAdmin
-    .from("demandes_preparation")
-    .insert({ vendeur_id: vendeurId, declenchement: "manuel", note: note?.trim() || null })
-    .select("id")
-    .single();
-  if (errDemande || !demande) return { ok: false, error: "Impossible de créer la demande." };
-
-  const items = lignes.map((l) => {
-    const commande = un(l.commande);
-    const produit = produitParId.get(l.produit_id);
-    return {
-      demande_id: demande.id,
-      commande_id: l.commande_id,
-      commande_item_id: l.id,
-      produit_id: l.produit_id,
-      quantite: l.quantite,
-      produit_nom: produit?.nom ?? "Article",
-      variante_label: l.variante_id != null ? (labels.get(l.variante_id) ?? null) : null,
-      produit_photo: produit?.photo ?? null,
-      client_nom: un(commande?.client)?.nom ?? "Client",
-      mode_livraison: commande?.mode_livraison ?? null,
-      zone_nom: un(commande?.zone)?.nom ?? null,
-    };
-  });
-
-  const { error: errItems } = await supabaseAdmin.from("demande_preparation_items").insert(items);
-  if (errItems) {
-    // Course possible (un article vient d'être pris par une autre demande) :
-    // on annule la demande vide plutôt que de laisser un enregistrement bancal.
-    await supabaseAdmin.from("demandes_preparation").delete().eq("id", demande.id);
-    return { ok: false, error: "Un article vient d'être inclus dans une autre demande. Recommence." };
-  }
-
-  // Notification in-app dans la boîte de réception du vendeur (canal de base,
-  // NOTIFICATIONS_FOURNISSEURS §1). Le lien WhatsApp reste le canal de secours.
-  const nbArticles = lignes.reduce((s, l) => s + l.quantite, 0);
-  const nbClients = new Set(lignes.map((l) => l.commande_id)).size;
-  await supabaseAdmin.from("messages_vendeur").insert({
-    vendeur_id: vendeurId,
-    type: "preparation",
-    titre: "Préparation demandée",
-    corps: `${nbArticles} article${nbArticles > 1 ? "s" : ""} à préparer pour ${nbClients} client${
-      nbClients > 1 ? "s" : ""
-    }. Ouvrez le bon de préparation pour le détail.`,
-    demande_preparation_id: demande.id,
-  });
-
-  return { ok: true, id: demande.id };
+  const res = await creerDemandePourVendeur(vendeurId, "manuel", { note });
+  return res.ok ? { ok: true, id: res.id } : { ok: false, error: res.error };
 }
 
 // L'admin marque la demande comme récupérée (livreur passé chez le fournisseur).

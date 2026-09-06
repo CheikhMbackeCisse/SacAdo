@@ -7,6 +7,7 @@ import { optionsPaiementPourTotal, paiementAutorise, type OptionsPaiement } from
 import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wave/client";
 import { jetonClient, verifierJetonClient } from "@/lib/client-auth";
 import { getSeuilLivraisonGratuite } from "@/lib/parametres";
+import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import type { LignePanier } from "@/lib/local/panier";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
 
@@ -543,6 +544,13 @@ export async function passerCommande(
   }
 
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
+
+  // Commande en livraison 24h : prévenir automatiquement les fournisseurs
+  // concernés (NOTIFICATIONS_FOURNISSEURS §2). Ne bloque pas la confirmation.
+  if (input.modeLivraison === "24h") {
+    await declencherPreparationsAuto(commandeId as number);
+  }
+
   return {
     ok: true,
     commandeId: commandeId as number,
@@ -764,6 +772,8 @@ export async function simulerPaiementWave(
     console.error("Simulation webhook Wave: RPC échouée", error);
     return { ok: false, error: "La simulation a échoué." };
   }
+
+  if (data === "ok_payee") await declencherPreparationsAuto(commande.id);
   return { ok: true, resultat: data as string };
 }
 

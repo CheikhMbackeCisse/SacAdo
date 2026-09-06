@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { EN_TETE_SIGNATURE, parseEvenementWave, verifierSignatureWave } from "@/lib/wave/webhook";
+import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 
 export const dynamic = "force-dynamic";
 
@@ -45,5 +46,17 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(`Webhook Wave: ${evenement.id} (${evenement.resultat}) -> ${data}`);
+
+  // Paiement abouti : la commande passe 'recue'. Si elle est en livraison 24h,
+  // on prévient automatiquement les fournisseurs (NOTIFICATIONS_FOURNISSEURS §2).
+  if (data === "ok_payee") {
+    const { data: commande } = await supabaseAdmin
+      .from("commandes")
+      .select("id")
+      .eq("client_reference", evenement.reference)
+      .maybeSingle();
+    if (commande) await declencherPreparationsAuto((commande as { id: number }).id);
+  }
+
   return Response.json({ ok: true, resultat: data });
 }
