@@ -160,6 +160,25 @@ export type KitItem = {
   quantite_defaut: number;
 };
 
+// Ebook PDF offert à l'achat d'un kit (MODULE_EBOOKS.md). Fichier rangé dans le
+// bucket privé `ebooks` ; jamais servi en public, seulement via URL signée.
+export type Ebook = {
+  id: number;
+  titre: string;
+  fichier_chemin: string;
+  taille_octets: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// Quelle classe (cycle + niveau) reçoit quel ebook. Une classe = au plus une ligne.
+export type EbookClasse = {
+  id: number;
+  ebook_id: number;
+  cycle: Cycle;
+  niveau: string;
+};
+
 export type Zone = {
   id: number;
   nom: string;
