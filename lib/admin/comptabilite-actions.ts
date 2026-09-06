@@ -4,6 +4,7 @@ import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { calculerCommission } from "@/lib/commissions";
 import { estCommandeConfirmee } from "@/lib/commandes";
+import { CATEGORIES_DEPENSE } from "./comptabilite-constants";
 import type { ActionResult } from "./produits-actions";
 import type {
   CategorieDepense,
@@ -15,13 +16,6 @@ import type {
   StatutCommande,
   StatutPaiement,
 } from "@/lib/supabase/types";
-
-export const CATEGORIES_DEPENSE: { valeur: CategorieDepense; label: string }[] = [
-  { valeur: "carburant", label: "Carburant" },
-  { valeur: "salaire_chauffeur", label: "Salaire chauffeur" },
-  { valeur: "achat_fournisseur", label: "Achat fournisseur" },
-  { valeur: "divers", label: "Divers" },
-];
 
 export type Periode = "jour" | "semaine" | "mois";
 

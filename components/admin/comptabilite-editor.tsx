@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Wallet } from "lucide-react";
 import {
-  CATEGORIES_DEPENSE,
   creerDepense,
   reverserVendeur,
   supprimerDepense,
@@ -13,6 +12,7 @@ import {
   type Periode,
   type RecapComptabilite,
 } from "@/lib/admin/comptabilite-actions";
+import { CATEGORIES_DEPENSE } from "@/lib/admin/comptabilite-constants";
 import { formatPrice } from "@/lib/format";
 import type { CategorieDepense, Depense } from "@/lib/supabase/types";
 
