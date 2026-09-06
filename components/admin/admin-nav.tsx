@@ -16,6 +16,7 @@ import {
   MapPinned,
   Menu,
   Package,
+  PackageCheck,
   ShieldCheck,
   SlidersHorizontal,
   Truck,
@@ -29,6 +30,7 @@ import { signOut } from "@/lib/admin/auth-actions";
 const LIENS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/livraisons", label: "Livraisons", icon: Truck },
+  { href: "/admin/preparations", label: "Préparations", icon: PackageCheck },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },
   { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/moderation", label: "Modération vendeurs", icon: ShieldCheck },

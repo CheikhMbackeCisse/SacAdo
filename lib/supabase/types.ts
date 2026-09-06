@@ -337,6 +337,36 @@ export type Fournisseur = {
   lng: number | null;
 };
 
+// Demande de préparation adressée à un vendeur/fournisseur (migration 0038).
+export type StatutDemandePreparation = "a_preparer" | "preparee";
+export type DeclenchementPreparation = "manuel" | "auto_24h";
+
+export type DemandePreparation = {
+  id: number;
+  vendeur_id: string;
+  statut: StatutDemandePreparation;
+  declenchement: DeclenchementPreparation;
+  note: string | null;
+  cree_le: string;
+  preparee_le: string | null;
+};
+
+export type DemandePreparationItem = {
+  id: number;
+  demande_id: number;
+  commande_id: number;
+  commande_item_id: number;
+  produit_id: number | null;
+  quantite: number;
+  produit_nom: string;
+  variante_label: string | null;
+  produit_photo: string | null;
+  client_nom: string;
+  mode_livraison: string | null;
+  zone_nom: string | null;
+  note: string | null;
+};
+
 export type TypeMessage = "commande" | "info" | "promo";
 
 export type Message = {
