@@ -241,6 +241,16 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
               ? "Ajouté ✓"
               : "Ajouter au panier"}
         </button>
+
+        {produit.description && (
+          <section className="mt-1 flex flex-col gap-1.5 border-t border-ink/10 pt-3">
+            <h2 className="text-xs font-medium text-ink/60">Description</h2>
+            {/* Fiche produit : description complète, jamais tronquée (CORRECTIONS_V10 §2). */}
+            <p className="whitespace-pre-line text-sm leading-relaxed text-ink/80">
+              {produit.description}
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );

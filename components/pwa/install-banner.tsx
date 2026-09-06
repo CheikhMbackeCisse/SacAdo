@@ -65,7 +65,9 @@ export function InstallBanner() {
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
           <Download size={18} aria-hidden="true" />
         </span>
-        <p className="flex-1 text-xs text-ink/80">Installez SacAdo sur votre téléphone</p>
+        <p className="flex-1 text-xs text-ink/80">
+          Pour une meilleure expérience, téléchargez l&apos;app
+        </p>
         <button
           type="button"
           onClick={installer}
