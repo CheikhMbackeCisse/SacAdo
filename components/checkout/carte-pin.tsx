@@ -1,9 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, LocateFixed } from "lucide-react";
+import { Loader2, LocateFixed, MapPin, Search } from "lucide-react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import {
+  MIN_CARACTERES_RECHERCHE,
+  rechercherLieux,
+  type ResultatLieu,
+} from "@/lib/geocoding";
 
 export type Coordonnees = { lat: number; lng: number };
 
@@ -57,6 +62,14 @@ export function CartePin({ position, onChange, readOnly = false }: Props) {
   const [pretePourInteraction, setPretePourInteraction] = useState(false);
   const [carteHs, setCarteHs] = useState(false);
   const [geoloc, setGeoloc] = useState<"idle" | "chargement" | "refus" | "indispo">("idle");
+
+  // Recherche d'adresse (geocoding) : taper un lieu → la carte s'y rend.
+  const [recherche, setRecherche] = useState("");
+  const [resultats, setResultats] = useState<ResultatLieu[]>([]);
+  const [rechercheEnCours, setRechercheEnCours] = useState(false);
+  const [listeOuverte, setListeOuverte] = useState(false);
+  // Évite de relancer une recherche quand on remplit le champ avec le résultat choisi.
+  const ignorerRecherche = useRef(false);
 
   // Initialisation de la carte, une seule fois.
   useEffect(() => {
@@ -140,8 +153,108 @@ export function CartePin({ position, onChange, readOnly = false }: Props) {
     );
   }, []);
 
+  const majRecherche = (valeur: string) => {
+    setRecherche(valeur);
+    if (valeur.trim().length < MIN_CARACTERES_RECHERCHE) {
+      setResultats([]);
+      setListeOuverte(false);
+    }
+  };
+
+  // Recherche différée (400 ms) à chaque frappe.
+  useEffect(() => {
+    if (readOnly) return;
+    if (ignorerRecherche.current) {
+      ignorerRecherche.current = false;
+      return;
+    }
+    const q = recherche.trim();
+    if (q.length < MIN_CARACTERES_RECHERCHE) return;
+
+    const controleur = new AbortController();
+    const minuteur = setTimeout(async () => {
+      setRechercheEnCours(true);
+      try {
+        const trouves = await rechercherLieux(q, controleur.signal);
+        setResultats(trouves);
+        setListeOuverte(true);
+      } catch {
+        // requête annulée ou réseau : on garde l'état précédent
+      } finally {
+        if (!controleur.signal.aborted) setRechercheEnCours(false);
+      }
+    }, 400);
+    return () => {
+      clearTimeout(minuteur);
+      controleur.abort();
+    };
+  }, [recherche, readOnly]);
+
+  const choisirResultat = (lieu: ResultatLieu) => {
+    ignorerRecherche.current = true;
+    setRecherche(lieu.nom);
+    setResultats([]);
+    setListeOuverte(false);
+    gesteInterne.current = false; // on veut que la carte vole vers le résultat
+    onChangeRef.current({ lat: lieu.lat, lng: lieu.lng });
+  };
+
   return (
     <div className="flex flex-col gap-2">
+      {!readOnly && (
+        <div className="relative">
+          <div className="flex items-center gap-2 rounded-xl border border-ink/15 bg-elevated px-3 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+            {rechercheEnCours ? (
+              <Loader2 size={15} className="shrink-0 animate-spin text-ink/40" aria-hidden="true" />
+            ) : (
+              <Search size={15} className="shrink-0 text-ink/40" aria-hidden="true" />
+            )}
+            <input
+              type="text"
+              value={recherche}
+              onChange={(event) => majRecherche(event.target.value)}
+              onFocus={() => resultats.length > 0 && setListeOuverte(true)}
+              onBlur={() => setTimeout(() => setListeOuverte(false), 120)}
+              placeholder="Rechercher un lieu (école, quartier, repère…)"
+              autoComplete="off"
+              className="w-full bg-transparent py-2.5 text-sm text-ink placeholder:text-ink/35 focus:outline-none"
+            />
+          </div>
+
+          {listeOuverte && resultats.length > 0 && (
+            <ul className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-ink/15 bg-surface shadow-lg">
+              {resultats.map((lieu, index) => (
+                <li key={`${lieu.source}-${index}`}>
+                  <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => choisirResultat(lieu)}
+                    className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5"
+                  >
+                    <MapPin size={14} className="mt-0.5 shrink-0 text-ink/40" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{lieu.nom}</span>
+                      {lieu.source === "connu" && (
+                        <span className="text-[11px] font-medium text-brand">Lieu enregistré</span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {listeOuverte &&
+            !rechercheEnCours &&
+            resultats.length === 0 &&
+            recherche.trim().length >= MIN_CARACTERES_RECHERCHE && (
+              <p className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-ink/15 bg-surface px-3 py-2 text-xs text-ink/55 shadow-lg">
+                Aucun lieu trouvé. Place l’épingle à la main sur la carte.
+              </p>
+            )}
+        </div>
+      )}
+
       <div
         ref={conteneurRef}
         className="relative z-0 h-56 w-full overflow-hidden rounded-xl border border-ink/15 bg-ink/5"
