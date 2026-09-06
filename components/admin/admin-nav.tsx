@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  BookOpen,
   ClipboardList,
   FolderTree,
   GraduationCap,
@@ -34,6 +35,7 @@ const LIENS = [
   { href: "/admin/categories", label: "Catégories", icon: FolderTree },
   { href: "/admin/attributs", label: "Attributs", icon: SlidersHorizontal },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
+  { href: "/admin/ebooks", label: "Ebooks", icon: BookOpen },
   { href: "/admin/zones", label: "Groupes de livraison", icon: MapPin },
   { href: "/admin/localites", label: "Localités", icon: MapPinned },
   { href: "/admin/lieux-speciaux", label: "Lieux spéciaux", icon: Landmark },
