@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpen, Package } from "lucide-react";
+import { ArrowLeft, Package } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
 import { getGammeDef, isGamme } from "@/lib/gammes";
 import {
@@ -63,19 +63,14 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
           size={17}
         />
       </div>
-      <p className="px-4 pb-2 text-sm text-ink/60">{gammeDef?.tagline}</p>
-
-      <div className="mx-4 mb-2 flex items-center gap-2.5 rounded-2xl border border-decorative/30 bg-decorative/10 px-4 py-3">
-        <BookOpen size={18} className="shrink-0 text-ink/70" aria-hidden="true" />
-        <p className="text-xs text-ink/80">
-          <span className="font-semibold">Ebook de la classe offert</span> à l&apos;achat de ce kit
-          complet, quelle que soit la gamme.
-        </p>
-      </div>
-
-      <p className="px-4 pb-2 text-xs text-ink/50">
-        Liste pré-cochée : décochez ce que vous avez déjà, ajustez les quantités.
+      <p className="mx-4 mb-1 mt-0.5 flex items-center gap-1.5 text-xs text-ink/60">
+        <span
+          className="size-1.5 shrink-0 rounded-full bg-[#DC2626]"
+          aria-hidden="true"
+        />
+        Ebook de la classe offert
       </p>
+
       <KitBuilder
         kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()}
         items={items}

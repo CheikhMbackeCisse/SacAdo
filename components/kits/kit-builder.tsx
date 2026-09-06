@@ -138,7 +138,7 @@ export function KitBuilder({ kitNom, items, sacParDefaut }: KitBuilderProps) {
           const etat = etats[item.id];
           const epuise = item.produit.statut === "epuise";
           return (
-            <li key={item.id} className="flex items-center gap-3 py-3">
+            <li key={item.id} className="flex items-center gap-3 py-2.5">
               <input
                 type="checkbox"
                 checked={etat?.checked ?? false}
@@ -147,15 +147,6 @@ export function KitBuilder({ kitNom, items, sacParDefaut }: KitBuilderProps) {
                 aria-label={`Inclure ${item.produit.nom}`}
                 className="size-5 shrink-0 accent-brand"
               />
-
-              <div className="relative size-12 shrink-0 overflow-hidden rounded-xl">
-                <ProductImage
-                  src={item.produit.photo}
-                  alt={item.produit.nom}
-                  className="h-full w-full"
-                  sizes="48px"
-                />
-              </div>
 
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm text-ink">{item.produit.nom}</span>
