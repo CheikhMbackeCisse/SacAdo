@@ -32,3 +32,31 @@ export async function setToursMax(valeur: number): Promise<{ ok: true } | { ok: 
   if (error) return { ok: false, error: "Impossible d'enregistrer le réglage." };
   return { ok: true };
 }
+
+const CLE_SEUIL_LIVRAISON_GRATUITE = "seuil_livraison_gratuite";
+const SEUIL_LIVRAISON_GRATUITE_DEFAUT = 75000;
+
+// Sous-total (FCFA) à partir duquel la livraison est offerte, réglable dans
+// l'admin — IMPLEMENTATION_TARIFS_LIVRAISON.md §5.
+export async function getSeuilLivraisonGratuite(): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from("parametres")
+    .select("valeur")
+    .eq("cle", CLE_SEUIL_LIVRAISON_GRATUITE)
+    .maybeSingle();
+
+  const n = Number(data?.valeur);
+  return Number.isFinite(n) && n >= 0 ? n : SEUIL_LIVRAISON_GRATUITE_DEFAUT;
+}
+
+export async function setSeuilLivraisonGratuite(
+  valeur: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const n = Math.round(valeur);
+  if (!Number.isFinite(n) || n < 0) return { ok: false, error: "Le seuil doit être un nombre positif." };
+  const { error } = await supabaseAdmin
+    .from("parametres")
+    .upsert({ cle: CLE_SEUIL_LIVRAISON_GRATUITE, valeur: String(n), maj: new Date().toISOString() });
+  if (error) return { ok: false, error: "Impossible d'enregistrer le réglage." };
+  return { ok: true };
+}

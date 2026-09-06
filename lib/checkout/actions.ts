@@ -3,20 +3,19 @@
 import { headers } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getClientIp, verifierLimite } from "@/lib/security/rate-limit";
-import { regionLaPlusProche } from "@/lib/senegal-regions";
 import { optionsPaiementPourTotal, paiementAutorise, type OptionsPaiement } from "@/lib/checkout/montants";
 import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wave/client";
 import { jetonClient, verifierJetonClient } from "@/lib/client-auth";
+import { getSeuilLivraisonGratuite } from "@/lib/parametres";
 import type { LignePanier } from "@/lib/local/panier";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
-
-const SEUIL_GRATUITE = 50000;
 
 // Formats larges exprès (numéros sénégalais et internationaux varient), mais
 // bornés : sert à rejeter du bruit random, pas à valider un vrai numéro.
 const TELEPHONE_REGEX = /^[0-9+\s.-]{6,20}$/;
 const NOM_MAX = 100;
 const PRECISION_LIVREUR_MAX = 300;
+const LOCALITE_TEXTE_MAX = 150;
 const LIGNES_MAX = 50;
 const QUANTITE_MAX = 999;
 
@@ -25,11 +24,17 @@ export type EnfantEbook = { kit: string; prenom: string };
 export type CheckoutInput = {
   nom: string;
   telephone: string;
-  // Point validé sur la carte. Le client ne choisit plus sa région : on la
-  // déduit de ces coordonnées côté serveur, ce qui détermine le tarif de
-  // livraison (toujours par zone) — CORRECTIONS_DIVERSES_V6 §2.
-  lat: number;
-  lng: number;
+  // Localité choisie dans le sélecteur dédié (IMPLEMENTATION_TARIFS_LIVRAISON.md) :
+  // détermine le tarif. `localiteId`/`lieuSpecialId` sont mutuellement exclusifs ;
+  // si aucun des deux ne correspond (saisie libre non reconnue), `localiteTexte`
+  // sert de libellé et le tarif reste "à confirmer" — la commande n'est pas bloquée.
+  localiteId: number | null;
+  lieuSpecialId: number | null;
+  localiteTexte: string;
+  // Point carte désormais FACULTATIF : sert uniquement à préciser l'endroit
+  // exact pour le livreur, plus à déduire le tarif.
+  lat: number | null;
+  lng: number | null;
   // Champ libre facultatif : « portail bleu, 2e étage, appeler en arrivant ».
   precisionLivreur?: string | null;
   modeLivraison: ModeLivraison;
@@ -78,44 +83,142 @@ type LigneResolue = {
 };
 
 type CommandeResolue = {
-  zone: Zone;
-  regionNom: string;
+  zoneId: number | null;
+  localiteId: number | null;
+  lieuSpecialId: number | null;
+  localiteNom: string;
+  aConfirmer: boolean;
   lignesResolues: LigneResolue[];
   sousTotal: number;
   fraisLivraison: number;
+  // Les deux tarifs (pas seulement celui du mode choisi) pour que le checkout
+  // affiche les deux options de vitesse sans un aller-retour par mode.
+  fraisLivraison24h: number;
+  fraisLivraison6j: number;
   total: number;
 };
 
-// Prix, zone et frais recalculés EN BASE (jamais depuis le client) à partir du
-// panier et du point de livraison. Partagé par passerCommande() (création) et
+type ResolutionLivraison = {
+  zoneId: number | null;
+  localiteId: number | null;
+  lieuSpecialId: number | null;
+  localiteNom: string;
+  fraisLivraison: number;
+  fraisLivraison24h: number;
+  fraisLivraison6j: number;
+  aConfirmer: boolean;
+};
+
+// Tarif recalculé EN BASE à partir de l'id envoyé (jamais du libellé ou du
+// montant que le client pourrait forger) — IMPLEMENTATION_TARIFS_LIVRAISON.md §6.
+async function resoudreLivraison(params: {
+  modeLivraison: ModeLivraison;
+  localiteId: number | null;
+  lieuSpecialId: number | null;
+  localiteTexte: string;
+}): Promise<{ ok: true; data: ResolutionLivraison } | { ok: false; error: string }> {
+  if (params.lieuSpecialId != null) {
+    const { data: lieu, error } = await supabaseAdmin
+      .from("lieux_speciaux")
+      .select("*")
+      .eq("id", params.lieuSpecialId)
+      .maybeSingle();
+    if (error) return { ok: false, error: "Une erreur est survenue, réessaie." };
+    if (!lieu) return { ok: false, error: "Ce lieu n'est plus disponible, choisis-en un autre." };
+    // Même tarif quelle que soit la vitesse choisie (§4 du doc de spec).
+    const tarif = lieu.mode === "a_confirmer" ? 0 : (lieu.tarif ?? 0);
+    return {
+      ok: true,
+      data: {
+        zoneId: null,
+        localiteId: null,
+        lieuSpecialId: lieu.id,
+        localiteNom: lieu.nom,
+        fraisLivraison: tarif,
+        fraisLivraison24h: tarif,
+        fraisLivraison6j: tarif,
+        aConfirmer: lieu.mode === "a_confirmer",
+      },
+    };
+  }
+
+  if (params.localiteId != null) {
+    const { data: localite, error } = await supabaseAdmin
+      .from("localites")
+      .select("*, groupe:zones(*)")
+      .eq("id", params.localiteId)
+      .maybeSingle();
+    if (error) return { ok: false, error: "Une erreur est survenue, réessaie." };
+    type LocaliteJointe = { id: number; nom: string; groupe: Zone | Zone[] | null };
+    const row = localite as unknown as LocaliteJointe | null;
+    const groupe = row ? (Array.isArray(row.groupe) ? row.groupe[0] : row.groupe) : null;
+    if (!row || !groupe) {
+      return { ok: false, error: "Cette localité n'est plus disponible, choisis-en une autre." };
+    }
+    return {
+      ok: true,
+      data: {
+        zoneId: groupe.id,
+        localiteId: row.id,
+        lieuSpecialId: null,
+        localiteNom: row.nom,
+        fraisLivraison: params.modeLivraison === "24h" ? groupe.tarif_24h : groupe.tarif_6j,
+        fraisLivraison24h: groupe.tarif_24h,
+        fraisLivraison6j: groupe.tarif_6j,
+        aConfirmer: false,
+      },
+    };
+  }
+
+  // Rien de reconnu : saisie libre, on ne bloque pas la commande (§6) — l'admin
+  // confirme le tarif ensuite.
+  const texteLibre = params.localiteTexte.trim().slice(0, LOCALITE_TEXTE_MAX);
+  if (!texteLibre) return { ok: false, error: "Indique ta localité de livraison." };
+  return {
+    ok: true,
+    data: {
+      zoneId: null,
+      localiteId: null,
+      lieuSpecialId: null,
+      localiteNom: texteLibre,
+      fraisLivraison: 0,
+      fraisLivraison24h: 0,
+      fraisLivraison6j: 0,
+      aConfirmer: true,
+    },
+  };
+}
+
+// Prix et frais recalculés EN BASE (jamais depuis le client) à partir du
+// panier et de la localité. Partagé par passerCommande() (création) et
 // getOptionsPaiement() (règle du seuil de paiement) pour qu'un seul et même
 // total serve à décider et à facturer. Ne fait pas le contrôle de stock dur :
 // il expose stockDisponible par ligne, l'appelant décide quoi en faire.
 async function resoudreCommande(
   lignes: LignePanier[],
-  params: { lat: number; lng: number; modeLivraison: ModeLivraison },
+  params: {
+    modeLivraison: ModeLivraison;
+    localiteId: number | null;
+    lieuSpecialId: number | null;
+    localiteTexte: string;
+  },
 ): Promise<{ ok: true; data: CommandeResolue } | { ok: false; error: string }> {
   const produitIds = [...new Set(lignes.map((l) => l.produitId))];
   const varianteIds = [...new Set(lignes.map((l) => l.varianteId).filter((v): v is number => v !== null))];
 
-  // Région déduite du point de livraison (jamais depuis le client) → zone/tarif.
-  const regionNom = regionLaPlusProche(params.lat, params.lng);
-
-  const [produitsRes, variantesRes, zoneRes] = await Promise.all([
+  const [produitsRes, variantesRes, livraison, seuil] = await Promise.all([
     supabaseAdmin.from("produits").select("*").in("id", produitIds),
     varianteIds.length > 0
       ? supabaseAdmin.from("produit_variantes").select("*").in("id", varianteIds)
       : Promise.resolve({ data: [] as ProduitVariante[], error: null }),
-    supabaseAdmin.from("zones").select("*").eq("nom", regionNom).maybeSingle(),
+    resoudreLivraison(params),
+    getSeuilLivraisonGratuite(),
   ]);
 
-  if (produitsRes.error || variantesRes.error || zoneRes.error) {
+  if (produitsRes.error || variantesRes.error) {
     return { ok: false, error: "Une erreur est survenue, réessaie." };
   }
-  const zone = zoneRes.data;
-  if (!zone) {
-    return { ok: false, error: "Impossible de déterminer la zone de livraison. Repositionne l'épingle." };
-  }
+  if (!livraison.ok) return livraison;
 
   const produitsById = new Map<number, Produit>((produitsRes.data ?? []).map((p) => [p.id, p]));
   const variantesById = new Map<number, ProduitVariante>((variantesRes.data ?? []).map((v) => [v.id, v]));
@@ -155,12 +258,27 @@ async function resoudreCommande(
   }
 
   const sousTotal = lignesResolues.reduce((sum, l) => sum + l.prixUnitaire * l.quantite, 0);
-  const fraisLivraison =
-    sousTotal >= SEUIL_GRATUITE ? 0 : params.modeLivraison === "24h" ? zone.tarif_24h : zone.tarif_6j;
+  // Livraison gratuite au-dessus du seuil : prime sur tout le reste, y compris
+  // un tarif "à confirmer" (rien à confirmer si c'est de toute façon gratuit).
+  const gratuite = sousTotal >= seuil;
+  const fraisLivraison = gratuite ? 0 : livraison.data.fraisLivraison;
+  const aConfirmer = gratuite ? false : livraison.data.aConfirmer;
 
   return {
     ok: true,
-    data: { zone, regionNom, lignesResolues, sousTotal, fraisLivraison, total: sousTotal + fraisLivraison },
+    data: {
+      zoneId: livraison.data.zoneId,
+      localiteId: livraison.data.localiteId,
+      lieuSpecialId: livraison.data.lieuSpecialId,
+      localiteNom: livraison.data.localiteNom,
+      aConfirmer,
+      lignesResolues,
+      sousTotal,
+      fraisLivraison,
+      fraisLivraison24h: gratuite ? 0 : livraison.data.fraisLivraison24h,
+      fraisLivraison6j: gratuite ? 0 : livraison.data.fraisLivraison6j,
+      total: sousTotal + fraisLivraison,
+    },
   };
 }
 
@@ -179,26 +297,41 @@ function panierValide(lignes: LignePanier[]): boolean {
 }
 
 export type OptionsPaiementResult =
-  | ({ ok: true } & OptionsPaiement)
+  | ({ ok: true } & OptionsPaiement & {
+        fraisLivraison: number;
+        fraisLivraison24h: number;
+        fraisLivraison6j: number;
+        localiteNom: string;
+        aConfirmer: boolean;
+      })
   | { ok: false; error: string };
 
 // Règle du seuil de paiement (INTEGRATION_WAVE.md, lot W2) : le checkout appelle
-// cette action pour savoir quels modes de paiement proposer. Le total est
-// recalculé ici — un client qui trafique son panier ne peut pas contourner
-// l'obligation de payer Wave au-dessus de 10 000 FCFA.
+// cette action pour savoir quels modes de paiement proposer ET le tarif de
+// livraison à afficher (recalculé ici, jamais fourni par le client).
 export async function getOptionsPaiement(
   lignes: LignePanier[],
-  params: { lat: number; lng: number; modeLivraison: ModeLivraison },
+  params: {
+    modeLivraison: ModeLivraison;
+    localiteId: number | null;
+    lieuSpecialId: number | null;
+    localiteTexte: string;
+  },
 ): Promise<OptionsPaiementResult> {
   if (!panierValide(lignes)) return { ok: false, error: "Panier invalide." };
-  if (!coordonneesValides(params.lat, params.lng)) {
-    return { ok: false, error: "Confirme le lieu de livraison sur la carte." };
-  }
 
   const resolu = await resoudreCommande(lignes, params);
   if (!resolu.ok) return { ok: false, error: resolu.error };
 
-  return { ok: true, ...optionsPaiementPourTotal(resolu.data.total, waveDisponible()) };
+  return {
+    ok: true,
+    ...optionsPaiementPourTotal(resolu.data.total, waveDisponible()),
+    fraisLivraison: resolu.data.fraisLivraison,
+    fraisLivraison24h: resolu.data.fraisLivraison24h,
+    fraisLivraison6j: resolu.data.fraisLivraison6j,
+    localiteNom: resolu.data.localiteNom,
+    aConfirmer: resolu.data.aConfirmer,
+  };
 }
 
 // Validation commune du formulaire de checkout (livraison comme Wave).
@@ -206,11 +339,14 @@ function validerCheckout(input: CheckoutInput, lignes: LignePanier[]): string | 
   const nom = input.nom.trim();
   const telephone = input.telephone.trim();
   const precisionLivreur = (input.precisionLivreur ?? "").trim();
+  const localiteTexte = input.localiteTexte.trim();
 
   if (lignes.length === 0) return "Ton panier est vide.";
   if (!nom || !telephone) return "Merci de renseigner ton nom et ton téléphone.";
-  if (!coordonneesValides(input.lat, input.lng)) {
-    return "Confirme le lieu de livraison sur la carte.";
+  if (!localiteTexte) return "Indique ta localité de livraison.";
+  if (localiteTexte.length > LOCALITE_TEXTE_MAX) return "Nom de localité trop long.";
+  if (input.lat != null && input.lng != null && !coordonneesValides(input.lat, input.lng)) {
+    return "Position invalide sur la carte.";
   }
   if (nom.length > NOM_MAX || precisionLivreur.length > PRECISION_LIVREUR_MAX) {
     return "Un des champs est trop long.";
@@ -236,9 +372,9 @@ function validerCheckout(input: CheckoutInput, lignes: LignePanier[]): string | 
 async function trouverOuCreerClient(params: {
   nom: string;
   telephone: string;
-  zoneId: number;
-  lat: number;
-  lng: number;
+  zoneId: number | null;
+  lat: number | null;
+  lng: number | null;
   precisionLivreur: string | null;
 }): Promise<
   | { ok: true; clientId: number; nomEnregistre: string | null }
@@ -340,12 +476,14 @@ export async function passerCommande(
   }
 
   const resolu = await resoudreCommande(lignes, {
-    lat: input.lat,
-    lng: input.lng,
     modeLivraison: input.modeLivraison,
+    localiteId: input.localiteId,
+    lieuSpecialId: input.lieuSpecialId,
+    localiteTexte: input.localiteTexte,
   });
   if (!resolu.ok) return { ok: false, error: resolu.error };
-  const { zone, lignesResolues, sousTotal, fraisLivraison, total } = resolu.data;
+  const { zoneId, localiteId, lieuSpecialId, localiteNom, aConfirmer, lignesResolues, sousTotal, fraisLivraison, total } =
+    resolu.data;
 
   // Au-dessus du seuil, le paiement à la livraison n'est plus permis
   // (INTEGRATION_WAVE.md, W2). Contrôle serveur : le client a beau envoyer
@@ -367,7 +505,7 @@ export async function passerCommande(
   const client = await trouverOuCreerClient({
     nom: input.nom.trim(),
     telephone: input.telephone.trim(),
-    zoneId: zone.id,
+    zoneId,
     lat: input.lat,
     lng: input.lng,
     precisionLivreur,
@@ -376,7 +514,7 @@ export async function passerCommande(
 
   const { data: commandeId, error: commandeError } = await supabaseAdmin.rpc("creer_commande", {
     p_client_id: client.clientId,
-    p_zone_id: zone.id,
+    p_zone_id: zoneId,
     p_adresse: null,
     p_lat: input.lat,
     p_lng: input.lng,
@@ -387,6 +525,10 @@ export async function passerCommande(
     p_total: total,
     p_reference: input.reference,
     p_lignes: lignesPourRpc(lignesResolues),
+    p_localite_id: localiteId,
+    p_lieu_special_id: lieuSpecialId,
+    p_localite_nom: localiteNom,
+    p_frais_livraison_a_confirmer: aConfirmer,
   });
 
   if (commandeError) {
@@ -454,12 +596,14 @@ export async function demarrerPaiementWave(
   }
 
   const resolu = await resoudreCommande(lignes, {
-    lat: input.lat,
-    lng: input.lng,
     modeLivraison: input.modeLivraison,
+    localiteId: input.localiteId,
+    lieuSpecialId: input.lieuSpecialId,
+    localiteTexte: input.localiteTexte,
   });
   if (!resolu.ok) return { ok: false, error: resolu.error };
-  const { zone, lignesResolues, sousTotal, fraisLivraison, total } = resolu.data;
+  const { zoneId, localiteId, lieuSpecialId, localiteNom, aConfirmer, lignesResolues, sousTotal, fraisLivraison, total } =
+    resolu.data;
 
   if (!paiementAutorise("wave", total)) {
     return { ok: false, error: "Le paiement Wave n'est pas disponible pour cette commande." };
@@ -494,7 +638,7 @@ export async function demarrerPaiementWave(
   const client = await trouverOuCreerClient({
     nom: input.nom.trim(),
     telephone: input.telephone.trim(),
-    zoneId: zone.id,
+    zoneId,
     lat: input.lat,
     lng: input.lng,
     precisionLivreur,
@@ -503,7 +647,7 @@ export async function demarrerPaiementWave(
 
   const { data: commandeId, error: commandeError } = await supabaseAdmin.rpc("creer_commande", {
     p_client_id: client.clientId,
-    p_zone_id: zone.id,
+    p_zone_id: zoneId,
     p_adresse: null,
     p_lat: input.lat,
     p_lng: input.lng,
@@ -516,6 +660,10 @@ export async function demarrerPaiementWave(
     p_lignes: lignesPourRpc(lignesResolues),
     p_mode_paiement: "wave",
     p_wave_session_id: session.session.id,
+    p_localite_id: localiteId,
+    p_lieu_special_id: lieuSpecialId,
+    p_localite_nom: localiteNom,
+    p_frais_livraison_a_confirmer: aConfirmer,
   });
 
   if (commandeError) {

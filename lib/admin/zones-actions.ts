@@ -3,6 +3,7 @@
 import { requireAdmin } from "./guard";
 import { estNombrePositifValide, texteNonVide } from "./validation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getSeuilLivraisonGratuite, setSeuilLivraisonGratuite } from "@/lib/parametres";
 import type { Zone } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
@@ -40,4 +41,17 @@ export async function modifierZone(id: number, input: ZoneInput): Promise<Action
   const { error } = await supabaseAdmin.from("zones").update(input).eq("id", id);
   if (error) return { ok: false, error: "Impossible de modifier cette zone." };
   return { ok: true };
+}
+
+// ============================================================================
+// Réglage : seuil de livraison gratuite (IMPLEMENTATION_TARIFS_LIVRAISON.md §5).
+// ============================================================================
+export async function getSeuilLivraisonGratuiteActuel(): Promise<number> {
+  await requireAdmin();
+  return getSeuilLivraisonGratuite();
+}
+
+export async function reglerSeuilLivraisonGratuite(valeur: number): Promise<ActionResult> {
+  await requireAdmin();
+  return setSeuilLivraisonGratuite(valeur);
 }

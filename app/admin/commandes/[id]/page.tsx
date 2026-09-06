@@ -34,8 +34,17 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
           <p className="font-semibold text-ink">{commande.client_nom}</p>
           <p className="text-ink/50">{commande.client_telephone}</p>
           {commande.adresse && <p className="mt-2 text-ink/70">{commande.adresse}</p>}
-          <p className="text-ink/50">Livraison {commande.mode_livraison}</p>
+          <p className="text-ink/50">
+            Livraison {commande.mode_livraison}
+            {commande.localite_nom && ` — ${commande.localite_nom}`}
+          </p>
         </div>
+
+        {commande.frais_livraison_a_confirmer && (
+          <p className="rounded-lg border border-brand/30 bg-brand/5 px-2 py-1.5 text-xs font-medium text-ink">
+            Tarif de livraison à confirmer avec le client.
+          </p>
+        )}
 
         <div className="border-t border-ink/10 pt-3">
           <p className="text-xs font-medium text-ink/50">Paiement</p>
@@ -131,7 +140,13 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
         </div>
         <div className="flex justify-between text-ink/70">
           <span>Livraison</span>
-          <span>{commande.frais_livraison === 0 ? "Gratuite" : formatPrice(commande.frais_livraison)}</span>
+          <span>
+            {commande.frais_livraison_a_confirmer
+              ? "À confirmer"
+              : commande.frais_livraison === 0
+                ? "Gratuite"
+                : formatPrice(commande.frais_livraison)}
+          </span>
         </div>
         <div className="flex justify-between border-t border-ink/10 pt-1.5 font-semibold text-ink">
           <span>Total</span>

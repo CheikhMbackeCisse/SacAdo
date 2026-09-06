@@ -5,6 +5,8 @@ import type {
   Categorie,
   Gamme,
   Kit,
+  Localite,
+  LieuSpecial,
   Produit,
   SousCategorie,
   SousSousCategorie,
@@ -186,6 +188,42 @@ export async function getZones(): Promise<Zone[]> {
   const { data, error } = await supabase.from("zones").select("*").order("id", { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+
+// Sert à peupler le sélecteur de localité du checkout (IMPLEMENTATION_TARIFS_LIVRAISON.md).
+// Tolère la table absente (migration 0034 pas encore passée) : le checkout
+// retombe alors sur la saisie libre "tarif à confirmer".
+export async function getLocalites(): Promise<Localite[]> {
+  const { data, error } = await supabase.from("localites").select("*").order("nom", { ascending: true });
+  if (error) {
+    console.warn("localites indisponible :", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getLieuxSpeciaux(): Promise<LieuSpecial[]> {
+  const { data, error } = await supabase.from("lieux_speciaux").select("*").order("nom", { ascending: true });
+  if (error) {
+    console.warn("lieux_speciaux indisponible :", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+const SEUIL_LIVRAISON_GRATUITE_DEFAUT = 75000;
+
+// Réglable en admin (table `parametres`) : repli sur la valeur par défaut si
+// la ligne n'existe pas encore ou si elle est mal formée.
+export async function getSeuilLivraisonGratuite(): Promise<number> {
+  const { data, error } = await supabase
+    .from("parametres")
+    .select("valeur")
+    .eq("cle", "seuil_livraison_gratuite")
+    .maybeSingle();
+  if (error || !data) return SEUIL_LIVRAISON_GRATUITE_DEFAUT;
+  const valeur = Number(data.valeur);
+  return Number.isFinite(valeur) && valeur >= 0 ? valeur : SEUIL_LIVRAISON_GRATUITE_DEFAUT;
 }
 
 export async function getProduitsSimilaires(

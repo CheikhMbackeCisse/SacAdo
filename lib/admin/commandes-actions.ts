@@ -32,6 +32,10 @@ function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecCl
     lat: row.lat,
     lng: row.lng,
     precision_livreur: row.precision_livreur,
+    localite_id: row.localite_id,
+    lieu_special_id: row.lieu_special_id,
+    localite_nom: row.localite_nom,
+    frais_livraison_a_confirmer: row.frais_livraison_a_confirmer,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
   };

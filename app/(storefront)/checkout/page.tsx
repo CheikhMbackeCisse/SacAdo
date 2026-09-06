@@ -7,7 +7,7 @@ import { BookOpen } from "lucide-react";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
 import { useKitEnfants } from "@/lib/local/kit-enfants";
-import { getZones } from "@/lib/supabase/queries";
+import { getLieuxSpeciaux, getLocalites } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import {
   demarrerPaiementWave,
@@ -15,15 +15,14 @@ import {
   getOptionsPaiement,
   passerCommande,
 } from "@/lib/checkout/actions";
-import { SEUIL_GRATUITE } from "@/components/panier/free-shipping-progress";
 import { SEUIL_PAIEMENT_AVANCE } from "@/lib/checkout/montants";
 import { CartePin, type Coordonnees } from "@/components/checkout/carte-pin";
+import { LocalitePicker, type SelectionLocalite } from "@/components/checkout/localite-picker";
 import {
   useAllowNextNavigation,
   useUnsavedChanges,
 } from "@/components/ui/navigation-guard";
-import { regionLaPlusProche } from "@/lib/senegal-regions";
-import type { ModeLivraison, ModePaiement, Zone } from "@/lib/supabase/types";
+import type { Localite, LieuSpecial, ModeLivraison, ModePaiement } from "@/lib/supabase/types";
 
 // crypto.randomUUID() exige un contexte sécurisé (HTTPS/localhost) : absent
 // en HTTP simple sur une IP réseau (cas de test courant sur mobile), ce qui
@@ -54,7 +53,9 @@ export default function CheckoutPage() {
   // permet au serveur de reconnaître un clic double ou une requête retentée
   // et de renvoyer la même commande au lieu d'en créer une deuxième.
   const [reference] = useState(genererReference);
-  const [zones, setZones] = useState<Zone[]>([]);
+  const [localites, setLocalites] = useState<Localite[]>([]);
+  const [lieuxSpeciaux, setLieuxSpeciaux] = useState<LieuSpecial[]>([]);
+  const [selectionLocalite, setSelectionLocalite] = useState<SelectionLocalite | null>(null);
   // Pré-remplis depuis l'identité mémorisée (onboarding / commande passée) tant
   // que l'utilisateur n'a rien saisi ; sa frappe (même vide) prend le dessus.
   const [nomSaisi, setNomSaisi] = useState<string | null>(null);
@@ -80,9 +81,8 @@ export default function CheckoutPage() {
   const autoriserProchaineNavigation = useAllowNextNavigation();
 
   useEffect(() => {
-    getZones()
-      .then((data) => setZones(data))
-      .catch(() => setZones([]));
+    getLocalites().then(setLocalites);
+    getLieuxSpeciaux().then(setLieuxSpeciaux);
   }, []);
 
   // Pré-remplissage : dernière position validée par ce numéro de client.
@@ -101,37 +101,39 @@ export default function CheckoutPage() {
     });
   }, [telephone, identite]);
 
-  // La région (donc le tarif) est déduite de l'épingle — le client ne la choisit
-  // plus. Le serveur refait la déduction de son côté (jamais confiance au client).
-  const regionDeduite = position ? regionLaPlusProche(position.lat, position.lng) : null;
-  const zoneSelectionnee = regionDeduite
-    ? (zones.find((z) => z.nom === regionDeduite) ?? null)
-    : null;
-  const livraisonGratuite = sousTotal >= SEUIL_GRATUITE;
-  const fraisLivraison = !zoneSelectionnee
-    ? 0
-    : livraisonGratuite
-      ? 0
-      : modeLivraison === "24h"
-        ? zoneSelectionnee.tarif_24h
-        : zoneSelectionnee.tarif_6j;
-  const total = sousTotal + fraisLivraison;
+  // Libellé de la localité actuellement saisie/choisie (déterminant côté
+  // serveur pour le tarif, jamais fait confiance côté client) — vide tant que
+  // rien n'a été tapé.
+  const localiteTexteCourant =
+    selectionLocalite?.type === "libre" ? selectionLocalite.texte.trim() : (selectionLocalite?.nom ?? "");
+  const localiteKey = selectionLocalite
+    ? selectionLocalite.type === "libre"
+      ? `libre:${localiteTexteCourant}`
+      : `${selectionLocalite.type}:${selectionLocalite.id}`
+    : "";
 
-  // Règle du seuil recalculée côté serveur (INTEGRATION_WAVE.md, W2) : c'est
-  // elle qui fait autorité sur les modes de paiement proposés. Signature stable
-  // du panier pour ne relancer l'appel que sur un vrai changement, et pour
-  // ignorer une réponse qui ne correspond plus au panier courant.
-  const [seuilServeur, setSeuilServeur] = useState<{
+  // Règle du seuil ET tarif de livraison recalculés côté serveur (INTEGRATION_WAVE.md,
+  // W2 + IMPLEMENTATION_TARIFS_LIVRAISON.md §6). Signature stable du panier +
+  // localité pour ne relancer l'appel que sur un vrai changement, et pour
+  // ignorer une réponse qui ne correspond plus à la sélection courante.
+  const [reponseServeur, setReponseServeur] = useState<{
     sig: string;
     options: ModePaiement[];
     waveImpose: boolean;
+    total: number;
+    fraisLivraison: number;
+    fraisLivraison24h: number;
+    fraisLivraison6j: number;
+    localiteNom: string;
+    aConfirmer: boolean;
   } | null>(null);
   const panierSignature = detail
     .map((d) => `${d.produit.id}:${d.variante?.id ?? 0}x${d.quantite}`)
     .join(",");
+  const sig = `${panierSignature}|${localiteKey}|${modeLivraison}`;
 
   useEffect(() => {
-    if (!position || detail.length === 0) return;
+    if (!localiteTexteCourant || detail.length === 0) return;
     let annule = false;
     getOptionsPaiement(
       detail.map((d) => ({
@@ -139,30 +141,47 @@ export default function CheckoutPage() {
         varianteId: d.variante?.id ?? null,
         quantite: d.quantite,
       })),
-      { lat: position.lat, lng: position.lng, modeLivraison },
+      {
+        modeLivraison,
+        localiteId: selectionLocalite?.type === "localite" ? selectionLocalite.id : null,
+        lieuSpecialId: selectionLocalite?.type === "special" ? selectionLocalite.id : null,
+        localiteTexte: localiteTexteCourant,
+      },
     ).then((r) => {
       if (annule || !r.ok) return;
-      setSeuilServeur({ sig: panierSignature, options: r.options, waveImpose: r.waveImpose });
+      setReponseServeur({
+        sig,
+        options: r.options,
+        waveImpose: r.waveImpose,
+        total: r.total,
+        fraisLivraison: r.fraisLivraison,
+        fraisLivraison24h: r.fraisLivraison24h,
+        fraisLivraison6j: r.fraisLivraison6j,
+        localiteNom: r.localiteNom,
+        aConfirmer: r.aConfirmer,
+      });
     });
     return () => {
       annule = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panierSignature, position?.lat, position?.lng, modeLivraison]);
+  }, [panierSignature, localiteKey, modeLivraison]);
 
   // Le serveur fait autorité sur les modes de paiement proposés (règle du seuil,
-  // Wave branché ou non). Tant qu'il n'a pas répondu : « à la livraison » seul
-  // (défaut sûr, pas de carte Wave qui clignote puis disparaît).
-  const opts = seuilServeur?.sig === panierSignature ? seuilServeur : null;
+  // Wave branché ou non) et sur le tarif. Tant qu'il n'a pas répondu : « à la
+  // livraison » seul (défaut sûr, pas de carte Wave qui clignote puis disparaît).
+  const opts = reponseServeur?.sig === sig ? reponseServeur : null;
   const waveAffiche = opts?.options.includes("wave") ?? false;
   const livraisonAffiche = opts?.options.includes("livraison") ?? true;
   const waveImpose = opts?.waveImpose ?? false;
   const modePaiementEffectif: ModePaiement = waveImpose ? "wave" : modePaiement;
+  const fraisLivraison = opts?.fraisLivraison ?? 0;
+  const total = opts?.total ?? sousTotal;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!position) {
-      setError("Confirme le lieu de livraison sur la carte.");
+    if (!localiteTexteCourant) {
+      setError("Indique ta localité de livraison.");
       return;
     }
     setSubmitting(true);
@@ -176,8 +195,11 @@ export default function CheckoutPage() {
     const commandeInput = {
       nom,
       telephone,
-      lat: position.lat,
-      lng: position.lng,
+      localiteId: selectionLocalite?.type === "localite" ? selectionLocalite.id : null,
+      lieuSpecialId: selectionLocalite?.type === "special" ? selectionLocalite.id : null,
+      localiteTexte: localiteTexteCourant,
+      lat: position?.lat ?? null,
+      lng: position?.lng ?? null,
       precisionLivreur: precisionLivreur.trim() || null,
       modeLivraison,
       reference,
@@ -281,7 +303,36 @@ export default function CheckoutPage() {
         </label>
 
         <div className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-medium text-ink/60">Où livrer ?</span>
+          <span className="text-xs font-medium text-ink/60">Ta localité</span>
+          <LocalitePicker
+            localites={localites}
+            lieuxSpeciaux={lieuxSpeciaux}
+            value={selectionLocalite}
+            onChange={(v) => {
+              setSelectionLocalite(v);
+              setModifie(true);
+            }}
+          />
+          {opts && (
+            <p className="rounded-xl bg-brand/5 px-3 py-2 text-xs text-ink/75">
+              Livraison vers <span className="font-semibold text-ink">{opts.localiteNom}</span>
+              {" — "}
+              <span className="font-semibold text-ink">
+                {opts.aConfirmer
+                  ? "tarif à confirmer"
+                  : opts.fraisLivraison === 0
+                    ? "livraison gratuite"
+                    : formatPrice(opts.fraisLivraison)}
+              </span>
+              {opts.aConfirmer && " . On te contactera pour convenir du tarif après ta commande."}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span className="text-xs font-medium text-ink/60">
+            Précise l’emplacement sur la carte <span className="text-ink/40">(facultatif)</span>
+          </span>
           <CartePin
             position={position}
             onChange={(c) => {
@@ -289,22 +340,6 @@ export default function CheckoutPage() {
               setModifie(true);
             }}
           />
-          {regionDeduite && (
-            <p className="rounded-xl bg-brand/5 px-3 py-2 text-xs text-ink/75">
-              Livraison vers <span className="font-semibold text-ink">{regionDeduite}</span>
-              {zoneSelectionnee ? (
-                <>
-                  {" — "}
-                  <span className="font-semibold text-ink">
-                    {livraisonGratuite || fraisLivraison === 0
-                      ? "livraison gratuite"
-                      : formatPrice(fraisLivraison)}
-                  </span>
-                </>
-              ) : null}
-              . Si ce n’est pas la bonne zone, déplace l’épingle.
-            </p>
-          )}
         </div>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -330,13 +365,13 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-2 gap-3">
           {(["24h", "6j"] as const).map((mode) => {
             const active = modeLivraison === mode;
-            const prix = !zoneSelectionnee
+            const prix = !opts
               ? null
-              : livraisonGratuite
-                ? 0
+              : opts.aConfirmer
+                ? null
                 : mode === "24h"
-                  ? zoneSelectionnee.tarif_24h
-                  : zoneSelectionnee.tarif_6j;
+                  ? opts.fraisLivraison24h
+                  : opts.fraisLivraison6j;
             return (
               <button
                 key={mode}
@@ -461,7 +496,13 @@ export default function CheckoutPage() {
         </div>
         <div className="flex justify-between text-ink/70">
           <span>Livraison</span>
-          <span>{fraisLivraison === 0 ? "Gratuite" : formatPrice(fraisLivraison)}</span>
+          <span>
+            {opts?.aConfirmer
+              ? "À confirmer"
+              : fraisLivraison === 0
+                ? "Gratuite"
+                : formatPrice(fraisLivraison)}
+          </span>
         </div>
         <div className="flex justify-between border-t border-ink/10 pt-1.5 font-semibold text-ink">
           <span>Total</span>
@@ -476,7 +517,7 @@ export default function CheckoutPage() {
       <div className="sticky bottom-0 z-40 mt-auto border-t border-ink/10 bg-surface/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-surface/80">
         <button
           type="submit"
-          disabled={submitting || !position}
+          disabled={submitting || !localiteTexteCourant}
           className="mx-auto flex h-12 w-full max-w-6xl items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
           {submitting

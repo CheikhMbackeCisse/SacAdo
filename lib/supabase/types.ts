@@ -167,6 +167,31 @@ export type Zone = {
   tarif_24h: number;
 };
 
+// Localité choisie/saisie par le client au checkout (IMPLEMENTATION_TARIFS_LIVRAISON.md) :
+// détermine le tarif via son groupe (`zones`, réutilisée comme groupe de livraison).
+export type Localite = {
+  id: number;
+  nom: string;
+  groupe_id: number;
+  lat: number | null;
+  lng: number | null;
+  created_at: string;
+};
+
+// Cas particulier avec son propre tarif/mode, en dehors du système de groupes
+// (retrait à Thiès, EPT, "autres régions" à confirmer).
+export type ModeLieuSpecial = "livraison" | "retrait" | "a_confirmer";
+
+export type LieuSpecial = {
+  id: number;
+  nom: string;
+  // NULL uniquement quand mode = 'a_confirmer'.
+  tarif: number | null;
+  mode: ModeLieuSpecial;
+  message: string | null;
+  created_at: string;
+};
+
 export type ModeLivraison = "24h" | "6j";
 // 'livraison' = payé au livreur à la remise ; 'wave' = payé en ligne d'avance
 // (INTEGRATION_WAVE.md, migration 0023).
@@ -193,7 +218,8 @@ export type Client = {
 export type Commande = {
   id: number;
   client_id: number;
-  zone_id: number;
+  // NULL pour un lieu spécial ou une localité non reconnue (aucun groupe).
+  zone_id: number | null;
   adresse: string | null;
   mode_livraison: ModeLivraison;
   frais_livraison: number;
@@ -216,6 +242,15 @@ export type Commande = {
   lat: number | null;
   lng: number | null;
   precision_livreur: string | null;
+  // Livraison par localité (IMPLEMENTATION_TARIFS_LIVRAISON.md). `localite_nom`
+  // est toujours renseigné (localité reconnue, lieu spécial, ou saisie libre) ;
+  // `localite_id`/`lieu_special_id` restent null l'un de l'autre selon le cas.
+  localite_id: number | null;
+  lieu_special_id: number | null;
+  localite_nom: string | null;
+  // true = frais_livraison vaut 0 en attendant que l'admin confirme le tarif
+  // réel (localité hors zone habituelle, non reconnue).
+  frais_livraison_a_confirmer: boolean;
 };
 
 export type CommandeItem = {

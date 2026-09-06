@@ -74,7 +74,11 @@ export default async function ConfirmationPaiementPage(props: {
         <div className="flex justify-between text-ink/70">
           <span>Livraison ({commande.mode_livraison})</span>
           <span>
-            {commande.frais_livraison === 0 ? "Gratuite" : formatPrice(commande.frais_livraison)}
+            {commande.frais_livraison_a_confirmer
+              ? "À confirmer"
+              : commande.frais_livraison === 0
+                ? "Gratuite"
+                : formatPrice(commande.frais_livraison)}
           </span>
         </div>
         <div className="flex justify-between border-t border-ink/10 pt-1.5 font-semibold text-ink">
