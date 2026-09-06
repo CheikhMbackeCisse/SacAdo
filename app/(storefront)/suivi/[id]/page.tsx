@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifierJetonClient } from "@/lib/client-auth";
 import { formatPrice } from "@/lib/format";
+import { BookOpen } from "lucide-react";
 import { OrderStepper } from "@/components/suivi/order-stepper";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
+import { EbookTelechargement } from "@/components/suivi/ebook-telechargement";
+import { getEbooksCommande } from "@/lib/ebooks/actions";
 import type { Commande } from "@/lib/supabase/types";
 
 export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
@@ -30,6 +33,7 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
   if (!verifierJetonClient(commande.client_id, jeton)) notFound();
 
   const enAttentePaiement = commande.statut === "paiement_en_attente";
+  const ebooks = enAttentePaiement ? [] : await getEbooksCommande(commande.id, jeton);
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-6 px-4 py-6">
@@ -58,6 +62,25 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
       )}
 
       <OrderStepper statut={commande.statut} />
+
+      {ebooks.length > 0 && (
+        <section className="flex flex-col gap-2 rounded-2xl border border-decorative/30 bg-decorative/10 p-3">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-ink/70">
+            <BookOpen size={14} aria-hidden="true" />
+            Ton ebook offert avec le kit
+          </span>
+          {ebooks.map((ebook) => (
+            <EbookTelechargement
+              key={`${ebook.cycle}|${ebook.niveau}`}
+              commandeId={commande.id}
+              jeton={jeton}
+              cycle={ebook.cycle}
+              niveau={ebook.niveau}
+              titre={ebook.titre}
+            />
+          ))}
+        </section>
+      )}
 
       {commande.lat != null && commande.lng != null && (
         <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">

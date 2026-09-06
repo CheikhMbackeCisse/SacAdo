@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
+import { useKitsPanier } from "@/lib/local/kits-panier";
 import { getLieuxSpeciaux, getLocalites } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import {
@@ -45,6 +46,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { detail, sousTotal, loading: loadingPanier, vider } = usePanierDetaille();
   const { identite, setIdentite } = useIdentite();
+  const { lignes: kitsPanier, vider: viderKitsPanier } = useKitsPanier();
 
   // Générée une seule fois par visite du checkout (pas à chaque re-render) :
   // permet au serveur de reconnaître un clic double ou une requête retentée
@@ -200,6 +202,7 @@ export default function CheckoutPage() {
       precisionLivreur: precisionLivreur.trim() || null,
       modeLivraison,
       reference,
+      ebookClasses: kitsPanier.map((k) => ({ cycle: k.cycle, niveau: k.niveau })),
     };
 
     try {
@@ -233,6 +236,7 @@ export default function CheckoutPage() {
       setIdentite({ nom: result.nomEnregistre ?? nom, telephone, jeton: result.jeton });
       setModifie(false);
       vider();
+      viderKitsPanier();
       if (result.nomEnregistre) {
         setNoticeNom(result.nomEnregistre);
         await new Promise((resolve) => setTimeout(resolve, 1700));

@@ -6,6 +6,7 @@ import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
+import { useKitsPanier } from "@/lib/local/kits-panier";
 import { getSacsDisponibles } from "@/lib/supabase/queries";
 import type { KitItemAvecProduit } from "@/lib/supabase/queries";
 import type { Produit } from "@/lib/supabase/types";
@@ -14,6 +15,9 @@ type ItemState = { checked: boolean; quantite: number };
 
 type KitBuilderProps = {
   kitNom: string;
+  // Classe du kit — sert à offrir l'ebook de cette classe après l'achat.
+  cycle: string;
+  niveau: string;
   items: KitItemAvecProduit[];
   // Sac par défaut proposé (décoché) : null si le catalogue n'a pas encore
   // de sac rangé dans "Sacs à dos" / "Sacs à roulettes" (KIT_AMELIORATIONS.md §3).
@@ -22,8 +26,9 @@ type KitBuilderProps = {
 
 const TAILLE_SELECTION_SACS = 5;
 
-export function KitBuilder({ kitNom, items, sacParDefaut }: KitBuilderProps) {
+export function KitBuilder({ kitNom, cycle, niveau, items, sacParDefaut }: KitBuilderProps) {
   const { ajouter } = usePanier();
+  const { enregistrer: enregistrerKitClasse } = useKitsPanier();
   const [added, setAdded] = useState(false);
   const [etats, setEtats] = useState<Record<number, ItemState>>(() =>
     Object.fromEntries(
@@ -104,6 +109,7 @@ export function KitBuilder({ kitNom, items, sacParDefaut }: KitBuilderProps) {
       if (etat?.checked) ajouter(item.produit.id, null, etat.quantite);
     });
     if (sacCoche && sacChoisi) ajouter(sacChoisi.id, null, 1);
+    enregistrerKitClasse(cycle, niveau);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };

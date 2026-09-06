@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePanier } from "@/lib/local/panier";
+import { useKitsPanier } from "@/lib/local/kits-panier";
 import { reprendrePaiementWave, simulerPaiementWave } from "@/lib/checkout/actions";
 
 // Le panier n'est vidé qu'au retour dans l'app après un paiement Wave : la
@@ -9,13 +10,15 @@ import { reprendrePaiementWave, simulerPaiementWave } from "@/lib/checkout/actio
 // n'a plus lieu d'être.
 export function ViderPanierAuMontage() {
   const { vider } = usePanier();
+  const { vider: viderKits } = useKitsPanier();
   const fait = useRef(false);
 
   useEffect(() => {
     if (fait.current) return;
     fait.current = true;
     vider();
-  }, [vider]);
+    viderKits();
+  }, [vider, viderKits]);
 
   return null;
 }

@@ -73,6 +73,8 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
 
       <KitBuilder
         kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()}
+        cycle={cycle}
+        niveau={niveau}
         items={items}
         sacParDefaut={sacParDefaut}
       />

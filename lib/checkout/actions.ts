@@ -40,7 +40,45 @@ export type CheckoutInput = {
   // checkout : permet à creer_commande() de rejouer un clic double ou une
   // requête retentée sans créer deux commandes (voir 0004_performance.sql).
   reference: string;
+  // Classe(s) de kit ajoutée(s) au panier (MODULE_EBOOKS.md, lot 4) : rangées
+  // sur la commande pour proposer l'ebook offert de la classe dans « Mes
+  // commandes ». Aucune donnée personnelle.
+  ebookClasses?: { cycle: string; niveau: string }[];
 };
+
+const EBOOK_CLASSES_MAX = 12;
+
+// Nettoie et borne la liste de classes de kit avant de la ranger sur la
+// commande. Renvoie null si rien d'exploitable (colonne laissée à NULL).
+function normaliserEbookClasses(
+  entrees: { cycle: string; niveau: string }[] | undefined,
+): { cycle: string; niveau: string }[] | null {
+  if (!entrees?.length) return null;
+  const vues = new Set<string>();
+  const sortie: { cycle: string; niveau: string }[] = [];
+  for (const e of entrees.slice(0, EBOOK_CLASSES_MAX)) {
+    const cycle = String(e?.cycle ?? "").trim().slice(0, 20);
+    const niveau = String(e?.niveau ?? "").trim().slice(0, 40);
+    if (!cycle || !niveau) continue;
+    const cle = `${cycle}|${niveau}`;
+    if (vues.has(cle)) continue;
+    vues.add(cle);
+    sortie.push({ cycle, niveau });
+  }
+  return sortie.length ? sortie : null;
+}
+
+// Annotation non critique posée après coup pour ne pas toucher à la fonction
+// atomique creer_commande. Idempotent si la requête est rejouée.
+async function annoterEbookClasses(
+  commandeId: number,
+  entrees: { cycle: string; niveau: string }[] | undefined,
+) {
+  const classes = normaliserEbookClasses(entrees);
+  if (classes) {
+    await supabaseAdmin.from("commandes").update({ ebook_classes: classes }).eq("id", commandeId);
+  }
+}
 
 // `jeton` : à ranger sur l'appareil (voir lib/client-auth.ts), il conditionne
 // la relecture de l'historique / des messages / de la position du client.
@@ -504,6 +542,7 @@ export async function passerCommande(
     return { ok: false, error: messageErreurCreerCommande(commandeError.message, lignesResolues) };
   }
 
+  await annoterEbookClasses(commandeId as number, input.ebookClasses);
   return {
     ok: true,
     commandeId: commandeId as number,
@@ -638,6 +677,7 @@ export async function demarrerPaiementWave(
     return { ok: false, error: messageErreurCreerCommande(commandeError.message, lignesResolues) };
   }
 
+  await annoterEbookClasses(commandeId as number, input.ebookClasses);
   return {
     ok: true,
     waveLaunchUrl: session.session.waveLaunchUrl,
