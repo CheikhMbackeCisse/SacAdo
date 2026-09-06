@@ -167,6 +167,7 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       variante_id: row.variante_id,
       quantite: row.quantite,
       prix_unitaire: row.prix_unitaire,
+      reverse_le: row.reverse_le,
       produit_nom: produit?.nom ?? "Produit supprimé",
     };
   });

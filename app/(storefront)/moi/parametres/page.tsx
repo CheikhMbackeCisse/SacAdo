@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Moon, Smartphone, Sun } from "lucide-react";
-import { useIdentite } from "@/lib/local/identite";
+import { Moon, Pencil, Smartphone, Sun } from "lucide-react";
+import { useIdentite, type Identite } from "@/lib/local/identite";
 import { useTheme, type Theme } from "@/lib/local/theme";
 import { InstallCard } from "@/components/pwa/install-card";
+import { modifierNomClient } from "@/lib/moi/actions";
 
 const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "clair", label: "Clair", icon: Sun },
@@ -13,7 +15,7 @@ const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
 ];
 
 export default function ParametresPage() {
-  const { identite, oublier } = useIdentite();
+  const { identite, setIdentite, oublier } = useIdentite();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -49,13 +51,13 @@ export default function ParametresPage() {
             })}
           </div>
         </div>
-        <div className="flex flex-col gap-0.5 px-4 py-3">
+        <div className="flex flex-col gap-2 px-4 py-3">
           <span className="text-sm text-ink">Compte</span>
-          <span className="text-xs text-ink/50">
-            {identite
-              ? `${identite.nom || "—"} · ${identite.telephone}`
-              : "Aucune commande enregistrée sur cet appareil"}
-          </span>
+          {identite ? (
+            <NomCompte identite={identite} onChange={(nom) => setIdentite({ ...identite, nom })} />
+          ) : (
+            <span className="text-xs text-ink/50">Aucune commande enregistrée sur cet appareil</span>
+          )}
         </div>
         <Link href="/politique-confidentialite" className="flex items-center justify-between px-4 py-3">
           <span className="text-sm text-ink">Confidentialité</span>
@@ -78,6 +80,81 @@ export default function ParametresPage() {
           Se déconnecter
         </button>
       )}
+    </div>
+  );
+}
+
+function NomCompte({ identite, onChange }: { identite: Identite; onChange: (nom: string) => void }) {
+  const [edition, setEdition] = useState(false);
+  const [valeur, setValeur] = useState(identite.nom);
+  const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  if (!edition) {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-ink/50">
+          {identite.nom || "—"} · {identite.telephone}
+        </span>
+        {identite.jeton && (
+          <button
+            type="button"
+            onClick={() => {
+              setValeur(identite.nom);
+              setErreur(null);
+              setEdition(true);
+            }}
+            aria-label="Modifier le nom"
+            className="shrink-0 rounded-lg p-1.5 text-ink/50 hover:bg-ink/5"
+          >
+            <Pencil size={14} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const enregistrer = async () => {
+    if (!identite.jeton) return;
+    setEnCours(true);
+    setErreur(null);
+    const res = await modifierNomClient(identite.telephone, identite.jeton, valeur);
+    if (!res.ok) {
+      setErreur(res.error);
+      setEnCours(false);
+      return;
+    }
+    onChange(res.nom);
+    setEnCours(false);
+    setEdition(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        value={valeur}
+        onChange={(e) => setValeur(e.target.value)}
+        className="min-h-10 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+        autoFocus
+      />
+      {erreur && <p className="text-xs text-red-600">{erreur}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={enregistrer}
+          disabled={enCours || !valeur.trim()}
+          className="min-h-9 rounded-full bg-brand px-3.5 text-xs font-semibold text-on-brand active:scale-95 disabled:opacity-50"
+        >
+          {enCours ? "Enregistrement…" : "Enregistrer"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setEdition(false)}
+          className="min-h-9 rounded-full border border-ink/15 px-3.5 text-xs font-medium text-ink/70"
+        >
+          Annuler
+        </button>
+      </div>
     </div>
   );
 }

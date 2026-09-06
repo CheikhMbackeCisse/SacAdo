@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Truck,
+  Wallet,
   Warehouse,
   Users,
   X,
@@ -35,6 +36,7 @@ const LIENS = [
   { href: "/admin/fournisseurs", label: "Fournisseurs", icon: Warehouse },
   { href: "/admin/ventes", label: "Articles vendus", icon: BarChart3 },
   { href: "/admin/clients", label: "Clients", icon: Users },
+  { href: "/admin/comptabilite", label: "Comptabilité", icon: Wallet },
 ] as const;
 
 function estActif(pathname: string, href: string): boolean {

@@ -76,3 +76,27 @@ export async function marquerMessageLu(
   // n'appartient pas au client vérifié, même en devinant un autre id.
   await supabaseAdmin.from("messages").update({ lu: true }).eq("id", messageId).eq("client_id", clientId);
 }
+
+const NOM_MAX = 100;
+
+export type ModifierNomResult = { ok: true; nom: string } | { ok: false; error: string };
+
+// Changement de nom volontaire (GROUPE_B §1) : contrairement au checkout, qui
+// ne doit jamais écraser silencieusement le nom enregistré, ici le client
+// choisit explicitement de corriger son nom depuis Paramètres.
+export async function modifierNomClient(
+  telephone: string,
+  jeton: string,
+  nouveauNom: string,
+): Promise<ModifierNomResult> {
+  const nom = nouveauNom.trim();
+  if (!nom) return { ok: false, error: "Le nom ne peut pas être vide." };
+  if (nom.length > NOM_MAX) return { ok: false, error: "Nom trop long." };
+
+  const clientId = await clientAutorise(telephone, jeton);
+  if (!clientId) return { ok: false, error: "Session invalide, réessaie." };
+
+  const { error } = await supabaseAdmin.from("clients").update({ nom }).eq("id", clientId);
+  if (error) return { ok: false, error: "Impossible de mettre à jour le nom." };
+  return { ok: true, nom };
+}

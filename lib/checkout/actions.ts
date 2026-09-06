@@ -61,8 +61,11 @@ function formaterEnfantsEbook(entrees: EnfantEbook[] | undefined): string | null
 
 // `jeton` : à ranger sur l'appareil (voir lib/client-auth.ts), il conditionne
 // la relecture de l'historique / des messages / de la position du client.
+// `nomEnregistre` : présent uniquement si ce numéro est déjà associé à un nom
+// différent de celui saisi — la commande est enregistrée sous ce nom-là
+// (GROUPE_B §1), à afficher au client sans bloquer la commande.
 export type CheckoutResult =
-  | { ok: true; commandeId: number; jeton: string }
+  | { ok: true; commandeId: number; jeton: string; nomEnregistre: string | null }
   | { ok: false; error: string };
 
 type LigneResolue = {
@@ -222,6 +225,14 @@ function validerCheckout(input: CheckoutInput, lignes: LignePanier[]): string | 
 // connue et la dernière position sont mises à jour à chaque commande. Le conflit
 // sur la contrainte unique (deux commandes du même nouveau client à la même
 // seconde) est géré en relisant le client au lieu d'échouer.
+//
+// Un numéro = un seul compte (GROUPE_B §1) : si le nom saisi diffère du nom
+// enregistré, on NE l'écrase PAS silencieusement (ça reviendrait à renommer le
+// compte d'un simple coup de faute de frappe ou d'un tiers qui commande pour
+// quelqu'un d'autre). Le nom enregistré reste la source de vérité pour la
+// commande ; `nomEnregistre` remonte l'appelant pour qu'il informe le client
+// (non bloquant). Le changement de nom volontaire se fait dans Paramètres
+// (voir modifierNomClient, lib/moi/actions.ts).
 async function trouverOuCreerClient(params: {
   nom: string;
   telephone: string;
@@ -229,7 +240,10 @@ async function trouverOuCreerClient(params: {
   lat: number;
   lng: number;
   precisionLivreur: string | null;
-}): Promise<{ ok: true; clientId: number } | { ok: false; error: string }> {
+}): Promise<
+  | { ok: true; clientId: number; nomEnregistre: string | null }
+  | { ok: false; error: string }
+> {
   const position = {
     derniere_lat: params.lat,
     derniere_lng: params.lng,
@@ -244,11 +258,9 @@ async function trouverOuCreerClient(params: {
   if (clientReadError) return { ok: false, error: "Une erreur est survenue, réessaie." };
 
   if (clientExistant) {
-    await supabaseAdmin
-      .from("clients")
-      .update({ nom: params.nom, zone_id: params.zoneId, ...position })
-      .eq("id", clientExistant.id);
-    return { ok: true, clientId: clientExistant.id };
+    await supabaseAdmin.from("clients").update({ zone_id: params.zoneId, ...position }).eq("id", clientExistant.id);
+    const memeNom = clientExistant.nom.trim().toLowerCase() === params.nom.trim().toLowerCase();
+    return { ok: true, clientId: clientExistant.id, nomEnregistre: memeNom ? null : clientExistant.nom };
   }
 
   const { data: nouveauClient, error: clientInsertError } = await supabaseAdmin
@@ -258,15 +270,18 @@ async function trouverOuCreerClient(params: {
     .single();
 
   if (clientInsertError || !nouveauClient) {
+    // Course gagnée par une commande concurrente du même nouveau client : le
+    // nom qu'elle a créé fait foi, pas celui-ci.
     const { data: retente } = await supabaseAdmin
       .from("clients")
       .select("*")
       .eq("telephone", params.telephone)
       .maybeSingle();
     if (!retente) return { ok: false, error: "Impossible de créer ton profil client." };
-    return { ok: true, clientId: retente.id };
+    const memeNom = retente.nom.trim().toLowerCase() === params.nom.trim().toLowerCase();
+    return { ok: true, clientId: retente.id, nomEnregistre: memeNom ? null : retente.nom };
   }
-  return { ok: true, clientId: nouveauClient.id };
+  return { ok: true, clientId: nouveauClient.id, nomEnregistre: null };
 }
 
 // Traduit l'erreur brute de creer_commande() (souvent STOCK_INSUFFISANT:<id>)
@@ -383,6 +398,7 @@ export async function passerCommande(
     ok: true,
     commandeId: commandeId as number,
     jeton: jetonClient(client.clientId),
+    nomEnregistre: client.nomEnregistre,
   };
 }
 
@@ -391,7 +407,7 @@ export async function passerCommande(
 // ---------------------------------------------------------------------------
 
 export type PaiementWaveResult =
-  | { ok: true; waveLaunchUrl: string; commandeId: number; jeton: string }
+  | { ok: true; waveLaunchUrl: string; commandeId: number; jeton: string; nomEnregistre: string | null }
   | { ok: false; error: string };
 
 // Origine publique du site, pour construire les URLs de retour passées à Wave.
@@ -512,6 +528,7 @@ export async function demarrerPaiementWave(
     waveLaunchUrl: session.session.waveLaunchUrl,
     commandeId: commandeId as number,
     jeton: jetonClient(client.clientId),
+    nomEnregistre: client.nomEnregistre,
   };
 }
 
@@ -550,6 +567,7 @@ async function relancerSessionPourCommande(commande: Commande): Promise<Paiement
     waveLaunchUrl: session.session.waveLaunchUrl,
     commandeId: commande.id,
     jeton: jetonClient(commande.client_id),
+    nomEnregistre: null,
   };
 }
 

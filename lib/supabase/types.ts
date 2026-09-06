@@ -225,6 +225,21 @@ export type CommandeItem = {
   variante_id: number | null;
   quantite: number;
   prix_unitaire: number;
+  // Date à laquelle le net vendeur de cette ligne a été reversé (migration 0032).
+  // NULL = pas encore reversé.
+  reverse_le: string | null;
+};
+
+// Suivi de trésorerie admin (GROUPE_B §2, migration 0032) : dépense saisie à la main.
+export type CategorieDepense = "carburant" | "salaire_chauffeur" | "achat_fournisseur" | "divers";
+
+export type Depense = {
+  id: number;
+  categorie: CategorieDepense;
+  montant: number;
+  date: string;
+  note: string | null;
+  created_at: string;
 };
 
 // Marketplace V2 — comptes back-office et vendeurs (id = auth.users.id).

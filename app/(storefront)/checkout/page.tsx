@@ -65,6 +65,9 @@ export default function CheckoutPage() {
   const [modePaiement, setModePaiement] = useState<ModePaiement>("livraison");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Numéro déjà associé à un autre nom en base (GROUPE_B §1) : on informe sans
+  // bloquer, puis on enchaîne — voir trouverOuCreerClient (lib/checkout/actions.ts).
+  const [noticeNom, setNoticeNom] = useState<string | null>(null);
 
   const [position, setPosition] = useState<Coordonnees | null>(null);
   const [precisionLivreur, setPrecisionLivreur] = useState("");
@@ -191,9 +194,13 @@ export default function CheckoutPage() {
           setSubmitting(false);
           return;
         }
-        setIdentite({ nom, telephone, jeton: result.jeton });
+        setIdentite({ nom: result.nomEnregistre ?? nom, telephone, jeton: result.jeton });
         setModifie(false);
         autoriserProchaineNavigation();
+        if (result.nomEnregistre) {
+          setNoticeNom(result.nomEnregistre);
+          await new Promise((resolve) => setTimeout(resolve, 1700));
+        }
         window.location.href = result.waveLaunchUrl;
         return;
       }
@@ -205,10 +212,14 @@ export default function CheckoutPage() {
         return;
       }
 
-      setIdentite({ nom, telephone, jeton: result.jeton });
+      setIdentite({ nom: result.nomEnregistre ?? nom, telephone, jeton: result.jeton });
       setModifie(false);
       vider();
       viderEnfantsEbook();
+      if (result.nomEnregistre) {
+        setNoticeNom(result.nomEnregistre);
+        await new Promise((resolve) => setTimeout(resolve, 1700));
+      }
       router.push(`/suivi/${result.commandeId}?t=${result.jeton}`);
     } catch {
       // Coupure réseau / erreur inattendue : ne jamais laisser le bouton
@@ -227,6 +238,16 @@ export default function CheckoutPage() {
       onSubmit={handleSubmit}
       className="animate-fade-in-up flex flex-1 flex-col gap-6 px-4 pb-[env(safe-area-inset-bottom)] pt-4"
     >
+      {noticeNom && (
+        <div
+          role="status"
+          className="fixed inset-x-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-[60] mx-auto max-w-md rounded-2xl border border-brand/20 bg-elevated px-4 py-3 text-sm text-ink shadow-lg"
+        >
+          Ce numéro est déjà associé au nom « {noticeNom} » : ta commande est enregistrée sous ce
+          nom. Pour le changer, va dans Paramètres.
+        </div>
+      )}
+
       <h1 className="font-heading text-xl font-bold text-ink">Livraison</h1>
 
       <section className="flex flex-col gap-3">
