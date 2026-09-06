@@ -6,7 +6,6 @@ import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
-import { useKitEnfants } from "@/lib/local/kit-enfants";
 import { getSacsDisponibles } from "@/lib/supabase/queries";
 import type { KitItemAvecProduit } from "@/lib/supabase/queries";
 import type { Produit } from "@/lib/supabase/types";
@@ -25,8 +24,6 @@ const TAILLE_SELECTION_SACS = 5;
 
 export function KitBuilder({ kitNom, items, sacParDefaut }: KitBuilderProps) {
   const { ajouter } = usePanier();
-  const { enregistrer: enregistrerEnfant } = useKitEnfants();
-  const [prenomEnfant, setPrenomEnfant] = useState("");
   const [added, setAdded] = useState(false);
   const [etats, setEtats] = useState<Record<number, ItemState>>(() =>
     Object.fromEntries(
@@ -107,32 +104,12 @@ export function KitBuilder({ kitNom, items, sacParDefaut }: KitBuilderProps) {
       if (etat?.checked) ajouter(item.produit.id, null, etat.quantite);
     });
     if (sacCoche && sacChoisi) ajouter(sacChoisi.id, null, 1);
-    enregistrerEnfant(`Kit ${kitNom}`, prenomEnfant);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
 
   return (
     <div className="flex flex-col">
-      <label htmlFor="prenom-enfant" className="mx-4 mb-3 flex flex-col gap-1">
-        <span className="text-xs font-medium text-ink/60">
-          Prénom de l&apos;élève <span className="text-ink/40">(facultatif)</span>
-        </span>
-        <input
-          id="prenom-enfant"
-          type="text"
-          value={prenomEnfant}
-          onChange={(event) => setPrenomEnfant(event.target.value)}
-          placeholder="Ex. : Awa"
-          autoComplete="off"
-          maxLength={60}
-          className="w-full rounded-lg border border-ink/15 bg-elevated px-3 py-2 text-sm text-ink placeholder:text-ink/35 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 sm:max-w-xs"
-        />
-        <span className="text-xs text-ink/45">
-          Il sera inscrit sur l&apos;ebook offert avec ce kit.
-        </span>
-      </label>
-
       <ul className="flex flex-col divide-y divide-ink/10 px-4">
         {items.map((item) => {
           const etat = etats[item.id];

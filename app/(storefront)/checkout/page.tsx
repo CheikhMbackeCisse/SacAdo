@@ -3,10 +3,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { BookOpen } from "lucide-react";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
-import { useKitEnfants } from "@/lib/local/kit-enfants";
 import { getLieuxSpeciaux, getLocalites } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import {
@@ -47,7 +45,6 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { detail, sousTotal, loading: loadingPanier, vider } = usePanierDetaille();
   const { identite, setIdentite } = useIdentite();
-  const { lignes: enfantsEbook, vider: viderEnfantsEbook } = useKitEnfants();
 
   // Générée une seule fois par visite du checkout (pas à chaque re-render) :
   // permet au serveur de reconnaître un clic double ou une requête retentée
@@ -203,7 +200,6 @@ export default function CheckoutPage() {
       precisionLivreur: precisionLivreur.trim() || null,
       modeLivraison,
       reference,
-      enfantsEbook: enfantsEbook.map((e) => ({ kit: e.kit, prenom: e.prenom })),
     };
 
     try {
@@ -237,7 +233,6 @@ export default function CheckoutPage() {
       setIdentite({ nom: result.nomEnregistre ?? nom, telephone, jeton: result.jeton });
       setModifie(false);
       vider();
-      viderEnfantsEbook();
       if (result.nomEnregistre) {
         setNoticeNom(result.nomEnregistre);
         await new Promise((resolve) => setTimeout(resolve, 1700));
@@ -396,23 +391,6 @@ export default function CheckoutPage() {
           })}
         </div>
       </section>
-
-      {enfantsEbook.length > 0 && (
-        <section className="flex flex-col gap-2 rounded-2xl border border-decorative/30 bg-decorative/10 p-3">
-          <span className="flex items-center gap-1.5 text-xs font-medium text-ink/70">
-            <BookOpen size={14} aria-hidden="true" />
-            Personnalisation de l&apos;ebook
-          </span>
-          <ul className="flex flex-col gap-0.5 text-sm text-ink/80">
-            {enfantsEbook.map((e) => (
-              <li key={e.id}>
-                <span className="font-medium text-ink">{e.prenom}</span>
-                <span className="text-ink/50"> — {e.kit}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3">
         <span className="text-xs font-medium text-ink/60">Paiement</span>

@@ -235,7 +235,9 @@ export type Commande = {
   wave_session_id: string | null;
   wave_event_id: string | null;
   montant_paye: number | null;
-  // Prénom(s) d'enfant pour la personnalisation de l'ebook offert avec un kit.
+  // Historique : prénom(s) d'enfant saisis à la commande quand l'ebook offert
+  // était personnalisé. L'ebook n'est plus personnalisé (MODULE_EBOOKS.md) ;
+  // colonne conservée pour les anciennes commandes, plus alimentée.
   enfants_ebook: string | null;
   // Point de livraison validé sur la carte (LOCALISATION_LIVRAISON.md) + note
   // libre pour le livreur. Peuvent être null pour les commandes d'avant 0021.

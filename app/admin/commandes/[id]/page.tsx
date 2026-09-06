@@ -86,7 +86,7 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
 
         {commande.enfants_ebook && (
           <p className="rounded-lg bg-brand/5 px-2 py-1.5 text-xs text-ink/80">
-            <span className="font-semibold text-ink">Ebook à personnaliser :</span>{" "}
+            <span className="font-semibold text-ink">Prénom(s) indiqué(s) à la commande :</span>{" "}
             {commande.enfants_ebook}
           </p>
         )}

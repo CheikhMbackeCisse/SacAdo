@@ -19,8 +19,6 @@ const LOCALITE_TEXTE_MAX = 150;
 const LIGNES_MAX = 50;
 const QUANTITE_MAX = 999;
 
-export type EnfantEbook = { kit: string; prenom: string };
-
 export type CheckoutInput = {
   nom: string;
   telephone: string;
@@ -42,27 +40,7 @@ export type CheckoutInput = {
   // checkout : permet à creer_commande() de rejouer un clic double ou une
   // requête retentée sans créer deux commandes (voir 0004_performance.sql).
   reference: string;
-  // Prénom(s) d'enfant saisis à l'ajout d'un kit, pour personnaliser l'ebook.
-  enfantsEbook?: EnfantEbook[];
 };
-
-const ENFANTS_MAX = 20;
-const ENFANT_CHAMP_MAX = 80;
-
-// "Awa — Kit CP Confort ; Momar — Kit 6e Essentiel" (ou null si rien de saisi).
-function formaterEnfantsEbook(entrees: EnfantEbook[] | undefined): string | null {
-  if (!entrees?.length) return null;
-  const texte = entrees
-    .slice(0, ENFANTS_MAX)
-    .map((e) => ({
-      kit: String(e.kit ?? "").trim().slice(0, ENFANT_CHAMP_MAX),
-      prenom: String(e.prenom ?? "").trim().slice(0, ENFANT_CHAMP_MAX),
-    }))
-    .filter((e) => e.prenom)
-    .map((e) => (e.kit ? `${e.prenom} — ${e.kit}` : e.prenom))
-    .join(" ; ");
-  return texte || null;
-}
 
 // `jeton` : à ranger sur l'appareil (voir lib/client-auth.ts), il conditionne
 // la relecture de l'historique / des messages / de la position du client.
@@ -432,15 +410,6 @@ function messageErreurCreerCommande(message: string, lignesResolues: LigneResolu
   return "Impossible de créer la commande.";
 }
 
-// Annotation non critique (perso ebook) : posée après coup pour ne pas toucher à
-// la fonction atomique creer_commande. Idempotent si la requête est rejouée.
-async function annoterEnfantsEbook(commandeId: number, enfants: EnfantEbook[] | undefined) {
-  const texte = formaterEnfantsEbook(enfants);
-  if (texte) {
-    await supabaseAdmin.from("commandes").update({ enfants_ebook: texte }).eq("id", commandeId);
-  }
-}
-
 function lignesPourRpc(lignesResolues: LigneResolue[]) {
   return lignesResolues.map((l) => ({
     produit_id: l.produitId,
@@ -535,7 +504,6 @@ export async function passerCommande(
     return { ok: false, error: messageErreurCreerCommande(commandeError.message, lignesResolues) };
   }
 
-  await annoterEnfantsEbook(commandeId as number, input.enfantsEbook);
   return {
     ok: true,
     commandeId: commandeId as number,
@@ -670,7 +638,6 @@ export async function demarrerPaiementWave(
     return { ok: false, error: messageErreurCreerCommande(commandeError.message, lignesResolues) };
   }
 
-  await annoterEnfantsEbook(commandeId as number, input.enfantsEbook);
   return {
     ok: true,
     waveLaunchUrl: session.session.waveLaunchUrl,
