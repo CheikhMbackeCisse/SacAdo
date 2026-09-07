@@ -18,9 +18,14 @@
 -- ============================================================================
 
 -- Compte de connexion facultatif. NULL = vendeur géré par l'admin, sans login.
--- Les vendeurs existants ont tous un compte : on reprend leur id (= auth.users.id).
+-- On ne reprend l'id comme user_id que pour les lignes qui SONT un compte auth
+-- (les vendeurs marketplace existants). Le vendeur « SacAdo » et les fournisseurs
+-- recopiés n'ont pas de compte -> user_id reste NULL. Écrit ainsi, le script est
+-- rejouable même après une exécution partielle.
 alter table vendeurs add column if not exists user_id uuid;
-update vendeurs set user_id = id where user_id is null;
+update vendeurs set user_id = id
+where user_id is null
+  and exists (select 1 from auth.users u where u.id = vendeurs.id);
 
 do $$
 begin
