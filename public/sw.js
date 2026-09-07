@@ -1,4 +1,4 @@
-const CACHE_NAME = "sacado-v4";
+const CACHE_NAME = "sacado-v5";
 const APP_SHELL = ["/", "/manifest.webmanifest"];
 
 // Pas de skipWaiting / clients.claim : un nouveau service worker ne prend PAS
@@ -20,6 +20,40 @@ self.addEventListener("activate", (event) => {
           keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
         )
       )
+  );
+});
+
+// --- Notifications push (préparations fournisseur) -------------------------
+// Payload attendu : { title, body, url }. Canal d'appoint : in-app + WhatsApp
+// restent les canaux sûrs (NOTIFICATIONS_FOURNISSEURS §1).
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = {};
+  }
+  const title = data.title || "SacAdo";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: "/images/logo.jpg",
+      badge: "/images/logo.jpg",
+      data: { url: data.url || "/vendeur/preparations" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const cible = (event.notification.data && event.notification.data.url) || "/vendeur/preparations";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((liste) => {
+      for (const client of liste) {
+        if (client.url.includes(cible) && "focus" in client) return client.focus();
+      }
+      return clients.openWindow(cible);
+    })
   );
 });
 

@@ -7,6 +7,7 @@ import {
   etatDemande,
   LIBELLES_ETAT_DEMANDE,
 } from "@/lib/preparations";
+import { ActiverPush } from "@/components/vendeur/activer-push";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,8 @@ export default async function VendeurPreparationsPage() {
           Les commandes que SacAdo vous demande de préparer, regroupées par client.
         </p>
       </div>
+
+      <ActiverPush />
 
       {demandes.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[#001314]/15 bg-white/60 p-10 text-center">

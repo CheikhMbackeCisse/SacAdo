@@ -2,7 +2,8 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { aplatirAttributs, libelleVariante } from "@/lib/variantes";
 import { estVendeurSacAdo } from "@/lib/vendeurs/constants";
-import { STATUTS_COMMANDE_A_PREPARER } from "@/lib/preparations";
+import { STATUTS_COMMANDE_A_PREPARER, refPreparation } from "@/lib/preparations";
+import { envoyerPushVendeur } from "@/lib/push";
 
 // Machinerie partagée : lire les articles « à préparer » d'un vendeur et créer
 // une demande (instantané figé + message in-app). Utilisé par l'action admin
@@ -151,16 +152,28 @@ export async function creerDemandePourVendeur(
   const nbArticles = lignes.reduce((s, l) => s + l.quantite, 0);
   const nbClients = new Set(lignes.map((l) => l.commande_id)).size;
 
+  const titre =
+    declenchement === "auto_24h" ? "Préparation urgente (livraison 24h)" : "Préparation demandée";
+  const corps = `${nbArticles} article${nbArticles > 1 ? "s" : ""} à préparer pour ${nbClients} client${
+    nbClients > 1 ? "s" : ""
+  }.`;
+
   // Notification in-app dans la boîte de réception du vendeur (canal de base,
   // NOTIFICATIONS_FOURNISSEURS §1).
   await supabaseAdmin.from("messages_vendeur").insert({
     vendeur_id: vendeurId,
     type: "preparation",
-    titre: declenchement === "auto_24h" ? "Préparation urgente (livraison 24h)" : "Préparation demandée",
-    corps: `${nbArticles} article${nbArticles > 1 ? "s" : ""} à préparer pour ${nbClients} client${
-      nbClients > 1 ? "s" : ""
-    }. Ouvrez le bon de préparation pour le détail.`,
+    titre,
+    corps: `${corps} Ouvrez le bon de préparation pour le détail.`,
     demande_preparation_id: demande.id,
+  });
+
+  // Notification push (canal d'appoint) : sans effet si le vendeur n'a pas
+  // d'abonnement ou si les clés VAPID ne sont pas configurées.
+  await envoyerPushVendeur(vendeurId, {
+    title: `${titre} — ${refPreparation(demande.id)}`,
+    body: corps,
+    url: `/vendeur/preparations/${demande.id}`,
   });
 
   return { ok: true, id: demande.id, nbArticles, nbClients };

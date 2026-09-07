@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../globals.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 export const metadata: Metadata = {
   title: "Espace vendeur — SacAdo",
@@ -16,7 +17,10 @@ export default function VendeurLayout({ children }: { children: React.ReactNode 
       data-theme="light"
       className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#FEFDFF] text-[#001314]">{children}</body>
+      <body className="min-h-full bg-[#FEFDFF] text-[#001314]">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
