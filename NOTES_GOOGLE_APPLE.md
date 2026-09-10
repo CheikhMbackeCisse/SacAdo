@@ -20,36 +20,57 @@ l'authentification. Tant que cette adresse pointe vers `*.supabase.co`, c'est ce
 domaine qui apparaît. **Aucune modification du code applicatif ne change ce
 comportement** — c'est purement une affaire de configuration OAuth + domaine.
 
-### Ce qu'il faut faire
+### Ce qui n'est PAS possible
 
-1. **Console Google Cloud → écran de consentement OAuth**
-   - Nom de l'application : `SacAdo`
-   - Logo de l'application (192×192 minimum, PNG)
-   - Adresse e-mail d'assistance
-   - Lien vers la politique de confidentialité : `https://<domaine>/politique-confidentialite`
-   - Lien vers les conditions d'utilisation
-   - Domaine(s) autorisé(s) de l'application
+Renommer `yeklnsguhcmlinnufaog.supabase.co` en `sacado.supabase.co` ou autre :
+`yeklnsguhcmlinnufaog` est la **référence du projet Supabase**, un identifiant
+fixe. Supabase ne permet pas de choisir un sous-domaine `*.supabase.co`.
 
-2. **Domaine personnalisé Supabase** (⚠️ décision à valider avec Cheikh)
-   - Configurer un domaine du type `auth.sacado.sn` sur le projet Supabase
-     (Authentication → URL Configuration → Custom domain).
-   - **C'est une option PAYANTE de Supabase** (Custom Domain add-on). À valider
-     avant engagement.
-   - Une fois en place : remplacer l'adresse de rappel dans la console Google
-     (`Authorized redirect URIs`) par celle de ce domaine
-     (`https://auth.sacado.sn/auth/v1/callback`).
-   - Ajouter `auth.sacado.sn` dans les domaines autorisés de la console Google.
+### DÉCISION : on fait l'option gratuite (nom + logo)
 
-3. **Vérification Google**
-   - Pour afficher un logo et sortir du « mode test » (bandeau
-     « application non vérifiée »), Google peut exiger une vérification.
-   - Prévoir **plusieurs jours** de délai.
+Le gros titre de l'écran Google devient « **SacAdo** souhaite accéder… » avec le
+logo. Le domaine technique reste, mais en petit, en dessous — la plupart des
+gens ne le lisent pas. Le domaine personnalisé payant (ci-dessous) est reporté.
 
-### Important
+#### Étapes — Console Google Cloud
 
-Sans l'étape 2 (domaine personnalisé), le **nom** de l'application changera sur
-l'écran Google, mais le **domaine** `*.supabase.co` restera visible. Les deux
-étapes vont ensemble.
+1. `console.cloud.google.com` → sélectionner **le projet** relié à la connexion
+   Google de Supabase (celui dont l'ID client OAuth est configuré dans Supabase
+   → Authentication → Providers → Google).
+2. Menu → **APIs et services → Écran de consentement OAuth** (dans la nouvelle
+   console : **Google Auth Platform → Branding**).
+3. Renseigner :
+   - **Nom de l'application** : `SacAdo`
+   - **Logo** : `public/images/logo.jpg` (cartable sur fond blanc, carré, < 1 Mo)
+   - **E-mail d'assistance utilisateur**
+   - **Page d'accueil de l'application** : `https://sacadosn.vercel.app`
+   - **Lien politique de confidentialité** :
+     `https://sacadosn.vercel.app/politique-confidentialite`
+   - **Lien conditions d'utilisation** : à créer (ou pointer vers la politique
+     de confidentialité en attendant)
+   - **Domaines autorisés** : `vercel.app` (et `sacado.sn` le jour où le domaine
+     perso est branché)
+   - **E-mail de contact du développeur**
+4. **Enregistrer**.
+
+#### À savoir
+
+- Ajouter un **logo** peut déclencher une **vérification Google** (bandeau
+  « application non vérifiée » tant que ce n'est pas fait). Prévoir plusieurs
+  jours. Le nom, lui, s'applique tout de suite.
+- Sans le domaine personnalisé (étape reportée), le domaine `*.supabase.co`
+  reste visible en petit sous le nom. C'est le comportement attendu.
+
+### Reporté : domaine personnalisé Supabase (payant)
+
+À faire seulement si le petit domaine technique reste gênant après l'option
+gratuite. Option **Custom Domain** de Supabase (~10 $/mois) → `auth.sacado.sn` :
+
+- Configurer sur le projet Supabase (Authentication → URL Configuration →
+  Custom domain).
+- Remplacer l'adresse de rappel dans la console Google
+  (`Authorized redirect URIs`) par `https://auth.sacado.sn/auth/v1/callback`.
+- Ajouter `sacado.sn` aux domaines autorisés Google.
 
 ---
 
