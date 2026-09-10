@@ -1,6 +1,6 @@
-import { MessageCircle, PackageSearch } from "lucide-react";
+import { PackageSearch } from "lucide-react";
 import { ProductGrid } from "@/components/product/product-grid";
-import { lienWhatsApp } from "@/lib/whatsapp";
+import { DemanderProduit } from "@/components/demande/demander-produit";
 import type { ProduitTrouve } from "@/lib/supabase/queries";
 
 const MAX_CATEGORIE = 12;
@@ -36,18 +36,10 @@ export function ResultatsRecherche({
             Aucun produit ne correspond à « {query} »
           </h2>
           <p className="mx-auto mt-1 max-w-xs text-sm text-ink/60">
-            Dis-nous ce que tu cherches, on te répond et on essaie de le faire venir.
+            Dis-nous ce que tu cherches, on te répond sur WhatsApp et on essaie de le faire venir.
           </p>
         </div>
-        <a
-          href={lienWhatsApp(`Bonjour SacAdo, je cherche : ${query}`)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-on-brand transition-transform active:scale-95"
-        >
-          <MessageCircle size={16} aria-hidden="true" />
-          Demander sur WhatsApp
-        </a>
+        <DemanderProduit origine="recherche_vide" termeRecherche={query} variante="primaire" />
       </div>
     );
   }

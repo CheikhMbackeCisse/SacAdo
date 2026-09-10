@@ -221,6 +221,9 @@ export type Zone = {
   nom: string;
   tarif_6j: number;
   tarif_24h: number;
+  // Si renseigné : remplace le délai « 24h / 6j » partout pour ce groupe
+  // (migration 0054). Vide = délai normal.
+  message_special: string | null;
 };
 
 // Localité choisie/saisie par le client au checkout (IMPLEMENTATION_TARIFS_LIVRAISON.md) :
@@ -228,6 +231,8 @@ export type Zone = {
 export type Localite = {
   id: number;
   nom: string;
+  // minuscules, sans accents, espaces resserrés (trigger, migration 0053).
+  nom_normalise: string;
   groupe_id: number;
   lat: number | null;
   lng: number | null;
@@ -309,6 +314,9 @@ export type Commande = {
   // true = frais_livraison vaut 0 en attendant que l'admin confirme le tarif
   // réel (localité hors zone habituelle, non reconnue).
   frais_livraison_a_confirmer: boolean;
+  // Message figé de la destination (lieu spécial ou groupe) : quand il est
+  // présent, il s'affiche À LA PLACE du délai « 24h / 6j » (migration 0054).
+  message_livraison: string | null;
 };
 
 export type CommandeItem = {
@@ -318,20 +326,34 @@ export type CommandeItem = {
   variante_id: number | null;
   quantite: number;
   prix_unitaire: number;
+  // Prix d'achat figé au moment de la vente (migration 0055) — base de la part
+  // « reversé aux fournisseurs » du bénéfice. NULL si le produit n'avait pas de
+  // prix d'achat renseigné.
+  prix_achat_unitaire: number | null;
   // Date à laquelle le net vendeur de cette ligne a été reversé (migration 0032).
   // NULL = pas encore reversé.
   reverse_le: string | null;
 };
 
-// Suivi de trésorerie admin (GROUPE_B §2, migration 0032) : dépense saisie à la main.
-export type CategorieDepense = "carburant" | "salaire_chauffeur" | "achat_fournisseur" | "divers";
+// Suivi de trésorerie admin (GROUPE_B §2, migration 0032 ; catégories revues en
+// 0055) : dépense saisie à la main. « Tout le reste » hors coût fournisseur.
+export type CategorieDepense =
+  | "livraison"
+  | "wave"
+  | "emballage"
+  | "publicite"
+  | "technique"
+  | "autre";
 
 export type Depense = {
   id: number;
   categorie: CategorieDepense;
+  // Libellé obligatoire depuis 0055 (rétro-rempli depuis `note`).
+  libelle: string;
   montant: number;
   date: string;
   note: string | null;
+  commande_id: number | null;
   created_at: string;
 };
 

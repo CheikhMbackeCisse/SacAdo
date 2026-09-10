@@ -35,9 +35,14 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
           <p className="text-ink/50">{commande.client_telephone}</p>
           {commande.adresse && <p className="mt-2 text-ink/70">{commande.adresse}</p>}
           <p className="text-ink/50">
-            Livraison {commande.mode_livraison}
+            Livraison {commande.message_livraison ? "spéciale" : commande.mode_livraison}
             {commande.localite_nom && ` — ${commande.localite_nom}`}
           </p>
+          {commande.message_livraison && (
+            <p className="mt-1 text-xs text-ink/60">
+              Message affiché au client : « {commande.message_livraison} »
+            </p>
+          )}
         </div>
 
         {commande.frais_livraison_a_confirmer && (

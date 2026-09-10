@@ -101,7 +101,7 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
           <span>{formatPrice(commande.sous_total)}</span>
         </div>
         <div className="flex justify-between text-ink/70">
-          <span>Livraison ({commande.mode_livraison})</span>
+          <span>Livraison{commande.message_livraison ? "" : ` (${commande.mode_livraison})`}</span>
           <span>
             {commande.frais_livraison_a_confirmer
               ? "À confirmer"
@@ -110,6 +110,11 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
                 : formatPrice(commande.frais_livraison)}
           </span>
         </div>
+        {commande.message_livraison && (
+          <p className="rounded-lg bg-brand/5 px-2 py-1.5 text-xs text-ink/70">
+            {commande.message_livraison}
+          </p>
+        )}
         {commande.frais_livraison_a_confirmer && (
           <p className="rounded-lg bg-brand/5 px-2 py-1.5 text-xs text-ink/70">
             On te contacte au plus vite pour confirmer le tarif de livraison vers{" "}

@@ -141,3 +141,38 @@ export function structurerLycee(classes: string[]): LyceeNiveauStructure[] {
     return { niveau, directes: [], groupes };
   });
 }
+
+// --- Options des <select> « classe » et « série » --------------------------
+// Utilisées par le formulaire des profils « Mes sacados » (et réutilisables
+// pour les kits). Volontairement dérivées de CYCLES : quand on automatisera le
+// passage de classe à la rentrée, tout partira d'ici.
+
+export type ClassesGroupe = { cycle: CycleValue; label: string; classes: string[] };
+
+// Niveaux « de base », sans la série (la série est un second select).
+export const CLASSES_PAR_CYCLE: ClassesGroupe[] = CYCLES.map((c) => ({
+  cycle: c.value,
+  label: c.label,
+  classes:
+    c.value === "lycee"
+      ? [...new Set(c.classes.map((classe) => decouperClasseLycee(classe).niveau))]
+      : c.classes,
+}));
+
+// Séries disponibles par niveau de lycée, déduites de CYCLES.
+const SERIES_PAR_NIVEAU: Record<string, string[]> = (() => {
+  const lycee = CYCLES.find((c) => c.value === "lycee");
+  const parNiveau: Record<string, string[]> = {};
+  for (const classe of lycee?.classes ?? []) {
+    const { niveau, serie } = decouperClasseLycee(classe);
+    if (!serie) continue;
+    (parNiveau[niveau] ??= []).push(serie);
+  }
+  return parNiveau;
+})();
+
+// Séries proposées pour un niveau donné ("Terminale" -> ["L1", ...]).
+// Liste vide si le niveau n'a pas de série (collège, élémentaire…).
+export function seriesDe(niveau: string | null | undefined): string[] {
+  return SERIES_PAR_NIVEAU[(niveau ?? "").trim()] ?? [];
+}

@@ -121,6 +121,9 @@ type LigneResolue = {
   varianteId: number | null;
   quantite: number;
   prixUnitaire: number;
+  // Coût d'achat du produit à l'instant de la vente (figé ensuite sur la ligne
+  // pour le calcul du bénéfice, migration 0055). null si non renseigné.
+  prixAchat: number | null;
   nom: string;
   stockDisponible: number;
 };
@@ -131,6 +134,8 @@ type CommandeResolue = {
   lieuSpecialId: number | null;
   localiteNom: string;
   aConfirmer: boolean;
+  // Message de la destination qui remplace le délai « 24h / 6j » (0054).
+  messageLivraison: string | null;
   lignesResolues: LigneResolue[];
   sousTotal: number;
   fraisLivraison: number;
@@ -150,6 +155,7 @@ type ResolutionLivraison = {
   fraisLivraison24h: number;
   fraisLivraison6j: number;
   aConfirmer: boolean;
+  messageLivraison: string | null;
 };
 
 // Tarif recalculé EN BASE à partir de l'id envoyé (jamais du libellé ou du
@@ -181,6 +187,7 @@ async function resoudreLivraison(params: {
         fraisLivraison24h: tarif,
         fraisLivraison6j: tarif,
         aConfirmer: lieu.mode === "a_confirmer",
+        messageLivraison: lieu.message ?? null,
       },
     };
   }
@@ -209,6 +216,7 @@ async function resoudreLivraison(params: {
         fraisLivraison24h: groupe.tarif_24h,
         fraisLivraison6j: groupe.tarif_6j,
         aConfirmer: false,
+        messageLivraison: groupe.message_special ?? null,
       },
     };
   }
@@ -228,6 +236,7 @@ async function resoudreLivraison(params: {
       fraisLivraison24h: 0,
       fraisLivraison6j: 0,
       aConfirmer: true,
+      messageLivraison: null,
     },
   };
 }
@@ -295,6 +304,7 @@ async function resoudreCommande(
       varianteId: variante?.id ?? null,
       quantite: ligne.quantite,
       prixUnitaire: variante?.prix ?? produit.prix,
+      prixAchat: produit.prix_achat ?? null,
       nom: produit.nom,
       stockDisponible: variante ? variante.stock : produit.stock,
     });
@@ -315,6 +325,7 @@ async function resoudreCommande(
       lieuSpecialId: livraison.data.lieuSpecialId,
       localiteNom: livraison.data.localiteNom,
       aConfirmer,
+      messageLivraison: livraison.data.messageLivraison,
       lignesResolues,
       sousTotal,
       fraisLivraison,
@@ -323,6 +334,31 @@ async function resoudreCommande(
       total: sousTotal + fraisLivraison,
     },
   };
+}
+
+// `creer_commande()` (RPC) ne connaît pas le message de livraison : on le fige
+// juste après, sur la ligne créée. Idempotent (même valeur sur une reprise).
+async function figerMessageLivraison(commandeId: number, message: string | null): Promise<void> {
+  if (!message) return;
+  await supabaseAdmin.from("commandes").update({ message_livraison: message }).eq("id", commandeId);
+}
+
+// Prix d'achat figé sur chaque ligne de commande (migration 0055) : base de la
+// part fournisseur du bénéfice, jamais recalculée ensuite. Idempotent (ne touche
+// que les lignes pas encore renseignées).
+async function figerPrixAchat(commandeId: number, lignes: LigneResolue[]): Promise<void> {
+  const parProduit = new Map<number, number>();
+  for (const l of lignes) {
+    if (l.prixAchat != null && l.prixAchat > 0) parProduit.set(l.produitId, l.prixAchat);
+  }
+  for (const [produitId, prixAchat] of parProduit) {
+    await supabaseAdmin
+      .from("commande_items")
+      .update({ prix_achat_unitaire: prixAchat })
+      .eq("commande_id", commandeId)
+      .eq("produit_id", produitId)
+      .is("prix_achat_unitaire", null);
+  }
 }
 
 function coordonneesValides(lat: number, lng: number): boolean {
@@ -346,6 +382,7 @@ export type OptionsPaiementResult =
         fraisLivraison6j: number;
         localiteNom: string;
         aConfirmer: boolean;
+        messageLivraison: string | null;
       })
   | { ok: false; error: string };
 
@@ -374,6 +411,7 @@ export async function getOptionsPaiement(
     fraisLivraison6j: resolu.data.fraisLivraison6j,
     localiteNom: resolu.data.localiteNom,
     aConfirmer: resolu.data.aConfirmer,
+    messageLivraison: resolu.data.messageLivraison,
   };
 }
 
@@ -423,11 +461,16 @@ async function trouverOuCreerClient(params: {
   | { ok: true; clientId: number; nomEnregistre: string | null }
   | { ok: false; error: string }
 > {
-  const position = {
-    derniere_lat: params.lat,
-    derniere_lng: params.lng,
+  // La page de commande ne capture plus de coordonnées (carte retirée) : on
+  // n'écrase la dernière position connue que si on en reçoit réellement une
+  // (elle peut venir d'une ancienne commande ou avoir été posée côté admin).
+  const position: Record<string, unknown> = {
     derniere_precision_livreur: params.precisionLivreur,
   };
+  if (params.lat != null && params.lng != null) {
+    position.derniere_lat = params.lat;
+    position.derniere_lng = params.lng;
+  }
 
   const { data: clientExistant, error: clientReadError } = await supabaseAdmin
     .from("clients")
@@ -573,6 +616,8 @@ export async function passerCommande(
     return { ok: false, error: messageErreurCreerCommande(commandeError.message, lignesResolues) };
   }
 
+  await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
+  await figerPrixAchat(commandeId as number, lignesResolues);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
 
   // Signal de classement « commande » (poids 5), une ligne par produit.
@@ -724,6 +769,8 @@ export async function demarrerPaiementWave(
     return { ok: false, error: messageErreurCreerCommande(commandeError.message, lignesResolues) };
   }
 
+  await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
+  await figerPrixAchat(commandeId as number, lignesResolues);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
 
   // Signal de classement « commande » (poids 5). Enregistré à la création

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { MapPin, Truck } from "lucide-react";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
 import { useKitsPanier } from "@/lib/local/kits-panier";
@@ -15,7 +16,6 @@ import {
   passerCommande,
 } from "@/lib/checkout/actions";
 import { SEUIL_PAIEMENT_AVANCE } from "@/lib/checkout/montants";
-import { CartePin, type Coordonnees } from "@/components/checkout/carte-pin";
 import { LocalitePicker, type SelectionLocalite } from "@/components/checkout/localite-picker";
 import {
   useAllowNextNavigation,
@@ -69,7 +69,6 @@ export default function CheckoutPage() {
   // bloquer, puis on enchaîne — voir trouverOuCreerClient (lib/checkout/actions.ts).
   const [noticeNom, setNoticeNom] = useState<string | null>(null);
 
-  const [position, setPosition] = useState<Coordonnees | null>(null);
   const [precisionLivreur, setPrecisionLivreur] = useState("");
 
   // Le checkout contient un travail non enregistré dès que l'utilisateur a
@@ -84,9 +83,9 @@ export default function CheckoutPage() {
     getLieuxSpeciaux().then(setLieuxSpeciaux);
   }, []);
 
-  // Pré-remplissage : dernière position validée par ce numéro de client.
-  // Nécessite le jeton de l'identité mémorisée (et donc que le numéro affiché
-  // soit bien celui de cette identité).
+  // Pré-remplissage : dernière précision livreur saisie par ce numéro de client
+  // (même adresse d'une commande à l'autre). Nécessite le jeton de l'identité
+  // mémorisée (et donc que le numéro affiché soit bien celui de cette identité).
   const prefillFait = useRef(false);
   useEffect(() => {
     const numero = telephone.trim();
@@ -95,7 +94,6 @@ export default function CheckoutPage() {
     prefillFait.current = true;
     getDernierePosition(numero, jeton).then((pos) => {
       if (!pos) return;
-      setPosition({ lat: pos.lat, lng: pos.lng });
       setPrecisionLivreur((actuel) => actuel || pos.precisionLivreur || "");
     });
   }, [telephone, identite]);
@@ -103,12 +101,9 @@ export default function CheckoutPage() {
   // Libellé de la localité actuellement saisie/choisie (déterminant côté
   // serveur pour le tarif, jamais fait confiance côté client) — vide tant que
   // rien n'a été tapé.
-  const localiteTexteCourant =
-    selectionLocalite?.type === "libre" ? selectionLocalite.texte.trim() : (selectionLocalite?.nom ?? "");
+  const localiteTexteCourant = selectionLocalite?.nom ?? "";
   const localiteKey = selectionLocalite
-    ? selectionLocalite.type === "libre"
-      ? `libre:${localiteTexteCourant}`
-      : `${selectionLocalite.type}:${selectionLocalite.id}`
+    ? `${selectionLocalite.type}:${selectionLocalite.id}`
     : "";
 
   // Règle du seuil ET tarif de livraison recalculés côté serveur (INTEGRATION_WAVE.md,
@@ -125,6 +120,7 @@ export default function CheckoutPage() {
     fraisLivraison6j: number;
     localiteNom: string;
     aConfirmer: boolean;
+    messageLivraison: string | null;
   } | null>(null);
   const panierSignature = detail
     .map((d) => `${d.produit.id}:${d.variante?.id ?? 0}x${d.quantite}`)
@@ -158,6 +154,7 @@ export default function CheckoutPage() {
         fraisLivraison6j: r.fraisLivraison6j,
         localiteNom: r.localiteNom,
         aConfirmer: r.aConfirmer,
+        messageLivraison: r.messageLivraison,
       });
     });
     return () => {
@@ -179,8 +176,8 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!localiteTexteCourant) {
-      setError("Indique ta localité de livraison.");
+    if (!selectionLocalite) {
+      setError("Choisis ta localité dans la liste.");
       return;
     }
     setSubmitting(true);
@@ -197,8 +194,10 @@ export default function CheckoutPage() {
       localiteId: selectionLocalite?.type === "localite" ? selectionLocalite.id : null,
       lieuSpecialId: selectionLocalite?.type === "special" ? selectionLocalite.id : null,
       localiteTexte: localiteTexteCourant,
-      lat: position?.lat ?? null,
-      lng: position?.lng ?? null,
+      // Carte retirée de la page de commande : la localité + la précision
+      // livreur portent l'information. Pas de coordonnées ici.
+      lat: null,
+      lng: null,
       precisionLivreur: precisionLivreur.trim() || null,
       modeLivraison,
       reference,
@@ -338,37 +337,38 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-medium text-ink/60">
-            Précise l’emplacement sur la carte <span className="text-ink/40">(facultatif)</span>
+        <label className="flex flex-col gap-1.5 rounded-2xl border border-brand/25 bg-brand/5 p-3 text-sm">
+          <span className="flex items-center gap-1.5 font-semibold text-ink">
+            <MapPin size={15} className="text-brand" aria-hidden="true" />
+            Comment trouver ta porte
           </span>
-          <CartePin
-            position={position}
-            onChange={(c) => {
-              setPosition(c);
-              setModifie(true);
-            }}
-          />
-        </div>
-
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs font-medium text-ink/60">
-            Précision pour le livreur <span className="text-ink/40">(facultatif)</span>
+          <span className="text-xs text-ink/60">
+            C&apos;est ce qui guide le livreur jusqu&apos;à toi : repères visibles, étage,
+            couleur du portail, à qui demander, quand t&apos;appeler.
           </span>
           <textarea
-            rows={2}
+            rows={3}
             maxLength={300}
             value={precisionLivreur}
             onChange={(event) => {
               setPrecisionLivreur(event.target.value);
               setModifie(true);
             }}
-            placeholder="Portail bleu, 2e étage, appeler en arrivant…"
+            placeholder="Ex : quartier Liberté 6, immeuble en face de la pharmacie, portail bleu, 2e étage. Appeler en arrivant au carrefour."
             className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>
       </section>
 
+      {opts?.messageLivraison ? (
+        <section className="flex flex-col gap-1.5 rounded-2xl border border-brand/25 bg-brand/5 p-3">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+            <Truck size={15} className="text-brand" aria-hidden="true" />
+            Livraison
+          </span>
+          <p className="text-sm text-ink/75">{opts.messageLivraison}</p>
+        </section>
+      ) : (
       <section className="flex flex-col gap-2">
         <span className="text-xs font-medium text-ink/60">Mode de livraison</span>
         <div className="grid grid-cols-2 gap-3">
@@ -405,6 +405,7 @@ export default function CheckoutPage() {
           })}
         </div>
       </section>
+      )}
 
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3">
         <span className="text-xs font-medium text-ink/60">Paiement</span>
@@ -509,7 +510,7 @@ export default function CheckoutPage() {
       <div className="sticky bottom-0 z-40 mt-auto border-t border-ink/10 bg-surface/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-surface/80">
         <button
           type="submit"
-          disabled={submitting || !localiteTexteCourant}
+          disabled={submitting || !selectionLocalite}
           className="mx-auto flex h-12 w-full max-w-6xl items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
           {submitting

@@ -13,14 +13,35 @@ export async function getZonesAdmin(): Promise<Zone[]> {
   return data ?? [];
 }
 
-export type ZoneInput = { nom: string; tarif_6j: number; tarif_24h: number };
+export type ZoneInput = {
+  nom: string;
+  tarif_6j: number;
+  tarif_24h: number;
+  // Vide = délai « 24h / 6j » normal. Renseigné = ce texte remplace le délai
+  // partout pour ce groupe (migration 0054).
+  message_special: string | null;
+};
+
+const MESSAGE_MAX = 300;
 
 function validerZoneInput(input: ZoneInput): string | null {
   if (!texteNonVide(input.nom, 100)) return "Le nom de la zone est requis.";
   if (!estNombrePositifValide(input.tarif_6j) || !estNombrePositifValide(input.tarif_24h)) {
     return "Les tarifs doivent être des nombres positifs.";
   }
+  if (input.message_special != null && input.message_special.length > MESSAGE_MAX) {
+    return "Le message est trop long.";
+  }
   return null;
+}
+
+function versColonnes(input: ZoneInput) {
+  return {
+    nom: input.nom.trim(),
+    tarif_6j: input.tarif_6j,
+    tarif_24h: input.tarif_24h,
+    message_special: input.message_special?.trim() || null,
+  };
 }
 
 export async function creerZone(input: ZoneInput): Promise<ActionResult> {
@@ -28,7 +49,7 @@ export async function creerZone(input: ZoneInput): Promise<ActionResult> {
   const erreur = validerZoneInput(input);
   if (erreur) return { ok: false, error: erreur };
 
-  const { error } = await supabaseAdmin.from("zones").insert(input);
+  const { error } = await supabaseAdmin.from("zones").insert(versColonnes(input));
   if (error) return { ok: false, error: "Impossible de créer cette zone (nom déjà utilisé ?)." };
   return { ok: true };
 }
@@ -38,7 +59,7 @@ export async function modifierZone(id: number, input: ZoneInput): Promise<Action
   const erreur = validerZoneInput(input);
   if (erreur) return { ok: false, error: erreur };
 
-  const { error } = await supabaseAdmin.from("zones").update(input).eq("id", id);
+  const { error } = await supabaseAdmin.from("zones").update(versColonnes(input)).eq("id", id);
   if (error) return { ok: false, error: "Impossible de modifier cette zone." };
   return { ok: true };
 }

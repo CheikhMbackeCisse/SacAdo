@@ -7,6 +7,7 @@ import {
   getSousSousCategoriesBySousCategories,
 } from "@/lib/supabase/queries";
 import { CategoryProductList } from "@/components/category/category-product-list";
+import { DemanderProduit } from "@/components/demande/demander-produit";
 
 // ISR : la page est mise en cache par catégorie et régénérée au plus toutes
 // les 2 min, pour ne pas taper Supabase à chaque visite du catalogue (c'est le
@@ -41,6 +42,7 @@ export default async function CategoriePage(props: PageProps<"/categorie/[slug]"
           sousSousCategories={sousSousCategories}
         />
       </Suspense>
+      <DemanderProduit origine="categorie" variante="discret" />
     </div>
   );
 }

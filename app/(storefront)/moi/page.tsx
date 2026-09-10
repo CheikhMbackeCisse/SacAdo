@@ -2,26 +2,24 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ClipboardList, Heart, History, Inbox, LifeBuoy, Store } from "lucide-react";
+import { Backpack, ClipboardList, Heart, History, Inbox, LifeBuoy } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { useFavoris } from "@/lib/local/favoris";
 import { useConsultes } from "@/lib/local/consultes";
 import { getMessagesParTelephone } from "@/lib/moi/actions";
 import { getPopulaires, getProduitsByIds } from "@/lib/supabase/queries";
 import { ProductGrid } from "@/components/product/product-grid";
-import { BeneficiairesSection } from "@/components/moi/beneficiaires-section";
+import { DemanderProduit } from "@/components/demande/demander-produit";
 import type { Produit } from "@/lib/supabase/types";
 
 // 6 entrées disposées en 2 lignes × 3 colonnes (voir la grille plus bas).
-// "Espace vendeur" mène à la connexion vendeur ; le proxy redirige vers le
-// tableau de bord si une session vendeur est déjà ouverte.
 const ONGLETS = [
   { href: "/moi/assistance", label: "Assistance", icon: LifeBuoy },
   { href: "/commandes", label: "Mes commandes", icon: ClipboardList },
   { href: "/moi/messages", label: "Boîte de réception", icon: Inbox },
   { href: "/favoris", label: "Favoris", icon: Heart },
   { href: "/moi/consultes", label: "Déjà consultés", icon: History },
-  { href: "/vendeur/connexion", label: "Espace vendeur", icon: Store },
+  { href: "/moi/sacados", label: "Mes sacados", icon: Backpack },
 ] as const;
 
 const APERCU_MAX = 4;
@@ -104,7 +102,7 @@ export default function MoiPage() {
         ))}
       </div>
 
-      <BeneficiairesSection />
+      <DemanderProduit origine="moi" variante="carte" />
 
       {favorisProduits.length > 0 && (
         <section className="flex flex-col gap-2">

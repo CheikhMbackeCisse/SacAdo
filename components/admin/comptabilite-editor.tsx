@@ -12,7 +12,7 @@ import {
   type Periode,
   type RecapComptabilite,
 } from "@/lib/admin/comptabilite-actions";
-import { CATEGORIES_DEPENSE } from "@/lib/admin/comptabilite-constants";
+import { CATEGORIES_DEPENSE, LABEL_CATEGORIE_DEPENSE } from "@/lib/admin/comptabilite-constants";
 import { formatPrice } from "@/lib/format";
 import type { CategorieDepense, Depense } from "@/lib/supabase/types";
 
@@ -25,9 +25,7 @@ const PERIODES: { valeur: Periode; label: string }[] = [
   { valeur: "mois", label: "Mois" },
 ];
 
-const LABEL_CATEGORIE: Record<CategorieDepense, string> = Object.fromEntries(
-  CATEGORIES_DEPENSE.map((c) => [c.valeur, c.label]),
-) as Record<CategorieDepense, string>;
+const LABEL_CATEGORIE = LABEL_CATEGORIE_DEPENSE;
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR");
@@ -181,9 +179,9 @@ function DepensesSection({ depenses }: { depenses: Depense[] }) {
               className="flex items-start justify-between gap-2 rounded-2xl border border-ink/10 bg-white p-3.5 text-sm"
             >
               <div className="min-w-0">
-                <p className="font-semibold text-ink">{LABEL_CATEGORIE[d.categorie]}</p>
+                <p className="font-semibold text-ink">{d.libelle}</p>
                 <p className="text-xs text-ink/50">
-                  {formatDate(d.date)}
+                  {LABEL_CATEGORIE[d.categorie]} · {formatDate(d.date)}
                   {d.note ? ` · ${d.note}` : ""}
                 </p>
               </div>
@@ -201,7 +199,8 @@ function DepensesSection({ depenses }: { depenses: Depense[] }) {
 
 function FormDepense({ onFini }: { onFini: () => void }) {
   const router = useRouter();
-  const [categorie, setCategorie] = useState<CategorieDepense>("divers");
+  const [categorie, setCategorie] = useState<CategorieDepense>("autre");
+  const [libelle, setLibelle] = useState("");
   const [montant, setMontant] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
@@ -213,6 +212,7 @@ function FormDepense({ onFini }: { onFini: () => void }) {
     setError(null);
     const input: DepenseInput = {
       categorie,
+      libelle: libelle.trim(),
       montant: Number(montant),
       date,
       note: note.trim() || null,
@@ -233,6 +233,17 @@ function FormDepense({ onFini }: { onFini: () => void }) {
         <Wallet size={16} aria-hidden="true" />
         Nouvelle dépense
       </p>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs font-medium text-ink/60">Libellé</span>
+        <input
+          value={libelle}
+          onChange={(e) => setLibelle(e.target.value)}
+          maxLength={120}
+          placeholder="Ex : sacs kraft (lot de 500)"
+          className={CHAMP}
+        />
+      </label>
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-xs font-medium text-ink/60">Catégorie</span>
@@ -279,7 +290,7 @@ function FormDepense({ onFini }: { onFini: () => void }) {
         <button
           type="button"
           onClick={enregistrer}
-          disabled={submitting || !montant || Number(montant) <= 0}
+          disabled={submitting || !libelle.trim() || !montant || Number(montant) <= 0}
           className="min-h-11 flex-1 rounded-full bg-brand px-4 text-sm font-semibold text-surface active:scale-95 disabled:opacity-50 sm:flex-none"
         >
           {submitting ? "Enregistrement…" : "Enregistrer"}

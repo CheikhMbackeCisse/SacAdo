@@ -1,5 +1,6 @@
 import { getRecapComptabilite, listerDepenses, type Periode } from "@/lib/admin/comptabilite-actions";
 import { ComptabiliteEditor } from "@/components/admin/comptabilite-editor";
+import { ComptabiliteTabs } from "@/components/admin/comptabilite-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function AdminComptabilitePage(props: PageProps<"/admin/com
           Suivi de trésorerie simple pour piloter — pas une comptabilité légale.
         </p>
       </div>
+      <ComptabiliteTabs actif="tresorerie" />
       <ComptabiliteEditor recap={recap} depenses={depenses} />
     </div>
   );

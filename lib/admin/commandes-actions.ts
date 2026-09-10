@@ -36,6 +36,7 @@ function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecCl
     lieu_special_id: row.lieu_special_id,
     localite_nom: row.localite_nom,
     frais_livraison_a_confirmer: row.frais_livraison_a_confirmer,
+    message_livraison: row.message_livraison,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
   };
@@ -171,6 +172,7 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       variante_id: row.variante_id,
       quantite: row.quantite,
       prix_unitaire: row.prix_unitaire,
+      prix_achat_unitaire: row.prix_achat_unitaire,
       reverse_le: row.reverse_le,
       produit_nom: produit?.nom ?? "Produit supprimé",
     };

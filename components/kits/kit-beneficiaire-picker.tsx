@@ -87,7 +87,7 @@ export function KitBeneficiairePicker({
             value={prenom}
             onChange={(e) => setPrenom(e.target.value)}
             maxLength={40}
-            placeholder="Prénom de l'enfant"
+            placeholder="Prénom"
             className="min-h-10 flex-1 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none"
           />
           <button
@@ -103,7 +103,7 @@ export function KitBeneficiairePicker({
 
       <p className="text-[11px] text-ink/40">
         Le kit se retrouve d&apos;une année sur l&apos;autre, et l&apos;accueil s&apos;adapte au
-        niveau de chaque enfant. Prénom uniquement&nbsp;: aucune autre donnée.
+        niveau de chacun. Prénom uniquement&nbsp;: aucune autre donnée.
       </p>
     </div>
   );

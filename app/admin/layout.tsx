@@ -6,27 +6,28 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
-// PWA admin (MODULE_EBOOKS.md, Partie 2) : manifeste dédié `scope: /admin`, avec
-// sa propre identité (`id: /admin`) pour que le navigateur l'installe comme une
-// app SÉPARÉE de l'app client. Le service worker (public/sw.js, scope "/")
-// couvre déjà /admin ; on l'enregistre aussi ici car ce layout est indépendant
-// de celui du client. La protection serveur (middleware + requireAdmin) est
-// inchangée : « installable » ne veut pas dire « moins protégé ».
+// PWA admin (TACHE_admin_pwa_meme_domaine.md) : manifeste dédié servi sous
+// `/admin/manifest.webmanifest`, avec sa propre identité (`id: /admin`, `scope:
+// /admin/`) pour que le navigateur l'installe comme une app SÉPARÉE de l'app
+// client, sur la même origine. Icônes distinctes (fond sombre + glyphe tableau
+// de bord) : deux apps avec la même icône seraient inutilisables. La protection
+// serveur (middleware + requireAdmin) est inchangée : « installable » ne veut
+// pas dire « moins protégé ».
 export const metadata: Metadata = {
-  title: "Administration — SacAdo",
+  title: "SacAdo Admin",
   applicationName: "SacAdo Admin",
-  manifest: "/manifest-admin.webmanifest",
+  manifest: "/admin/manifest.webmanifest",
   // iOS ne lit pas le manifeste pour « Ajouter à l'écran d'accueil ».
-  icons: { apple: "/images/logo.jpg" },
+  icons: { apple: "/icons/admin-512.png" },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "SacAdo Admin",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B3D91",
+  themeColor: "#031726",
   viewportFit: "cover",
 };
 
@@ -62,7 +63,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ) : (
           children
         )}
-        <ServiceWorkerRegister />
+        <ServiceWorkerRegister script="/admin/sw.js" />
       </body>
     </html>
   );
