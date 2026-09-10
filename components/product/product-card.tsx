@@ -9,7 +9,14 @@ import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import type { Produit } from "@/lib/supabase/types";
 
-export function ProductCard({ produit }: { produit: Produit }) {
+export function ProductCard({
+  produit,
+  etiquette,
+}: {
+  produit: Produit;
+  // Prénom du bénéficiaire d'où vient la recommandation (accueil multi-profils).
+  etiquette?: string | null;
+}) {
   const { ajouter } = usePanier();
   const [added, setAdded] = useState(false);
   const epuise = produit.statut === "epuise";
@@ -31,6 +38,12 @@ export function ProductCard({ produit }: { produit: Produit }) {
         <div className="absolute right-2 top-2">
           <FavoriteButton produitId={produit.id} />
         </div>
+
+        {etiquette && (
+          <span className="absolute bottom-2 left-2 max-w-[80%] truncate rounded-full bg-brand/90 px-2 py-0.5 text-[10px] font-medium text-on-brand shadow-sm">
+            Pour {etiquette}
+          </span>
+        )}
 
         {epuise && (
           <div className="absolute inset-0 flex items-center justify-center bg-elevated/70">

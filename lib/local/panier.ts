@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocalList } from "./use-local-list";
+import { mesurer } from "@/lib/mesure-client";
 
 const KEY = "sacado_panier";
 
@@ -49,6 +50,10 @@ export function usePanier() {
         }),
       );
     }
+
+    // Signal de classement (poids 3) : le contexte catégorie est résolu en base
+    // à partir du produit côté /api/mesure.
+    mesurer({ type: "ajout_panier", produitId });
   };
 
   const retirer = (produitId: number, varianteId: number | null) => {

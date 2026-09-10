@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ChampSelect } from "@/components/ui/champ-select";
 import { getProduitsByCategorie, TAILLE_PAGE_CATALOGUE } from "@/lib/supabase/queries";
+import { mesurer } from "@/lib/mesure-client";
 import type { Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
 type Tri = "defaut" | "prix-asc" | "prix-desc";
@@ -35,6 +36,12 @@ export function CategoryProductList({
   const [scSlug, setScSlug] = useState<string | null>(() => searchParams.get("sc"));
   const [sscSlug, setSscSlug] = useState<string | null>(() => searchParams.get("ssc"));
   const [tri, setTri] = useState<Tri>("defaut");
+
+  // Signal de classement « vue de catégorie » (poids 0.5), une fois par
+  // catégorie affichée.
+  useEffect(() => {
+    mesurer({ type: "vue_categorie", categorieId });
+  }, [categorieId]);
 
   const idParSlug = useMemo(() => {
     const map = new Map<string, number>();
@@ -101,9 +108,13 @@ export function CategoryProductList({
         setHasMore(hasMoreInitial);
         return;
       }
+      // Choix d'un rayon : signal d'intérêt sur la sous-catégorie (base de
+      // l'affinité personnelle).
+      const scId = idParSlug.get(slug);
+      if (scId) mesurer({ type: "vue_categorie", categorieId, sousCategorieId: scId });
       void chargerPage(slug, null, 0, true);
     },
-    [chargerPage, produitsInitiaux, hasMoreInitial],
+    [chargerPage, produitsInitiaux, hasMoreInitial, idParSlug, categorieId],
   );
 
   const choisirSousSousCat = useCallback(

@@ -203,6 +203,16 @@ export default function CheckoutPage() {
       modeLivraison,
       reference,
       ebookClasses: kitsPanier.map((k) => ({ cycle: k.cycle, niveau: k.niveau })),
+      // Produits de kit -> bénéficiaire choisi au sélecteur (attribution du
+      // signal « commande » au bon enfant). Validé côté serveur.
+      attributions: kitsPanier.flatMap((k) =>
+        k.beneficiaireId
+          ? (k.produitIds ?? []).map((produitId) => ({
+              produitId,
+              beneficiaireId: k.beneficiaireId as number,
+            }))
+          : [],
+      ),
     };
 
     try {

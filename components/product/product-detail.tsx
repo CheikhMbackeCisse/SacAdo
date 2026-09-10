@@ -8,6 +8,7 @@ import { ShareButton } from "@/components/ui/share-button";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
+import { mesurer } from "@/lib/mesure-client";
 import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
 type ProductDetailProps = {
@@ -34,6 +35,7 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
 
   useEffect(() => {
     recordConsulte(produit.id);
+    mesurer({ type: "vue_produit", produitId: produit.id });
     // On ne veut relancer l'enregistrement que si le produit affiché change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produit.id]);

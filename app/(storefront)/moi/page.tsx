@@ -9,6 +9,7 @@ import { useConsultes } from "@/lib/local/consultes";
 import { getMessagesParTelephone } from "@/lib/moi/actions";
 import { getPopulaires, getProduitsByIds } from "@/lib/supabase/queries";
 import { ProductGrid } from "@/components/product/product-grid";
+import { BeneficiairesSection } from "@/components/moi/beneficiaires-section";
 import type { Produit } from "@/lib/supabase/types";
 
 // 6 entrées disposées en 2 lignes × 3 colonnes (voir la grille plus bas).
@@ -102,6 +103,8 @@ export default function MoiPage() {
           </Link>
         ))}
       </div>
+
+      <BeneficiairesSection />
 
       {favorisProduits.length > 0 && (
         <section className="flex flex-col gap-2">

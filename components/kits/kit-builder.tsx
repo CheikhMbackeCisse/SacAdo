@@ -7,6 +7,7 @@ import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { useKitsPanier } from "@/lib/local/kits-panier";
+import { KitBeneficiairePicker } from "@/components/kits/kit-beneficiaire-picker";
 import { getSacsDisponibles } from "@/lib/supabase/queries";
 import type { KitItemAvecProduit } from "@/lib/supabase/queries";
 import type { Produit } from "@/lib/supabase/types";
@@ -30,6 +31,8 @@ export function KitBuilder({ kitNom, cycle, niveau, items, sacParDefaut }: KitBu
   const { ajouter } = usePanier();
   const { enregistrer: enregistrerKitClasse } = useKitsPanier();
   const [added, setAdded] = useState(false);
+  // Bénéficiaire auquel rattacher ce kit (null = sans préciser).
+  const [beneficiaireId, setBeneficiaireId] = useState<number | null>(null);
   const [etats, setEtats] = useState<Record<number, ItemState>>(() =>
     Object.fromEntries(
       items.map((item) => [
@@ -104,18 +107,32 @@ export function KitBuilder({ kitNom, cycle, niveau, items, sacParDefaut }: KitBu
   };
 
   const handleAjouter = () => {
+    const produitIds: number[] = [];
     items.forEach((item) => {
       const etat = etats[item.id];
-      if (etat?.checked) ajouter(item.produit.id, null, etat.quantite);
+      if (etat?.checked) {
+        ajouter(item.produit.id, null, etat.quantite);
+        produitIds.push(item.produit.id);
+      }
     });
-    if (sacCoche && sacChoisi) ajouter(sacChoisi.id, null, 1);
-    enregistrerKitClasse(cycle, niveau);
+    if (sacCoche && sacChoisi) {
+      ajouter(sacChoisi.id, null, 1);
+      produitIds.push(sacChoisi.id);
+    }
+    enregistrerKitClasse(cycle, niveau, { beneficiaireId, produitIds });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
 
   return (
     <div className="flex flex-col">
+      <KitBeneficiairePicker
+        cycle={cycle}
+        niveau={niveau}
+        value={beneficiaireId}
+        onChange={setBeneficiaireId}
+      />
+
       <ul className="flex flex-col divide-y divide-ink/10 px-4">
         {items.map((item) => {
           const etat = etats[item.id];

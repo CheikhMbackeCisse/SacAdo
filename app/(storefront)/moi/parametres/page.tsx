@@ -7,6 +7,7 @@ import { useIdentite, type Identite } from "@/lib/local/identite";
 import { useTheme, type Theme } from "@/lib/local/theme";
 import { InstallCard } from "@/components/pwa/install-card";
 import { modifierNomClient } from "@/lib/moi/actions";
+import { reinitialiserRecommandations } from "@/lib/reco-actions";
 
 const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "clair", label: "Clair", icon: Sun },
@@ -63,6 +64,10 @@ export default function ParametresPage() {
           <span className="text-sm text-ink">Confidentialité</span>
           <span className="text-xs text-brand">Voir la politique →</span>
         </Link>
+        <div className="flex flex-col gap-2 px-4 py-3">
+          <span className="text-sm text-ink">Recommandations</span>
+          <ReinitialiserReco identite={identite} />
+        </div>
       </section>
 
       {identite && (
@@ -80,6 +85,37 @@ export default function ParametresPage() {
           Se déconnecter
         </button>
       )}
+    </div>
+  );
+}
+
+function ReinitialiserReco({ identite }: { identite: Identite | null }) {
+  const [etat, setEtat] = useState<"repos" | "encours" | "fait">("repos");
+
+  const lancer = async () => {
+    setEtat("encours");
+    await reinitialiserRecommandations(identite?.telephone ?? null, identite?.jeton ?? null);
+    setEtat("fait");
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-xs text-ink/50">
+        Efface ce que l&apos;app a appris de ta navigation (et de celle de tes enfants). L&apos;accueil
+        repart du classement général.
+      </p>
+      <button
+        type="button"
+        onClick={lancer}
+        disabled={etat === "encours"}
+        className="self-start rounded-full border border-ink/15 px-3.5 py-1.5 text-xs font-medium text-ink transition-colors active:scale-95 disabled:opacity-50"
+      >
+        {etat === "encours"
+          ? "…"
+          : etat === "fait"
+            ? "Recommandations réinitialisées ✓"
+            : "Réinitialiser mes recommandations"}
+      </button>
     </div>
   );
 }

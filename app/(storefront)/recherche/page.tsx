@@ -1,5 +1,6 @@
 import { rechercherProduits } from "@/lib/supabase/queries";
 import { journaliserRechercheVide } from "@/lib/recherche/journal";
+import { journaliserEvenement } from "@/lib/mesure";
 import { ResultatsRecherche } from "@/components/search/resultats-recherche";
 
 // Page dynamique par nature (dépend de searchParams). La recherche v2 est
@@ -10,8 +11,12 @@ export default async function RecherchePage(props: PageProps<"/recherche">) {
   const query = typeof q === "string" ? q.trim() : "";
   const resultats = query ? await rechercherProduits(query, { limite: 48 }) : [];
 
-  if (query && resultats.length === 0) {
-    await journaliserRechercheVide(query);
+  if (query) {
+    // Signal de classement « recherche » (poids 2).
+    await journaliserEvenement({ type: "recherche", recherche: query });
+    if (resultats.length === 0) {
+      await journaliserRechercheVide(query);
+    }
   }
 
   return (

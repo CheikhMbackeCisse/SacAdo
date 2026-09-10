@@ -38,6 +38,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
     produit?.sous_sous_categorie_id ?? null,
   );
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
+  const [prixAchat, setPrixAchat] = useState(produit?.prix_achat?.toString() ?? "");
   const [delai, setDelai] = useState<ProduitInput["delai"] | "">(produit?.delai ?? "");
   const [photo, setPhoto] = useState(produit?.photo ?? "");
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
@@ -189,6 +190,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
       sous_categorie_id: sousCategorieId,
       sous_sous_categorie_id: sousSousCategorieId,
       prix: Number(prix),
+      prix_achat: prixAchat.trim() === "" ? null : Number(prixAchat),
       delai,
       photo: photo.trim() || null,
       stock: Number(stock),
@@ -327,7 +329,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
         </label>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-ink/60">Prix (FCFA)</span>
           <input
@@ -337,6 +339,19 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
             min={0}
             value={prix}
             onChange={(event) => setPrix(event.target.value)}
+            className="no-spinner min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-ink/60">Prix d&apos;achat</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={prixAchat}
+            onChange={(event) => setPrixAchat(event.target.value)}
+            placeholder="facultatif"
             className="no-spinner min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
           />
         </label>

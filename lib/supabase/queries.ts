@@ -16,6 +16,13 @@ import type {
 
 const SELECT_VARIANTE = "*, variante_attributs(attribut_id, valeur, attributs(nom))";
 
+// Colonnes produit exposées au storefront (client anon). Toutes SAUF
+// `prix_achat` : le coût d'achat ne doit jamais transiter par l'API publique
+// (il n'existe que pour la composante « marge » du score, calculée en base).
+// L'admin lit l'intégralité via le service_role.
+const COLONNES_PRODUIT_PUBLIC =
+  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par" as const;
+
 // Aplatit une réponse Supabase (avec ou sans jointure) en VarianteAvecAttributs.
 function versVariantes(
   rows: unknown[] | null,
@@ -61,12 +68,16 @@ export async function getCategorieById(id: number): Promise<Categorie | null> {
 export async function getPopulaires(limit = 8): Promise<Produit[]> {
   const { data, error } = await supabase
     .from("produits")
-    .select("*")
+    .select(COLONNES_PRODUIT_PUBLIC)
     .order("id", { ascending: true })
     .limit(limit);
   if (error) throw error;
   return data ?? [];
 }
+
+// L'accueil classé (getAccueilProduits) vit dans lib/accueil.ts : il lit
+// l'affinité de la personne via le service_role, ce que ce fichier — importé
+// par des composants client — ne peut pas faire.
 
 export type PageResultat<T> = { items: T[]; hasMore: boolean };
 
@@ -88,7 +99,10 @@ export async function getProduitsByCategorie(
 ): Promise<PageResultat<Produit>> {
   // .range() est inclusif : on demande une ligne de plus que "limit" pour
   // savoir s'il reste une page suivante, sans requête de comptage séparée.
-  let requete = supabase.from("produits").select("*").eq("categorie_id", categorieId);
+  let requete = supabase
+    .from("produits")
+    .select(COLONNES_PRODUIT_PUBLIC)
+    .eq("categorie_id", categorieId);
   if (sousCategorieId != null) requete = requete.eq("sous_categorie_id", sousCategorieId);
   if (sousSousCategorieId != null) {
     requete = requete.eq("sous_sous_categorie_id", sousSousCategorieId);
@@ -139,14 +153,21 @@ export async function getSousSousCategoriesBySousCategorie(
 }
 
 export async function getProduitById(id: number): Promise<Produit | null> {
-  const { data, error } = await supabase.from("produits").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase
+    .from("produits")
+    .select(COLONNES_PRODUIT_PUBLIC)
+    .eq("id", id)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
 
 export async function getProduitsByIds(ids: number[]): Promise<Produit[]> {
   if (ids.length === 0) return [];
-  const { data, error } = await supabase.from("produits").select("*").in("id", ids);
+  const { data, error } = await supabase
+    .from("produits")
+    .select(COLONNES_PRODUIT_PUBLIC)
+    .in("id", ids);
   if (error) throw error;
   return data ?? [];
 }
@@ -233,7 +254,7 @@ export async function getProduitsSimilaires(
 ): Promise<Produit[]> {
   const { data, error } = await supabase
     .from("produits")
-    .select("*")
+    .select(COLONNES_PRODUIT_PUBLIC)
     .eq("categorie_id", categorieId)
     .neq("id", excludeId)
     .limit(limit);
@@ -265,7 +286,7 @@ export async function getSacsDisponibles({
 
   let requete = supabase
     .from("produits")
-    .select("*")
+    .select(COLONNES_PRODUIT_PUBLIC)
     .in("sous_categorie_id", sousCategorieIds);
   if (excludeIds.length > 0) requete = requete.not("id", "in", `(${excludeIds.join(",")})`);
 
@@ -303,7 +324,7 @@ export async function rechercherProduits(
     console.warn("rechercher_produits indisponible, repli ilike :", error.message);
     const repli = await supabase
       .from("produits")
-      .select("*")
+      .select(COLONNES_PRODUIT_PUBLIC)
       .ilike("nom", `%${trimmed}%`)
       .order("nom", { ascending: true })
       .limit(limite);

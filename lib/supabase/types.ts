@@ -47,6 +47,28 @@ export type Produit = {
   //   'admin'   : publié par l'admin au nom d'un vendeur -> en ligne direct ;
   //   'vendeur' : soumis par le vendeur -> passe par la validation admin.
   publie_par: "admin" | "vendeur";
+  // Prix d'achat FCFA (migration 0046) : base de la composante « marge » du
+  // score global. null = coût inconnu -> le produit n'est ni avantagé ni
+  // pénalisé par la marge. Absent des lectures storefront (jamais exposé à
+  // l'API publique) -> optionnel.
+  prix_achat?: number | null;
+  // Classement (migration 0047) : recalculés chaque nuit par pg_cron, jamais à
+  // la lecture. `score_details` = décomposition JSON pour l'écran admin.
+  // Chargés seulement par les requêtes qui en ont besoin (accueil classé, admin)
+  // -> optionnels.
+  score_global?: number;
+  score_details?: ScoreDetails | null;
+  vues_30j?: number;
+};
+
+export type ScoreDetails = {
+  performance: number;
+  saisonnalite: number;
+  marge: number;
+  fraicheur: number;
+  score: number;
+  vues_30j: number;
+  calcule_le: string;
 };
 
 // Catégories : source de vérité en base (table `categories`). Les icônes Lucide

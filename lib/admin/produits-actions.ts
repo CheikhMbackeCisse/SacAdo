@@ -51,6 +51,9 @@ export type ProduitInput = {
   // sous-catégorie choisie en propose.
   sous_sous_categorie_id: number | null;
   prix: number;
+  // Prix d'achat FCFA (migration 0046) : facultatif. Sert à la composante
+  // « marge » du score de classement. null = coût inconnu (neutre).
+  prix_achat: number | null;
   delai: Delai;
   photo: string | null;
   stock: number;
@@ -74,6 +77,9 @@ function validerProduitInput(input: ProduitInput): string | null {
     return "Sous-sous-catégorie invalide.";
   }
   if (!estNombrePositifValide(input.prix)) return "Le prix doit être un nombre positif.";
+  if (input.prix_achat !== null && !estNombrePositifValide(input.prix_achat)) {
+    return "Le prix d'achat doit être un nombre positif.";
+  }
   if (!estNombrePositifValide(input.stock)) return "Le stock doit être un nombre positif.";
   if (!estNombrePositifValide(input.seuil_alerte)) return "Le seuil d'alerte doit être un nombre positif.";
   if (input.mots_cles !== null && input.mots_cles.length > LONGUEUR_MAX_MOTS_CLES) {

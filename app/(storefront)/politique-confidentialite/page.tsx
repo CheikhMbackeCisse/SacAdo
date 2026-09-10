@@ -35,6 +35,24 @@ export default function PolitiqueConfidentialitePage() {
       </section>
 
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
+        <h2 className="text-sm font-semibold text-ink">Suivi de navigation et recommandations</h2>
+        <p className="text-sm text-ink/70">
+          Dès ta première visite, un identifiant de session anonyme est déposé dans un cookie.
+          Il nous sert à retenir les rayons et les produits que tu consultes, ce que tu ajoutes
+          au panier et ce que tu recherches, afin d&apos;adapter l&apos;ordre des produits sur
+          l&apos;accueil à ce qui t&apos;intéresse. Ce suivi n&apos;est associé à aucune donnée
+          personnelle tant que tu n&apos;as pas passé de commande ; à ce moment-là, ce qui a été
+          appris est rattaché à ton numéro. Si tu enregistres un enfant (prénom + niveau), ses
+          signaux sont suivis séparément pour lui proposer le bon matériel — jamais mélangés.
+        </p>
+        <p className="text-sm text-ink/70">
+          Tu peux tout effacer à tout moment depuis <span className="font-medium">Paramètres →
+          Recommandations → « Réinitialiser mes recommandations »</span>. Les données de
+          navigation sont automatiquement supprimées après 24&nbsp;mois.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Qui y a accès</h2>
         <p className="text-sm text-ink/70">
           Seul l&apos;administrateur de SacAdo peut consulter tes informations, pour préparer et

@@ -6,6 +6,8 @@ import { getClientIp, verifierLimite } from "@/lib/security/rate-limit";
 import { optionsPaiementPourTotal, paiementAutorise, type OptionsPaiement } from "@/lib/checkout/montants";
 import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wave/client";
 import { jetonClient, verifierJetonClient } from "@/lib/client-auth";
+import { journaliserCommande } from "@/lib/mesure";
+import { fusionnerSessionCourante } from "@/lib/affinites";
 import { getSeuilLivraisonGratuite } from "@/lib/parametres";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import type { LignePanier } from "@/lib/local/panier";
@@ -45,9 +47,33 @@ export type CheckoutInput = {
   // sur la commande pour proposer l'ebook offert de la classe dans « Mes
   // commandes ». Aucune donnée personnelle.
   ebookClasses?: { cycle: string; niveau: string }[];
+  // Produits d'un kit rattachés à un bénéficiaire (TACHE_identite §2.3) : sert
+  // uniquement à attribuer le signal « commande » au bon enfant. Validé côté
+  // serveur (le bénéficiaire doit appartenir au compte). Jamais rangé sur la
+  // commande elle-même.
+  attributions?: { produitId: number; beneficiaireId: number }[];
 };
 
 const EBOOK_CLASSES_MAX = 12;
+const ATTRIBUTIONS_MAX = 60;
+
+// Associe chaque produit commandé au bénéficiaire déclaré au sélecteur de kit
+// (si présent). Le bénéficiaire est revérifié dans journaliserCommande.
+function lignesPourJournal(
+  lignesResolues: { produitId: number }[],
+  attributions: CheckoutInput["attributions"],
+): { produitId: number; beneficiaireId?: number | null }[] {
+  const parProduit = new Map<number, number>();
+  for (const a of (attributions ?? []).slice(0, ATTRIBUTIONS_MAX)) {
+    if (Number.isFinite(a?.produitId) && Number.isFinite(a?.beneficiaireId) && a.beneficiaireId > 0) {
+      parProduit.set(a.produitId, a.beneficiaireId);
+    }
+  }
+  return lignesResolues.map((l) => ({
+    produitId: l.produitId,
+    beneficiaireId: parProduit.get(l.produitId) ?? null,
+  }));
+}
 
 // Nettoie et borne la liste de classes de kit avant de la ranger sur la
 // commande. Renvoie null si rien d'exploitable (colonne laissée à NULL).
@@ -520,6 +546,10 @@ export async function passerCommande(
   });
   if (!client.ok) return { ok: false, error: client.error };
 
+  // Connexion effective : rattache la session anonyme au compte (affinités +
+  // événements passés). Best-effort, ne bloque pas la commande.
+  await fusionnerSessionCourante(client.clientId);
+
   const { data: commandeId, error: commandeError } = await supabaseAdmin.rpc("creer_commande", {
     p_client_id: client.clientId,
     p_zone_id: zoneId,
@@ -544,6 +574,11 @@ export async function passerCommande(
   }
 
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
+
+  // Signal de classement « commande » (poids 5), une ligne par produit.
+  await journaliserCommande(lignesPourJournal(lignesResolues, input.attributions), {
+    clientId: client.clientId,
+  });
 
   // Commande en livraison 24h : prévenir automatiquement les fournisseurs
   // concernés (NOTIFICATIONS_FOURNISSEURS §2). Ne bloque pas la confirmation.
@@ -660,6 +695,10 @@ export async function demarrerPaiementWave(
   });
   if (!client.ok) return { ok: false, error: client.error };
 
+  // Connexion effective : rattache la session anonyme au compte (affinités +
+  // événements passés). Best-effort, ne bloque pas la commande.
+  await fusionnerSessionCourante(client.clientId);
+
   const { data: commandeId, error: commandeError } = await supabaseAdmin.rpc("creer_commande", {
     p_client_id: client.clientId,
     p_zone_id: zoneId,
@@ -686,6 +725,14 @@ export async function demarrerPaiementWave(
   }
 
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
+
+  // Signal de classement « commande » (poids 5). Enregistré à la création
+  // (panier construit + kit choisi + checkout atteint) ; un paiement Wave
+  // abandonné reste une exception, lissée par la fenêtre 90 j des affinités.
+  await journaliserCommande(lignesPourJournal(lignesResolues, input.attributions), {
+    clientId: client.clientId,
+  });
+
   return {
     ok: true,
     waveLaunchUrl: session.session.waveLaunchUrl,

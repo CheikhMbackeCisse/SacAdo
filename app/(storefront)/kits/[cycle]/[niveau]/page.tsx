@@ -5,6 +5,7 @@ import { getCycleByValue } from "@/lib/cycles";
 import { GAMMES } from "@/lib/gammes";
 import { getKitsByCycleNiveau, getKitItemsAvecProduits } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
+import { DeclarerNiveau } from "@/components/kits/declarer-niveau";
 
 // ISR : le contenu des kits change rarement.
 export const revalidate = 120;
@@ -44,6 +45,7 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
+      <DeclarerNiveau cycle={cycle} niveau={niveau} />
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-brand">{cycleDef.label}</span>
         <h1 className="font-heading text-2xl font-bold text-ink">Kit {niveau}</h1>
