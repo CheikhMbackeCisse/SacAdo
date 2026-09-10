@@ -160,7 +160,7 @@ export function WelcomeScreen() {
         {/* Logo seul, sans cadre blanc — style icône d'app, flottement léger. */}
         <div className="animate-rise-in">
           <Image
-            src="/images/logo.jpg"
+            src="/images/logo-sombre.jpg"
             alt="SacAdo"
             width={200}
             height={200}

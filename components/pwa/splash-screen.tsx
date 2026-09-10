@@ -50,10 +50,12 @@ export function SplashScreen() {
       }`}
     >
       {/* Le splash doit peindre le logo AU PLUS TÔT : on sert le fichier brut,
-          sans passer par le pipeline d'optimisation next/image (roundtrip). */}
+          sans passer par le pipeline d'optimisation next/image (roundtrip).
+          Version sur fond bleu nuit (pas la nouvelle icône fond blanc) : elle
+          se pose bien sur le fond clair OU sombre du splash. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/images/logo.jpg"
+        src="/images/logo-sombre.jpg"
         alt="SacAdo"
         width={128}
         height={128}
