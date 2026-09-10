@@ -33,6 +33,10 @@ export type Produit = {
   statut: StatutProduit;
   created_at: string;
   description: string | null;
+  // Mots-clés libres pour la recherche (migration 0041) : ce que les clients
+  // tapent et qui n'est écrit nulle part sur le produit. Alimente
+  // `recherche_texte`, jamais affiché au client.
+  mots_cles: string | null;
   // Marketplace : null = produit SacAdo en propre ; sinon = produit d'un vendeur.
   vendeur_id: string | null;
   statut_publication: StatutPublication;

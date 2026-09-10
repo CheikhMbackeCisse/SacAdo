@@ -56,7 +56,13 @@ export type ProduitInput = {
   stock: number;
   seuil_alerte: number;
   statut: StatutProduit;
+  // Mots-clés de recherche (migration 0041). Le trigger `maj_index_recherche`
+  // les recopie dans `recherche_texte` : un produit devient trouvable par ces
+  // mots sans que sa désignation change.
+  mots_cles: string | null;
 };
+
+const LONGUEUR_MAX_MOTS_CLES = 500;
 
 function validerProduitInput(input: ProduitInput): string | null {
   if (!texteNonVide(input.nom, 200)) return "Le nom est requis.";
@@ -70,6 +76,9 @@ function validerProduitInput(input: ProduitInput): string | null {
   if (!estNombrePositifValide(input.prix)) return "Le prix doit être un nombre positif.";
   if (!estNombrePositifValide(input.stock)) return "Le stock doit être un nombre positif.";
   if (!estNombrePositifValide(input.seuil_alerte)) return "Le seuil d'alerte doit être un nombre positif.";
+  if (input.mots_cles !== null && input.mots_cles.length > LONGUEUR_MAX_MOTS_CLES) {
+    return `Les mots-clés font au plus ${LONGUEUR_MAX_MOTS_CLES} caractères.`;
+  }
   return null;
 }
 

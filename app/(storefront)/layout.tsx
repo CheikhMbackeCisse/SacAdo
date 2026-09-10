@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "../globals.css";
+import "../../styles/app-feel.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
+import { AppBehavior } from "@/components/pwa/app-behavior";
 import { Header } from "@/components/layout/header";
 import { AppMain } from "@/components/layout/app-main";
 import { CartToast } from "@/components/panier/cart-toast";
@@ -24,6 +26,15 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "SacAdo",
+  },
+  // Android détecte sinon tout seul les numéros affichés (profil, assistance) et
+  // propose de les appeler. On coupe la détection partout : tout numéro qui doit
+  // rester appelable est écrit explicitement en <a href="tel:…">.
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
   },
 };
 
@@ -58,6 +69,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         >
           Aller au contenu principal
         </a>
+        <AppBehavior />
         <Header />
         <CartToast />
         <AppMain>

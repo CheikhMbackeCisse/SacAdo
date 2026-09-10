@@ -38,7 +38,9 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
   return (
     <div className="animate-fade-in-up flex flex-col gap-6 px-4 py-6">
       <div>
-        <h1 className="font-heading text-xl font-bold text-ink">Commande #{commande.id}</h1>
+        <h1 className="selectionnable font-heading text-xl font-bold text-ink">
+          Commande #{commande.id}
+        </h1>
         <p className="text-sm text-ink/60">
           {enAttentePaiement
             ? "Paiement Wave non finalisé."

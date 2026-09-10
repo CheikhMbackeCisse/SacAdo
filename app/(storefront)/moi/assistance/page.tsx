@@ -1,12 +1,9 @@
 import { Mail, MessageCircle } from "lucide-react";
+import { WHATSAPP_AFFICHE, lienWhatsApp } from "@/lib/whatsapp";
 
-// Numéro d'assistance (format wa.me : indicatif + numéro, sans + ni espaces).
-const WHATSAPP_NUMERO = "221703202150";
-const WHATSAPP_AFFICHE = "70 320 21 50";
-const WHATSAPP_MESSAGE = "Bonjour SacAdo, j'ai besoin d'aide : ";
 const EMAIL = "service-client@sacado.sn";
 
-const lienWhatsApp = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+const urlWhatsApp = lienWhatsApp("Bonjour SacAdo, j'ai besoin d'aide : ");
 
 const FAQ = [
   {
@@ -52,7 +49,7 @@ export default function AssistancePage() {
         </div>
 
         <a
-          href={lienWhatsApp}
+          href={urlWhatsApp}
           target="_blank"
           rel="noopener noreferrer"
           className="flex h-11 items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-on-brand transition-transform active:scale-95"

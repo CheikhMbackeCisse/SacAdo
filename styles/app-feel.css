@@ -1,0 +1,81 @@
+/*
+ * Comportement « application » et non « site web » sur mobile (surtout Android
+ * en PWA). Importé une seule fois dans le layout racine du storefront.
+ * Voir TACHE_app_feel_et_recherche.md, chantier 1.
+ *
+ * Règle d'or : rien ici ne doit casser la saisie clavier ni la navigation au
+ * clavier. Les zones de saisie et les éléments marqués .selectionnable gardent
+ * la sélection et le menu contextuel.
+ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  /* Supprime le tirer-pour-rafraîchir et le rebond d'overscroll. */
+  overscroll-behavior: none;
+}
+
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Pas de zoom au double-tap, pas de délai de 300 ms. */
+  touch-action: manipulation;
+}
+
+/* EXCEPTIONS OBLIGATOIRES.
+   Sans ce bloc, la barre de recherche et les champs de formulaire deviennent
+   inutilisables (impossible de placer le curseur, de coller, de sélectionner). */
+input,
+textarea,
+select,
+[contenteditable="true"],
+.selectionnable {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+img,
+svg,
+video,
+canvas {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+/* Le « cadre noir » résiduel : on distingue le focus au doigt (à masquer) du
+   focus au clavier (à garder, obligatoire pour l'accessibilité). */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+a {
+  -webkit-touch-callout: none;
+}
+
+/* Barres de défilement masquées sur écrans tactiles (effet app). */
+@media (pointer: coarse) {
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  * {
+    scrollbar-width: none;
+  }
+}
+
+/* Marge basse de la navigation = encoche / barre système de l'appareil. */
+.barre-navigation {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}

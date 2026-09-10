@@ -43,6 +43,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
   const [seuilAlerte, setSeuilAlerte] = useState(produit?.seuil_alerte?.toString() ?? "5");
   const [statut, setStatut] = useState<ProduitInput["statut"]>(produit?.statut ?? "dispo");
+  const [motsCles, setMotsCles] = useState(produit?.mots_cles ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -193,6 +194,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
       stock: Number(stock),
       seuil_alerte: Number(seuilAlerte),
       statut,
+      mots_cles: motsCles.trim() || null,
     };
 
     const result = produit ? await modifierProduit(produit.id, input) : await creerProduit(input);
@@ -377,6 +379,23 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
         </select>
         <span className="text-[11px] text-ink/40">
           Repasse automatiquement à « épuisé » si le stock tombe à 0.
+        </span>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs font-medium text-ink/60">Mots-clés de recherche</span>
+        <textarea
+          value={motsCles}
+          onChange={(event) => setMotsCles(event.target.value)}
+          rows={2}
+          maxLength={500}
+          placeholder="flash, clef usb, sandisk"
+          className="rounded-xl border border-ink/15 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+        />
+        <span className="text-[11px] text-ink/40">
+          Ce que les clients tapent et qui n&apos;est pas dans le nom du produit. Jamais affiché
+          au client. Les équivalences générales (« bic » = stylo) se règlent une fois pour
+          toutes dans Synonymes.
         </span>
       </label>
 

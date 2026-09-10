@@ -3,11 +3,24 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Heart, LayoutGrid, Search, Settings, Tag, User } from "lucide-react";
+import {
+  Clock,
+  Heart,
+  LayoutGrid,
+  MessageCircle,
+  Search,
+  Settings,
+  Tag,
+  User,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavIcon } from "@/components/layout/nav-icon";
 import { InstallHeaderButton } from "@/components/pwa/install-header-button";
+import { ProductImage } from "@/components/ui/product-image";
+import { formatPrice } from "@/lib/format";
 import { useIdentite } from "@/lib/local/identite";
+import { useRecherchesRecentes } from "@/lib/local/recherches";
+import { lienWhatsApp } from "@/lib/whatsapp";
 import {
   placeholdersPourCategorie,
   slugCategorieDepuisPath,
@@ -15,6 +28,8 @@ import {
 import { NAV_ITEMS } from "@/lib/nav-items";
 import {
   getSuggestionsRecherche,
+  rechercherProduits,
+  type ProduitTrouve,
   type SuggestionsRecherche,
 } from "@/lib/supabase/queries";
 
@@ -34,9 +49,13 @@ export function Header() {
   // pré-rendu) — l'app ouvre toujours sur l'accueil (CORRECTIONS_V7 §2).
   const pathname = usePathname() ?? "/";
   const { identite } = useIdentite();
+  const { recherches, enregistrer, vider } = useRecherchesRecentes();
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<SuggestionsRecherche>(SUGGESTIONS_VIDES);
+  // Rayons (catégorie / sous-catégorie / 3e niveau) : RPC suggestions_recherche.
+  const [rayons, setRayons] = useState<SuggestionsRecherche>(SUGGESTIONS_VIDES);
+  // Produits : recherche v2 (ET obligatoire + synonymes) — "bic" sort les stylos.
+  const [produits, setProduits] = useState<ProduitTrouve[]>([]);
   const [ouvert, setOuvert] = useState(false);
   const rechercheRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +69,7 @@ export function Header() {
   const lancerRecherche = (terme: string) => {
     const nettoye = terme.trim();
     if (!nettoye) return;
+    enregistrer(nettoye);
     setOuvert(false);
     setQuery("");
     router.push(`/recherche?q=${encodeURIComponent(nettoye)}`);
@@ -84,20 +104,26 @@ export function Header() {
     };
   }, []);
 
-  // Suggestions live (produits + sous-catégories), tolérantes aux fautes,
-  // rafraîchies à chaque frappe avec un léger debounce. Le panneau n'est de
-  // toute façon affiché qu'à partir de 2 caractères (afficherPanneau).
+  // Suggestions live (produits v2 + rayons), rafraîchies à chaque frappe avec
+  // un léger debounce. Le panneau n'est affiché qu'à partir de 2 caractères.
   useEffect(() => {
     const terme = query.trim();
     if (terme.length < 2) return;
     let annule = false;
     const id = setTimeout(() => {
-      getSuggestionsRecherche(terme)
+      rechercherProduits(terme, { limite: 6 })
         .then((res) => {
-          if (!annule) setSuggestions(res);
+          if (!annule) setProduits(res);
         })
         .catch(() => {
-          if (!annule) setSuggestions(SUGGESTIONS_VIDES);
+          if (!annule) setProduits([]);
+        });
+      getSuggestionsRecherche(terme)
+        .then((res) => {
+          if (!annule) setRayons(res);
+        })
+        .catch(() => {
+          if (!annule) setRayons(SUGGESTIONS_VIDES);
         });
     }, SUGGESTIONS_DEBOUNCE_MS);
     return () => {
@@ -106,12 +132,17 @@ export function Header() {
     };
   }, [query]);
 
-  const aDesSuggestions =
-    suggestions.produits.length > 0 ||
-    suggestions.categories.length > 0 ||
-    suggestions.sousCategories.length > 0 ||
-    suggestions.sousSousCategories.length > 0;
-  const afficherPanneau = ouvert && query.trim().length >= 2;
+  const termeSaisi = query.trim();
+  const modeHistorique = ouvert && termeSaisi.length === 0 && recherches.length > 0;
+  const modeSuggestions = ouvert && termeSaisi.length >= 2;
+
+  const produitsParNom = produits.filter((p) => p.type_resultat === "nom");
+  const produitsParCategorie = produits.filter((p) => p.type_resultat === "categorie");
+  const aDesRayons =
+    rayons.categories.length > 0 ||
+    rayons.sousCategories.length > 0 ||
+    rayons.sousSousCategories.length > 0;
+  const aDesResultats = produits.length > 0 || aDesRayons;
 
   // Nav horizontale desktop (lg+) : identique quel que soit l'écran, y compris
   // sur la page Moi qui remplace pourtant la barre du haut.
@@ -225,19 +256,56 @@ export function Header() {
             </div>
           </form>
 
-          {afficherPanneau && (
-            // Suggestions en TEXTE uniquement (CORRECTIONS_V8 §1). Panneau bas et
-            // large pour tenir au-dessus du clavier mobile (§2) : max ~42vh,
-            // nombre de suggestions limité, scroll interne si besoin.
+          {(modeHistorique || modeSuggestions) && (
+            // Panneau bas et large pour tenir au-dessus du clavier mobile.
             <div className="absolute -left-12 -right-12 top-full z-50 mt-1 overflow-hidden rounded-xl border border-ink/10 bg-elevated shadow-lg sm:-left-16 sm:-right-16">
-              {!aDesSuggestions ? (
-                <p className="px-4 py-3 text-sm text-ink/50">Aucune suggestion.</p>
-              ) : (
-                <div className="max-h-[42vh] overflow-y-auto py-1">
-                  {/* Rayons d'abord (catégorie -> sous-catégorie -> sous-sous-catégorie),
-                      pour aider à affiner un terme large, puis les produits
-                      (SOUS_SOUS_CATEGORIES.md §3). */}
-                  {suggestions.categories.slice(0, 3).map((c) => (
+              {modeHistorique && (
+                <div className="py-1">
+                  <div className="flex items-center justify-between px-4 py-1.5">
+                    <span className="text-xs font-medium text-ink/50">Recherches récentes</span>
+                    <button
+                      type="button"
+                      onClick={vider}
+                      className="text-xs text-ink/40 hover:text-ink"
+                    >
+                      Effacer
+                    </button>
+                  </div>
+                  {recherches.map((terme) => (
+                    <button
+                      key={terme}
+                      type="button"
+                      onClick={() => lancerRecherche(terme)}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"
+                    >
+                      <Clock size={15} className="shrink-0 text-ink/35" aria-hidden="true" />
+                      <span className="truncate text-ink">{terme}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {modeSuggestions && !aDesResultats && (
+                <div className="flex flex-col items-start gap-2 px-4 py-3">
+                  <p className="text-sm text-ink/60">
+                    Aucun produit ne correspond à «&nbsp;{termeSaisi}&nbsp;».
+                  </p>
+                  <a
+                    href={lienWhatsApp(`Bonjour SacAdo, je cherche : ${termeSaisi}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
+                  >
+                    <MessageCircle size={15} aria-hidden="true" />
+                    Demander sur WhatsApp
+                  </a>
+                </div>
+              )}
+
+              {modeSuggestions && aDesResultats && (
+                <div className="max-h-[46vh] overflow-y-auto py-1">
+                  {/* Rayons d'abord (aident à affiner un terme large). */}
+                  {rayons.categories.slice(0, 3).map((c) => (
                     <button
                       key={`c-${c.id}`}
                       type="button"
@@ -249,7 +317,7 @@ export function Header() {
                     </button>
                   ))}
 
-                  {suggestions.sousCategories.slice(0, 3).map((sc) => (
+                  {rayons.sousCategories.slice(0, 3).map((sc) => (
                     <button
                       key={`sc-${sc.id}`}
                       type="button"
@@ -262,7 +330,7 @@ export function Header() {
                     </button>
                   ))}
 
-                  {suggestions.sousSousCategories.slice(0, 3).map((ssc) => (
+                  {rayons.sousSousCategories.slice(0, 3).map((ssc) => (
                     <button
                       key={`ssc-${ssc.id}`}
                       type="button"
@@ -281,34 +349,46 @@ export function Header() {
                     </button>
                   ))}
 
-                  {suggestions.produits.slice(0, 5).map((produit) => (
-                    <button
-                      key={`p-${produit.id}`}
-                      type="button"
-                      onClick={() => lancerRecherche(produit.nom)}
-                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"
-                    >
-                      <Search size={15} className="shrink-0 text-ink/35" aria-hidden="true" />
-                      <span className="truncate text-ink">{produit.nom}</span>
-                    </button>
+                  {/* Produits : d'abord ceux dont la désignation matche, puis
+                      « autres produits de cette catégorie ». Un tap va direct
+                      à la fiche produit. */}
+                  {produitsParNom.map((p) => (
+                    <SuggestionProduitLigne
+                      key={`p-${p.id}`}
+                      produit={p}
+                      onSelect={() => allerVers(`/produit/${p.id}`)}
+                    />
                   ))}
+
+                  {produitsParCategorie.length > 0 && (
+                    <p className="px-4 pb-1 pt-2 text-xs font-medium text-ink/40">
+                      Autres produits de cette catégorie
+                    </p>
+                  )}
+                  {produitsParCategorie.map((p) => (
+                    <SuggestionProduitLigne
+                      key={`p-${p.id}`}
+                      produit={p}
+                      onSelect={() => allerVers(`/produit/${p.id}`)}
+                    />
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => lancerRecherche(query)}
+                    className="flex w-full items-center gap-2 border-t border-ink/10 px-4 py-2.5 text-left text-sm font-medium text-brand transition-colors hover:bg-brand/5"
+                  >
+                    <Search size={15} aria-hidden="true" />
+                    Voir tous les résultats pour «&nbsp;{termeSaisi}&nbsp;»
+                  </button>
                 </div>
               )}
-
-              <button
-                type="button"
-                onClick={() => lancerRecherche(query)}
-                className="flex w-full items-center gap-2 border-t border-ink/10 px-4 py-2.5 text-left text-sm font-medium text-brand transition-colors hover:bg-brand/5"
-              >
-                <Search size={15} aria-hidden="true" />
-                Voir tous les résultats pour «&nbsp;{query.trim()}&nbsp;»
-              </button>
             </div>
           )}
         </div>
 
-        {/* Cœur + installer regroupés serré à droite (CORRECTIONS_V8 §3),
-            l'espace gagné va à la barre de recherche. */}
+        {/* Cœur + installer regroupés serré à droite, l'espace gagné va à la
+            barre de recherche. */}
         <div className="flex shrink-0 items-center">
           <Link
             href="/favoris"
@@ -321,9 +401,37 @@ export function Header() {
         </div>
       </div>
 
-      {/* Desktop (lg+) : la nav vit ici plutôt qu'en bottom nav fixe (voir
-          CLAUDE.md section 6 et components/layout/bottom-nav.tsx). */}
+      {/* Desktop (lg+) : la nav vit ici plutôt qu'en bottom nav fixe. */}
       {navDesktop}
     </header>
+  );
+}
+
+function SuggestionProduitLigne({
+  produit,
+  onSelect,
+}: {
+  produit: ProduitTrouve;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-ink/5"
+    >
+      <span className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-ink/5">
+        <ProductImage src={produit.photo} alt={produit.nom} className="h-full w-full" sizes="44px" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-sm text-ink">{produit.nom}</span>
+        <span className="mt-0.5 flex items-center gap-2">
+          <span className="text-xs font-semibold text-ink/70">{formatPrice(produit.prix)}</span>
+          <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium text-ink/50">
+            {produit.delai}
+          </span>
+        </span>
+      </span>
+    </button>
   );
 }

@@ -278,36 +278,55 @@ export async function getSacsDisponibles({
   return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
 }
 
-export async function searchProduits(
+// Recherche produit v2 (migration 0041) : chaque mot tapé est obligatoire (ET),
+// synonymes pris en compte, et chaque résultat est classé `nom` (la désignation
+// contient les mots tapés) ou `categorie` (match seulement via la catégorie).
+export type TypeResultat = "nom" | "categorie";
+export type ProduitTrouve = Produit & { type_resultat: TypeResultat };
+
+type LigneRechercheRpc = { id: number; type_resultat: TypeResultat; score: number };
+
+export async function rechercherProduits(
   query: string,
-  { offset = 0, limit = TAILLE_PAGE_CATALOGUE }: { offset?: number; limit?: number } = {},
-): Promise<PageResultat<Produit>> {
+  { limite = TAILLE_PAGE_CATALOGUE }: { limite?: number } = {},
+): Promise<ProduitTrouve[]> {
   const trimmed = query.trim();
-  if (!trimmed) return { items: [], hasMore: false };
-  // RPC tolérante aux fautes (word_similarity pg_trgm) — voir migration 0010.
-  // On demande une ligne de plus que "limit" pour détecter la page suivante.
+  if (trimmed.length < 2) return [];
+
   const { data, error } = await supabase.rpc("rechercher_produits", {
-    p_terme: trimmed,
-    p_offset: offset,
-    p_limit: limit + 1,
+    terme: trimmed,
+    limite,
   });
+
   if (error) {
-    // Repli sur une recherche simple tant que la migration 0010 n'est pas passée.
+    // Repli tant que la migration 0041 n'est pas passée : ilike simple sur le nom.
     console.warn("rechercher_produits indisponible, repli ilike :", error.message);
     const repli = await supabase
       .from("produits")
       .select("*")
       .ilike("nom", `%${trimmed}%`)
       .order("nom", { ascending: true })
-      .range(offset, offset + limit);
+      .limit(limite);
     if (repli.error) throw repli.error;
-    const lignes = repli.data ?? [];
-    const encore = lignes.length > limit;
-    return { items: encore ? lignes.slice(0, limit) : lignes, hasMore: encore };
+    return (repli.data ?? []).map((p) => ({
+      ...(p as Produit),
+      type_resultat: "nom" as const,
+    }));
   }
-  const rows = (data ?? []) as Produit[];
-  const hasMore = rows.length > limit;
-  return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
+
+  const lignes = (data ?? []) as LigneRechercheRpc[];
+  if (lignes.length === 0) return [];
+
+  // La RPC ne renvoie qu'un sous-ensemble de colonnes : on ré-hydrate en Produit
+  // complet (badge de délai, variantes, etc.) en préservant l'ordre du score.
+  const produits = await getProduitsByIds(lignes.map((l) => l.id));
+  const parId = new Map(produits.map((p) => [p.id, p]));
+  return lignes
+    .map((l) => {
+      const p = parId.get(l.id);
+      return p ? { ...p, type_resultat: l.type_resultat } : null;
+    })
+    .filter((p): p is ProduitTrouve => p !== null);
 }
 
 export type SuggestionProduit = Pick<Produit, "id" | "nom" | "photo" | "prix" | "statut">;
