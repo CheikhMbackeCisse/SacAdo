@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import {
+  getAutresEditions,
   getCategorieById,
   getProduitById,
   getProduitsSimilaires,
@@ -20,10 +21,11 @@ export default async function ProduitPage(props: PageProps<"/produit/[id]">) {
   const produit = await getProduitById(produitId);
   if (!produit) notFound();
 
-  const [variantes, similaires, categorie] = await Promise.all([
+  const [variantes, similaires, categorie, autresEditions] = await Promise.all([
     getVariantesByProduit(produit.id),
     getProduitsSimilaires(produit.categorie_id, produit.id),
     getCategorieById(produit.categorie_id),
+    produit.ouvrage_id ? getAutresEditions(produit.ouvrage_id, produit.id) : Promise.resolve([]),
   ]);
 
   return (
@@ -32,6 +34,7 @@ export default async function ProduitPage(props: PageProps<"/produit/[id]">) {
         produit={produit}
         variantes={variantes}
         categorieNom={categorie?.nom ?? null}
+        autresEditions={autresEditions}
       />
 
       {similaires.length > 0 && (

@@ -36,6 +36,7 @@ export default async function CategoriePage(props: PageProps<"/categorie/[slug]"
       <Suspense fallback={null}>
         <CategoryProductList
           categorieId={categorie.id}
+          categorieSlug={categorie.slug}
           produitsInitiaux={produits}
           hasMoreInitial={hasMore}
           sousCategories={sousCategories}

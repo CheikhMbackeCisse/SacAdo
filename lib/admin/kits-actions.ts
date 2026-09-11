@@ -107,6 +107,17 @@ export async function ajouterKitItem(
   await requireAdmin();
   if (!quantiteValide(quantite)) return { ok: false, error: "Quantité invalide." };
 
+  // Livres et annales (migration 0068, §3.5.3) : jamais une ancienne édition
+  // dans un kit de classe.
+  const { data: produit } = await supabaseAdmin
+    .from("produits")
+    .select("edition_statut")
+    .eq("id", produitId)
+    .maybeSingle();
+  if (produit?.edition_statut === "ancienne") {
+    return { ok: false, error: "Impossible d'ajouter une ancienne édition à un kit." };
+  }
+
   const { error } = await supabaseAdmin
     .from("kit_items")
     .insert({ kit_id: kitId, produit_id: produitId, quantite_defaut: quantite });

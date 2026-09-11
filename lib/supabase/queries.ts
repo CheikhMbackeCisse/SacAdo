@@ -21,7 +21,7 @@ const SELECT_VARIANTE = "*, variante_attributs(attribut_id, valeur, attributs(no
 // (il n'existe que pour la composante « marge » du score, calculée en base).
 // L'admin lit l'intégralité via le service_role.
 const COLONNES_PRODUIT_PUBLIC =
-  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par" as const;
+  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id" as const;
 
 // Aplatit une réponse Supabase (avec ou sans jointure) en VarianteAvecAttributs.
 function versVariantes(
@@ -72,7 +72,7 @@ export async function getPopulaires(limit = 8): Promise<Produit[]> {
     .order("id", { ascending: true })
     .limit(limit);
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).filter(estEditionAffichable);
 }
 
 // L'accueil classé (getAccueilProduits) vit dans lib/accueil.ts : il lit
@@ -112,7 +112,7 @@ export async function getProduitsByCategorie(
     .order("nom", { ascending: true })
     .range(offset, offset + limit);
   if (error) throw error;
-  const rows = data ?? [];
+  const rows = (data ?? []).filter(estEditionAffichable);
   const hasMore = rows.length > limit;
   return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
 }
@@ -160,6 +160,24 @@ export async function getProduitById(id: number): Promise<Produit | null> {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+// Livres et annales (migration 0068, §3.4) : les autres éditions publiées du
+// même ouvrage, pour le bloc "Autres éditions disponibles" de la fiche produit.
+export type EditionSoeur = Pick<Produit, "id" | "prix" | "edition" | "couverture_epreuves">;
+
+export async function getAutresEditions(
+  ouvrageId: number,
+  produitIdActuel: number,
+): Promise<EditionSoeur[]> {
+  const { data, error } = await supabase
+    .from("produits")
+    .select("id, prix, edition, couverture_epreuves")
+    .eq("ouvrage_id", ouvrageId)
+    .eq("statut_publication", "publie")
+    .neq("id", produitIdActuel);
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function getProduitsByIds(ids: number[]): Promise<Produit[]> {
@@ -294,7 +312,7 @@ export async function getSacsDisponibles({
     .order("nom", { ascending: true })
     .range(offset, offset + limit);
   if (error) throw error;
-  const rows = data ?? [];
+  const rows = (data ?? []).filter(estEditionAffichable);
   const hasMore = rows.length > limit;
   return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
 }
@@ -347,7 +365,16 @@ export async function rechercherProduits(
       const p = parId.get(l.id);
       return p ? { ...p, type_resultat: l.type_resultat } : null;
     })
-    .filter((p): p is ProduitTrouve => p !== null);
+    .filter((p): p is ProduitTrouve => p !== null)
+    .filter(estEditionAffichable);
+}
+
+// Livres et annales (migration 0068, §3.5.1) : une ancienne édition ne
+// s'affiche jamais dans les listes/la recherche tant que son édition en
+// vigueur existe (`ouvrage_id` partagé). Un produit sans `ouvrage_id` n'a
+// pas de frère : toujours affiché.
+function estEditionAffichable(p: Produit): boolean {
+  return !(p.edition_statut === "ancienne" && p.ouvrage_id !== null);
 }
 
 export type SuggestionProduit = Pick<Produit, "id" | "nom" | "photo" | "prix" | "statut">;

@@ -9,15 +9,24 @@ import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
 import { mesurer } from "@/lib/mesure-client";
+import type { EditionSoeur } from "@/lib/supabase/queries";
 import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
 type ProductDetailProps = {
   produit: Produit;
   variantes: VarianteAvecAttributs[];
   categorieNom: string | null;
+  // Livres et annales (migration 0068) : éditions soeurs (même ouvrage_id),
+  // vide si le produit n'a pas d'édition alternative.
+  autresEditions?: EditionSoeur[];
 };
 
-export function ProductDetail({ produit, variantes, categorieNom }: ProductDetailProps) {
+export function ProductDetail({
+  produit,
+  variantes,
+  categorieNom,
+  autresEditions = [],
+}: ProductDetailProps) {
   const { ajouter } = usePanier();
   const { recordConsulte } = useConsultes();
   // Un choix par attribut (attribut_id -> valeur). Pré-rempli s'il n'y a qu'une
@@ -157,6 +166,11 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
               </span>
             )}
             <h1 className="font-heading text-lg font-bold text-ink">{produit.nom}</h1>
+            {(produit.auteur || produit.editeur || produit.edition) && (
+              <p className="text-xs text-ink/50">
+                {[produit.auteur, produit.editeur, produit.edition].filter(Boolean).join(" — ")}
+              </p>
+            )}
           </div>
           <ShareButton
             path={`/produit/${produit.id}`}
@@ -166,12 +180,57 @@ export function ProductDetail({ produit, variantes, categorieNom }: ProductDetai
           />
         </div>
 
+        {produit.edition_statut === "en_vigueur" && (
+          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-[#16A34A]/12 px-2.5 py-1 text-[11px] font-semibold text-[#166534]">
+            Édition en vigueur
+            {produit.couverture_epreuves && ` — épreuves ${produit.couverture_epreuves}`}
+          </span>
+        )}
+        {produit.edition_statut === "ancienne" && (
+          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-ink/8 px-2.5 py-1 text-[11px] font-semibold text-ink/60">
+            Ancienne édition
+          </span>
+        )}
+
         <div className="flex items-center gap-2">
           <span className="text-base font-semibold text-ink">{formatPrice(prix)}</span>
           <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink/60">
             Livraison {produit.delai}
           </span>
         </div>
+
+        {produit.edition_statut === "ancienne" && (
+          <p className="rounded-lg bg-ink/5 px-3 py-2.5 text-xs leading-relaxed text-ink/60">
+            Cette édition est antérieure au programme actuel. La pagination et les
+            exercices peuvent différer de ceux demandés en classe.
+          </p>
+        )}
+
+        {autresEditions.length > 0 && (
+          <div className="flex flex-col gap-2 rounded-lg border border-ink/10 p-3">
+            <span className="text-xs font-semibold text-ink/70">Autres éditions disponibles</span>
+            {autresEditions.map((edition) => {
+              const ecart = edition.prix - prix;
+              return (
+                <a
+                  key={edition.id}
+                  href={`/produit/${edition.id}`}
+                  className="flex flex-col gap-0.5 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-ink/5"
+                >
+                  <span className="font-medium text-ink">
+                    Édition {edition.edition ?? "?"}
+                    {edition.couverture_epreuves && `, épreuves ${edition.couverture_epreuves}`}
+                  </span>
+                  <span className="text-ink/50">
+                    {formatPrice(edition.prix)}
+                    {ecart !== 0 &&
+                      `, soit ${formatPrice(Math.abs(ecart))} de ${ecart > 0 ? "plus" : "moins"}`}
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        )}
 
         {attributsDuProduit.map((attribut) => (
           <div key={attribut.id} className="flex flex-col gap-1.5">

@@ -12,6 +12,7 @@ type Tri = "defaut" | "prix-asc" | "prix-desc";
 
 type CategoryProductListProps = {
   categorieId: number;
+  categorieSlug: string;
   produitsInitiaux: Produit[];
   hasMoreInitial: boolean;
   sousCategories: SousCategorie[];
@@ -19,8 +20,55 @@ type CategoryProductListProps = {
   sousSousCategories: SousSousCategorie[];
 };
 
+// Niveaux lycée : le filtre Série ne s'affiche que pour ceux-là (TACHE_livres_korka §1.5).
+const NIVEAUX_LYCEE = new Set(["2nde", "1ere", "Terminale"]);
+
+function capitaliser(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+type FiltreChipsProps = {
+  label: string;
+  valeurs: string[];
+  actif: string | null;
+  onChoisir: (v: string | null) => void;
+};
+
+// Rangée de puces réutilisée pour les 4 filtres livres (Niveau/Série/Matière/
+// Type) : même gabarit que la rangée sous-sous-catégorie, mais générique.
+function FiltreChips({ label, valeurs, actif, onChoisir }: FiltreChipsProps) {
+  if (valeurs.length === 0) return null;
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <span className="shrink-0 text-[11px] font-medium text-ink/40">{label}</span>
+      <button
+        type="button"
+        onClick={() => onChoisir(null)}
+        className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+          actif === null ? "border-brand bg-brand/10 text-brand" : "border-ink/10 text-ink/55"
+        }`}
+      >
+        Tout
+      </button>
+      {valeurs.map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChoisir(v)}
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+            actif === v ? "border-brand bg-brand/10 text-brand" : "border-ink/10 text-ink/55"
+          }`}
+        >
+          {capitaliser(v)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function CategoryProductList({
   categorieId,
+  categorieSlug,
   produitsInitiaux,
   hasMoreInitial,
   sousCategories,
@@ -36,6 +84,12 @@ export function CategoryProductList({
   const [scSlug, setScSlug] = useState<string | null>(() => searchParams.get("sc"));
   const [sscSlug, setSscSlug] = useState<string | null>(() => searchParams.get("ssc"));
   const [tri, setTri] = useState<Tri>("defaut");
+  // Filtres livres (§1.5) : Niveau, Série (si lycée), Matière, Type d'ouvrage.
+  const estLivres = categorieSlug === "livres-manuels";
+  const [niveauFiltre, setNiveauFiltre] = useState<string | null>(null);
+  const [serieFiltre, setSerieFiltre] = useState<string | null>(null);
+  const [matiereFiltre, setMatiereFiltre] = useState<string | null>(null);
+  const [typeFiltre, setTypeFiltre] = useState<string | null>(null);
 
   // Signal de classement « vue de catégorie » (poids 0.5), une fois par
   // catégorie affichée.
@@ -153,11 +207,47 @@ export function CategoryProductList({
     };
   }, [scSlug, sscSlug, idParSlug, categorieId, sousSousCategories]);
 
+  // Facettes livres, calculées sur le lot chargé (une sous-catégorie livres
+  // ne dépasse jamais TAILLE_PAGE_CATALOGUE, donc pas de pagination serveur
+  // à prévoir pour ces filtres).
+  const facettesLivres = useMemo(() => {
+    if (!estLivres) return null;
+    const valeurs = (champ: "niveau" | "serie" | "matiere" | "type_ouvrage") => {
+      const s = new Set<string>();
+      for (const p of produits) {
+        const v = p[champ];
+        if (v) s.add(v);
+      }
+      return [...s].sort((a, b) => a.localeCompare(b, "fr"));
+    };
+    return {
+      niveaux: valeurs("niveau"),
+      series: valeurs("serie"),
+      matieres: valeurs("matiere"),
+      types: valeurs("type_ouvrage"),
+    };
+  }, [estLivres, produits]);
+
+  const serieVisible = niveauFiltre !== null && NIVEAUX_LYCEE.has(niveauFiltre);
+
   const resultats = useMemo(() => {
-    if (tri === "prix-asc") return [...produits].sort((a, b) => a.prix - b.prix);
-    if (tri === "prix-desc") return [...produits].sort((a, b) => b.prix - a.prix);
-    return produits;
-  }, [produits, tri]);
+    let base = produits;
+    if (estLivres) {
+      base = base.filter((p) => {
+        // Une édition ancienne ne s'affiche jamais dans les listes quand son
+        // édition en vigueur existe (§3.5.1).
+        if (p.edition_statut === "ancienne" && p.ouvrage_id !== null) return false;
+        if (niveauFiltre && p.niveau !== niveauFiltre) return false;
+        if (serieVisible && serieFiltre && p.serie !== serieFiltre) return false;
+        if (matiereFiltre && p.matiere !== matiereFiltre) return false;
+        if (typeFiltre && p.type_ouvrage !== typeFiltre) return false;
+        return true;
+      });
+    }
+    if (tri === "prix-asc") return [...base].sort((a, b) => a.prix - b.prix);
+    if (tri === "prix-desc") return [...base].sort((a, b) => b.prix - a.prix);
+    return base;
+  }, [produits, tri, estLivres, niveauFiltre, serieFiltre, serieVisible, matiereFiltre, typeFiltre]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -219,6 +309,42 @@ export function CategoryProductList({
             </button>
           ))}
         </div>
+      )}
+
+      {/* Filtres livres (§1.5) : Niveau, Série (si lycée), Matière, Type
+          d'ouvrage. Le Prix est déjà couvert par le tri ci-dessous. */}
+      {estLivres && facettesLivres && (
+        <>
+          <FiltreChips
+            label="Niveau"
+            valeurs={facettesLivres.niveaux}
+            actif={niveauFiltre}
+            onChoisir={(v) => {
+              setNiveauFiltre(v);
+              setSerieFiltre(null);
+            }}
+          />
+          {serieVisible && (
+            <FiltreChips
+              label="Série"
+              valeurs={facettesLivres.series}
+              actif={serieFiltre}
+              onChoisir={setSerieFiltre}
+            />
+          )}
+          <FiltreChips
+            label="Matière"
+            valeurs={facettesLivres.matieres}
+            actif={matiereFiltre}
+            onChoisir={setMatiereFiltre}
+          />
+          <FiltreChips
+            label="Type"
+            valeurs={facettesLivres.types}
+            actif={typeFiltre}
+            onChoisir={setTypeFiltre}
+          />
+        </>
       )}
 
       <div className="flex items-center justify-between px-4">

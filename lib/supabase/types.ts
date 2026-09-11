@@ -9,6 +9,9 @@ export type StatutPublication = "en_attente" | "negociation" | "publie" | "refus
 export type StatutVariante = "dispo" | "epuise";
 export type Cycle = "prescolaire" | "elementaire" | "college" | "lycee";
 export type Gamme = "essentiel" | "confort" | "complet";
+// Livres et annales (migration 0068) : édition la plus récente vs. édition
+// antérieure au programme actuel, toujours vendable.
+export type EditionStatut = "en_vigueur" | "ancienne";
 
 export type Produit = {
   id: number;
@@ -59,6 +62,20 @@ export type Produit = {
   score_global?: number;
   score_details?: ScoreDetails | null;
   vues_30j?: number;
+  // Livres et annales (migration 0068). Tous nullables : seuls les produits
+  // de la catégorie "Livres et annales" les renseignent.
+  niveau: string | null;
+  serie: string | null;
+  matiere: string | null;
+  type_ouvrage: string | null;
+  auteur: string | null;
+  editeur: string | null;
+  edition: string | null;
+  edition_statut: EditionStatut | null;
+  // Années couvertes par le recueil d'épreuves (concours/annales), ex. "2004 à 2025".
+  couverture_epreuves: string | null;
+  // Partagé par toutes les éditions d'un même ouvrage ; null = édition unique.
+  ouvrage_id: number | null;
 };
 
 export type ScoreDetails = {

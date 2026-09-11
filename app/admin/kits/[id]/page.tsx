@@ -11,7 +11,10 @@ export default async function EditKitPage(props: PageProps<"/admin/kits/[id]">) 
   const kit = await getKitAdmin(kitId);
   if (!kit) notFound();
 
-  const [items, produits] = await Promise.all([getKitItemsAdmin(kitId), getProduitsAdmin()]);
+  const [items, tousLesProduits] = await Promise.all([getKitItemsAdmin(kitId), getProduitsAdmin()]);
+  // Livres et annales (§3.5.3) : jamais une ancienne édition dans un kit —
+  // pas proposée au sélecteur (garde-fou serveur dans ajouterKitItem).
+  const produits = tousLesProduits.filter((p) => p.edition_statut !== "ancienne");
 
   return (
     <div className="flex flex-col gap-4">
