@@ -76,6 +76,10 @@ export type Produit = {
   couverture_epreuves: string | null;
   // Partagé par toutes les éditions d'un même ouvrage ; null = édition unique.
   ouvrage_id: number | null;
+  // Guide des tailles (TACHE_ndayane_sport_et_variantes.md §2.4) : affiche un
+  // tableau standard tour de poitrine / longueur sur la fiche. Obligatoire sur
+  // tout produit textile à variantes de taille.
+  guide_tailles: boolean;
 };
 
 export type ScoreDetails = {

@@ -21,7 +21,7 @@ const SELECT_VARIANTE = "*, variante_attributs(attribut_id, valeur, attributs(no
 // (il n'existe que pour la composante « marge » du score, calculée en base).
 // L'admin lit l'intégralité via le service_role.
 const COLONNES_PRODUIT_PUBLIC =
-  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id" as const;
+  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id,guide_tailles" as const;
 
 // Aplatit une réponse Supabase (avec ou sans jointure) en VarianteAvecAttributs.
 function versVariantes(

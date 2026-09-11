@@ -118,6 +118,17 @@ export async function ajouterKitItem(
     return { ok: false, error: "Impossible d'ajouter une ancienne édition à un kit." };
   }
 
+  // Ndayane Sport (TACHE_ndayane_sport_et_variantes.md §2.5) : un produit à
+  // variantes (taille/couleur) ne peut pas entrer dans un kit par classe — on
+  // ne sait pas quelle combinaison réserver pour la commande groupée.
+  const { count } = await supabaseAdmin
+    .from("produit_variantes")
+    .select("id", { count: "exact", head: true })
+    .eq("produit_id", produitId);
+  if ((count ?? 0) > 0) {
+    return { ok: false, error: "Impossible d'ajouter un produit à variantes (taille/couleur) à un kit." };
+  }
+
   const { error } = await supabaseAdmin
     .from("kit_items")
     .insert({ kit_id: kitId, produit_id: produitId, quantite_defaut: quantite });

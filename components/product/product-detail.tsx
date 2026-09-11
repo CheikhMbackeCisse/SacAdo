@@ -5,6 +5,7 @@ import { Minus, Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { ShareButton } from "@/components/ui/share-button";
+import { GuideTailles } from "@/components/product/guide-tailles";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
@@ -260,6 +261,14 @@ export function ProductDetail({
             Choisis {attributsDuProduit.length > 1 ? "les options" : "une option"} avant d&apos;ajouter
             au panier.
           </span>
+        )}
+
+        {produit.guide_tailles && (
+          <GuideTailles
+            tailles={
+              attributsDuProduit.find((a) => a.nom.toLowerCase() === "taille")?.valeurs ?? []
+            }
+          />
         )}
 
         <div className="flex items-center gap-3">

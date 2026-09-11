@@ -45,6 +45,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
   const [seuilAlerte, setSeuilAlerte] = useState(produit?.seuil_alerte?.toString() ?? "5");
   const [statut, setStatut] = useState<ProduitInput["statut"]>(produit?.statut ?? "dispo");
   const [motsCles, setMotsCles] = useState(produit?.mots_cles ?? "");
+  const [guideTailles, setGuideTailles] = useState(produit?.guide_tailles ?? false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -197,6 +198,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
       seuil_alerte: Number(seuilAlerte),
       statut,
       mots_cles: motsCles.trim() || null,
+      guide_tailles: guideTailles,
     };
 
     const result = produit ? await modifierProduit(produit.id, input) : await creerProduit(input);
@@ -411,6 +413,18 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
           Ce que les clients tapent et qui n&apos;est pas dans le nom du produit. Jamais affiché
           au client. Les équivalences générales (« bic » = stylo) se règlent une fois pour
           toutes dans Synonymes.
+        </span>
+      </label>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={guideTailles}
+          onChange={(event) => setGuideTailles(event.target.checked)}
+          className="size-4 rounded border-ink/25"
+        />
+        <span className="text-xs font-medium text-ink/60">
+          Afficher le guide des tailles sur la fiche (vêtements à variantes de taille)
         </span>
       </label>
 

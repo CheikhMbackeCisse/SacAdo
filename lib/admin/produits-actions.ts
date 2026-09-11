@@ -63,6 +63,8 @@ export type ProduitInput = {
   // les recopie dans `recherche_texte` : un produit devient trouvable par ces
   // mots sans que sa désignation change.
   mots_cles: string | null;
+  // Guide des tailles (migration 0069) : affiche le tableau standard sur la fiche.
+  guide_tailles: boolean;
 };
 
 const LONGUEUR_MAX_MOTS_CLES = 500;
@@ -100,6 +102,13 @@ function sansSousSousCategorie(input: ProduitInput): Omit<ProduitInput, "sous_so
   return reste as Omit<ProduitInput, "sous_sous_categorie_id">;
 }
 
+// Repli tant que la migration 0069 (colonne guide_tailles) n'est pas passée en prod.
+function sansGuideTailles<T extends { guide_tailles?: boolean }>(input: T): Omit<T, "guide_tailles"> {
+  const reste: Partial<T> = { ...input };
+  delete reste.guide_tailles;
+  return reste as Omit<T, "guide_tailles">;
+}
+
 export async function creerProduit(input: ProduitInput): Promise<ActionResult & { id?: number }> {
   await requireAdmin();
   const erreur = validerProduitInput(input);
@@ -120,6 +129,13 @@ export async function creerProduit(input: ProduitInput): Promise<ActionResult & 
       .select()
       .single());
   }
+  if (error?.code === COLONNE_ABSENTE) {
+    ({ data, error } = await supabaseAdmin
+      .from("produits")
+      .insert(sansGuideTailles(sansSousSousCategorie(input)))
+      .select()
+      .single());
+  }
   if (error || !data) return { ok: false, error: "Impossible de créer le produit." };
   return { ok: true, id: data.id };
 }
@@ -134,6 +150,12 @@ export async function modifierProduit(id: number, input: ProduitInput): Promise<
     ({ error } = await supabaseAdmin
       .from("produits")
       .update(sansSousSousCategorie(input))
+      .eq("id", id));
+  }
+  if (error?.code === COLONNE_ABSENTE) {
+    ({ error } = await supabaseAdmin
+      .from("produits")
+      .update(sansGuideTailles(sansSousSousCategorie(input)))
       .eq("id", id));
   }
   if (error) return { ok: false, error: "Impossible de modifier le produit." };
