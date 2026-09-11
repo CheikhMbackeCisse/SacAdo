@@ -425,12 +425,7 @@ function SuggestionProduitLigne({
       </span>
       <span className="min-w-0 flex-1">
         <span className="line-clamp-2 text-sm text-ink">{produit.nom}</span>
-        <span className="mt-0.5 flex items-center gap-2">
-          <span className="text-xs font-semibold text-ink/70">{formatPrice(produit.prix)}</span>
-          <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium text-ink/50">
-            {produit.delai}
-          </span>
-        </span>
+        <span className="mt-0.5 text-xs font-semibold text-ink/70">{formatPrice(produit.prix)}</span>
       </span>
     </button>
   );

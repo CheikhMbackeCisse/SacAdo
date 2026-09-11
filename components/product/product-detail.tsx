@@ -192,12 +192,7 @@ export function ProductDetail({
           </span>
         )}
 
-        <div className="flex items-center gap-2">
-          <span className="text-base font-semibold text-ink">{formatPrice(prix)}</span>
-          <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink/60">
-            Livraison {produit.delai}
-          </span>
-        </div>
+        <span className="text-base font-semibold text-ink">{formatPrice(prix)}</span>
 
         {produit.edition_statut === "ancienne" && (
           <p className="rounded-lg bg-ink/5 px-3 py-2.5 text-xs leading-relaxed text-ink/60">
@@ -307,7 +302,7 @@ export function ProductDetail({
           <section className="mt-1 flex flex-col gap-1.5 border-t border-ink/10 pt-3">
             <h2 className="text-xs font-medium text-ink/60">Description</h2>
             {/* Fiche produit : description complète, jamais tronquée (CORRECTIONS_V10 §2). */}
-            <p className="whitespace-pre-line text-sm leading-relaxed text-ink/80">
+            <p className="whitespace-pre-line text-xs leading-snug text-ink/70">
               {produit.description}
             </p>
           </section>

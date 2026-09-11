@@ -8,8 +8,6 @@ import { getProduitsByCategorie, TAILLE_PAGE_CATALOGUE } from "@/lib/supabase/qu
 import { mesurer } from "@/lib/mesure-client";
 import type { Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
-type Tri = "defaut" | "prix-asc" | "prix-desc";
-
 type CategoryProductListProps = {
   categorieId: number;
   categorieSlug: string;
@@ -27,42 +25,38 @@ function capitaliser(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-type FiltreChipsProps = {
+// Un select compact par facette (Niveau/Série/Matière/Type) plutôt qu'une
+// rangée de puces : même composant que "Trier" ailleurs dans l'app, prend
+// beaucoup moins de place verticale (retour testeur).
+function FiltreSelect({
+  label,
+  valeurs,
+  actif,
+  onChoisir,
+}: {
   label: string;
   valeurs: string[];
   actif: string | null;
   onChoisir: (v: string | null) => void;
-};
-
-// Rangée de puces réutilisée pour les 4 filtres livres (Niveau/Série/Matière/
-// Type) : même gabarit que la rangée sous-sous-catégorie, mais générique.
-function FiltreChips({ label, valeurs, actif, onChoisir }: FiltreChipsProps) {
+}) {
   if (valeurs.length === 0) return null;
   return (
-    <div className="flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <span className="shrink-0 text-[11px] font-medium text-ink/40">{label}</span>
-      <button
-        type="button"
-        onClick={() => onChoisir(null)}
-        className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-          actif === null ? "border-brand bg-brand/10 text-brand" : "border-ink/10 text-ink/55"
-        }`}
-      >
-        Tout
-      </button>
-      {valeurs.map((v) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChoisir(v)}
-          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-            actif === v ? "border-brand bg-brand/10 text-brand" : "border-ink/10 text-ink/55"
-          }`}
-        >
-          {capitaliser(v)}
-        </button>
-      ))}
-    </div>
+    <ChampSelect
+      ariaLabel={label}
+      placeholder={label}
+      wrapperClassName="w-[150px] shrink-0"
+      className="rounded-full border border-ink/15 bg-elevated px-3 py-1.5 text-xs"
+      // value="" tant qu'aucune option n'est choisie -> le placeholder (nom du
+      // filtre) reste affiché. "tout" est une valeur sentinelle qui réinitialise
+      // sans jamais matcher une option, pour que le bouton revienne au nom du
+      // filtre plutôt que d'afficher "Tout" sur les 4 selects à la fois.
+      value={actif ?? ""}
+      onChange={(v) => onChoisir(v === "tout" ? null : v)}
+      options={[
+        { value: "tout", label: "Tout" },
+        ...valeurs.map((v) => ({ value: v, label: capitaliser(v) })),
+      ]}
+    />
   );
 }
 
@@ -83,7 +77,6 @@ export function CategoryProductList({
   // (?sc=, ?ssc=) pour les liens directs (suggestions de recherche incluses).
   const [scSlug, setScSlug] = useState<string | null>(() => searchParams.get("sc"));
   const [sscSlug, setSscSlug] = useState<string | null>(() => searchParams.get("ssc"));
-  const [tri, setTri] = useState<Tri>("defaut");
   // Filtres livres (§1.5) : Niveau, Série (si lycée), Matière, Type d'ouvrage.
   const estLivres = categorieSlug === "livres-manuels";
   const [niveauFiltre, setNiveauFiltre] = useState<string | null>(null);
@@ -231,23 +224,18 @@ export function CategoryProductList({
   const serieVisible = niveauFiltre !== null && NIVEAUX_LYCEE.has(niveauFiltre);
 
   const resultats = useMemo(() => {
-    let base = produits;
-    if (estLivres) {
-      base = base.filter((p) => {
-        // Une édition ancienne ne s'affiche jamais dans les listes quand son
-        // édition en vigueur existe (§3.5.1).
-        if (p.edition_statut === "ancienne" && p.ouvrage_id !== null) return false;
-        if (niveauFiltre && p.niveau !== niveauFiltre) return false;
-        if (serieVisible && serieFiltre && p.serie !== serieFiltre) return false;
-        if (matiereFiltre && p.matiere !== matiereFiltre) return false;
-        if (typeFiltre && p.type_ouvrage !== typeFiltre) return false;
-        return true;
-      });
-    }
-    if (tri === "prix-asc") return [...base].sort((a, b) => a.prix - b.prix);
-    if (tri === "prix-desc") return [...base].sort((a, b) => b.prix - a.prix);
-    return base;
-  }, [produits, tri, estLivres, niveauFiltre, serieFiltre, serieVisible, matiereFiltre, typeFiltre]);
+    if (!estLivres) return produits;
+    return produits.filter((p) => {
+      // Une édition ancienne ne s'affiche jamais dans les listes quand son
+      // édition en vigueur existe (§3.5.1).
+      if (p.edition_statut === "ancienne" && p.ouvrage_id !== null) return false;
+      if (niveauFiltre && p.niveau !== niveauFiltre) return false;
+      if (serieVisible && serieFiltre && p.serie !== serieFiltre) return false;
+      if (matiereFiltre && p.matiere !== matiereFiltre) return false;
+      if (typeFiltre && p.type_ouvrage !== typeFiltre) return false;
+      return true;
+    });
+  }, [produits, estLivres, niveauFiltre, serieFiltre, serieVisible, matiereFiltre, typeFiltre]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -312,10 +300,11 @@ export function CategoryProductList({
       )}
 
       {/* Filtres livres (§1.5) : Niveau, Série (si lycée), Matière, Type
-          d'ouvrage. Le Prix est déjà couvert par le tri ci-dessous. */}
+          d'ouvrage — des selects compacts plutôt que des rangées de puces
+          (retour testeur : trop de place verticale). */}
       {estLivres && facettesLivres && (
-        <>
-          <FiltreChips
+        <div className="flex flex-wrap gap-2 px-4">
+          <FiltreSelect
             label="Niveau"
             valeurs={facettesLivres.niveaux}
             actif={niveauFiltre}
@@ -325,46 +314,33 @@ export function CategoryProductList({
             }}
           />
           {serieVisible && (
-            <FiltreChips
+            <FiltreSelect
               label="Série"
               valeurs={facettesLivres.series}
               actif={serieFiltre}
               onChoisir={setSerieFiltre}
             />
           )}
-          <FiltreChips
+          <FiltreSelect
             label="Matière"
             valeurs={facettesLivres.matieres}
             actif={matiereFiltre}
             onChoisir={setMatiereFiltre}
           />
-          <FiltreChips
+          <FiltreSelect
             label="Type"
             valeurs={facettesLivres.types}
             actif={typeFiltre}
             onChoisir={setTypeFiltre}
           />
-        </>
+        </div>
       )}
 
-      <div className="flex items-center justify-between px-4">
+      <div className="px-4">
         <span className="text-xs text-ink/50">
           {resultats.length} article{resultats.length > 1 ? "s" : ""}
           {hasMore ? "+" : ""}
         </span>
-        <ChampSelect
-          ariaLabel="Trier les produits"
-          placeholder="Trier"
-          align="end"
-          wrapperClassName="w-44 shrink-0"
-          className="rounded-full border border-ink/15 bg-elevated px-3 py-1.5 text-xs"
-          value={tri === "defaut" ? "" : tri}
-          onChange={(v) => setTri(v === "" ? "defaut" : (v as Tri))}
-          options={[
-            { value: "prix-asc", label: "Prix croissant" },
-            { value: "prix-desc", label: "Prix décroissant" },
-          ]}
-        />
       </div>
 
       <ProductGrid

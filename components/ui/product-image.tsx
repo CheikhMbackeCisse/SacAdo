@@ -56,7 +56,10 @@ export function ProductImage({
         onDragStart={(event) => event.preventDefault()}
         onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}
-        className={`select-none object-cover transition-opacity duration-300 ${
+        // object-contain : certaines photos (couvertures de livres, portrait)
+        // ne sont pas carrées — object-cover en coupait le haut. L'image
+        // entière reste toujours visible, quitte à laisser une marge.
+        className={`select-none object-contain transition-opacity duration-300 ${
           loaded ? "opacity-100" : "opacity-0"
         } ${className}`}
       />

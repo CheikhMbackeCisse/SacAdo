@@ -28,12 +28,8 @@ export function ProductCard({
         epuise ? "opacity-60" : ""
       }`}
     >
-      <div className="relative aspect-square w-full">
+      <div className="relative aspect-square w-full bg-ink/5">
         <ProductImage src={produit.photo} alt={produit.nom} className="h-full w-full" />
-
-        <span className="absolute left-2 top-2 rounded-full bg-elevated/90 px-2 py-0.5 text-[10px] font-medium text-ink/70 shadow-sm">
-          {produit.delai}
-        </span>
 
         <div className="absolute right-2 top-2">
           <FavoriteButton produitId={produit.id} />
