@@ -21,6 +21,15 @@ type CategoryProductListProps = {
 // Niveaux lycée : le filtre Série ne s'affiche que pour ceux-là (TACHE_livres_korka §1.5).
 const NIVEAUX_LYCEE = new Set(["2nde", "1ere", "Terminale"]);
 
+// "S" est la série générique : S1/S2 en sont des sous-séries (retour
+// testeur), donc choisir "S" doit aussi remonter les titres S1 et S2.
+// "S1"/"S2" restent des choix précis.
+function serieCorrespond(filtre: string, serie: string | null): boolean {
+  if (!serie) return false;
+  if (filtre === "S") return serie === "S" || serie === "S1" || serie === "S2";
+  return serie === filtre;
+}
+
 function capitaliser(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -230,7 +239,7 @@ export function CategoryProductList({
       // édition en vigueur existe (§3.5.1).
       if (p.edition_statut === "ancienne" && p.ouvrage_id !== null) return false;
       if (niveauFiltre && p.niveau !== niveauFiltre) return false;
-      if (serieVisible && serieFiltre && p.serie !== serieFiltre) return false;
+      if (serieVisible && serieFiltre && !serieCorrespond(serieFiltre, p.serie)) return false;
       if (matiereFiltre && p.matiere !== matiereFiltre) return false;
       if (typeFiltre && p.type_ouvrage !== typeFiltre) return false;
       return true;

@@ -82,7 +82,14 @@ export async function getPopulaires(limit = 8): Promise<Produit[]> {
 
 export type PageResultat<T> = { items: T[]; hasMore: boolean };
 
-export const TAILLE_PAGE_CATALOGUE = 24;
+// Assez grand pour charger une catégorie entière en un seul appel (le
+// catalogue actuel plafonne autour de 80 articles, tous rayons confondus) :
+// les filtres côté client (niveau/série/matière/type des livres) portent sur
+// le lot chargé, un chargement par pages les faisait paraître "cachés" tant
+// que la bonne page n'était pas atteinte (retour testeur). Reste un filet de
+// sécurité (pas un vrai "tout charger sans limite") si le catalogue grossit
+// beaucoup : au-delà, "Charger plus" réapparaît normalement.
+export const TAILLE_PAGE_CATALOGUE = 200;
 
 export async function getProduitsByCategorie(
   categorieId: number,
