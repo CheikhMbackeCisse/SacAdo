@@ -69,10 +69,11 @@ export async function getPopulaires(limit = 8): Promise<Produit[]> {
   const { data, error } = await supabase
     .from("produits")
     .select(COLONNES_PRODUIT_PUBLIC)
+    .or(FILTRE_EDITION_AFFICHABLE)
     .order("id", { ascending: true })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []).filter(estEditionAffichable);
+  return data ?? [];
 }
 
 // L'accueil classé (getAccueilProduits) vit dans lib/accueil.ts : il lit
@@ -102,7 +103,8 @@ export async function getProduitsByCategorie(
   let requete = supabase
     .from("produits")
     .select(COLONNES_PRODUIT_PUBLIC)
-    .eq("categorie_id", categorieId);
+    .eq("categorie_id", categorieId)
+    .or(FILTRE_EDITION_AFFICHABLE);
   if (sousCategorieId != null) requete = requete.eq("sous_categorie_id", sousCategorieId);
   if (sousSousCategorieId != null) {
     requete = requete.eq("sous_sous_categorie_id", sousSousCategorieId);
@@ -112,7 +114,7 @@ export async function getProduitsByCategorie(
     .order("nom", { ascending: true })
     .range(offset, offset + limit);
   if (error) throw error;
-  const rows = (data ?? []).filter(estEditionAffichable);
+  const rows = data ?? [];
   const hasMore = rows.length > limit;
   return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
 }
@@ -305,14 +307,15 @@ export async function getSacsDisponibles({
   let requete = supabase
     .from("produits")
     .select(COLONNES_PRODUIT_PUBLIC)
-    .in("sous_categorie_id", sousCategorieIds);
+    .in("sous_categorie_id", sousCategorieIds)
+    .or(FILTRE_EDITION_AFFICHABLE);
   if (excludeIds.length > 0) requete = requete.not("id", "in", `(${excludeIds.join(",")})`);
 
   const { data, error } = await requete
     .order("nom", { ascending: true })
     .range(offset, offset + limit);
   if (error) throw error;
-  const rows = (data ?? []).filter(estEditionAffichable);
+  const rows = data ?? [];
   const hasMore = rows.length > limit;
   return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
 }
@@ -373,6 +376,14 @@ export async function rechercherProduits(
 // s'affiche jamais dans les listes/la recherche tant que son édition en
 // vigueur existe (`ouvrage_id` partagé). Un produit sans `ouvrage_id` n'a
 // pas de frère : toujours affiché.
+//
+// Filtre appliqué CÔTÉ REQUÊTE (PostgREST .or()) sur les listes paginées par
+// `.range()` : le filtrer après coup en JS fausse `hasMore` (une page où la
+// ligne exclue tombait dans la fenêtre récupérée se retrouvait avec moins de
+// lignes que prévu, donnant l'impression à tort qu'il n'y avait pas de page
+// suivante — des dizaines de produits devenaient alors invisibles).
+const FILTRE_EDITION_AFFICHABLE = "edition_statut.neq.ancienne,ouvrage_id.is.null";
+
 function estEditionAffichable(p: Produit): boolean {
   return !(p.edition_statut === "ancienne" && p.ouvrage_id !== null);
 }
