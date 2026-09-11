@@ -51,7 +51,17 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-1 p-2">
-        <p className="line-clamp-1 text-sm text-ink">{produit.nom}</p>
+        {/* 2 lignes max, police réduite si la désignation est longue (sinon
+            elle pousse le prix/bouton hors du cadre de la carte) ; le nom
+            complet reste visible sur la fiche produit (toute la carte est
+            un lien). */}
+        <p
+          className={`line-clamp-2 text-ink ${
+            produit.nom.length > 30 ? "text-xs" : "text-sm"
+          }`}
+        >
+          {produit.nom}
+        </p>
         <div className="mt-auto flex items-center justify-between gap-2">
           <span className="text-xs font-semibold text-ink/70">{formatPrice(produit.prix)}</span>
           <button

@@ -56,10 +56,11 @@ export function ProductImage({
         onDragStart={(event) => event.preventDefault()}
         onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}
-        // object-contain : certaines photos (couvertures de livres, portrait)
-        // ne sont pas carrées — object-cover en coupait le haut. L'image
-        // entière reste toujours visible, quitte à laisser une marge.
-        className={`select-none object-contain transition-opacity duration-300 ${
+        // object-cover remplit tout le cadre (pas de marges mortes autour de
+        // l'image) ; object-top ancre le recadrage en haut — sur une photo
+        // plus haute que large (couverture de livre), c'est le bas qui est
+        // rogné, jamais le titre en haut de la couverture.
+        className={`select-none object-cover object-top transition-opacity duration-300 ${
           loaded ? "opacity-100" : "opacity-0"
         } ${className}`}
       />
