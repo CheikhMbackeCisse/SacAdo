@@ -24,7 +24,11 @@ function notifier(key: string) {
 }
 
 function getSnapshot<T>(key: string): T[] {
-  return (cache.get(key) as T[] | undefined) ?? [];
+  // Référence STABLE tant que rien n'est chargé : `?? []` créerait un nouveau
+  // tableau à chaque appel, et useSyncExternalStore rerenderait en boucle en
+  // le croyant changé à chaque fois ("Maximum update depth exceeded").
+  if (!cache.has(key)) cache.set(key, []);
+  return cache.get(key) as T[];
 }
 
 function getServerSnapshot<T>(): T[] {
