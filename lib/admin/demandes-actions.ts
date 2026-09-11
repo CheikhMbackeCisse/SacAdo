@@ -3,6 +3,9 @@
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { origineSite } from "@/lib/site-url";
+import { normaliserTelephoneSN } from "@/lib/whatsapp";
+import { rendreModele } from "@/lib/messages/modeles";
+import { notifierEvenementClient } from "@/lib/messages/notifier-evenement";
 import type { ActionResult } from "./produits-actions";
 
 // « Ce que les clients cherchent » — volet demandes explicites (le volet
@@ -79,8 +82,10 @@ export async function chercherProduitsPourRattachement(terme: string): Promise<P
   return (data ?? []) as ProduitOption[];
 }
 
-// Passe la demande à « trouvé », la rattache à un produit du catalogue et
-// renvoie un message WhatsApp prérempli avec le lien de la fiche.
+// Passe la demande à « trouvé », la rattache à un produit du catalogue,
+// prévient le client par push + boîte de réception s'il a un compte connu, et
+// renvoie un message WhatsApp prérempli avec le lien de la fiche (TOUJOURS
+// utilisable : la demande n'a qu'un numéro, pas forcément de compte).
 export async function rattacherProduitDemande(
   id: string,
   produitId: number,
@@ -93,12 +98,50 @@ export async function rattacherProduitDemande(
     .maybeSingle();
   if (!produit) return { ok: false, error: "Produit introuvable." };
 
+  const { data: demande } = await supabaseAdmin
+    .from("demandes_produits")
+    .select("telephone")
+    .eq("id", id)
+    .maybeSingle();
+
   const r = await maj(id, { statut: "trouve", produit_id: produitId });
   if (!r.ok) return r;
 
   const lien = `${await origineSite()}/produit/${produit.id}`;
-  const message =
-    `Bonjour, c'est SacAdo. On a trouvé ce que tu cherchais : ${produit.nom}. ` +
-    `Tu peux le commander ici : ${lien}`;
+
+  // Le numéro de la demande correspond peut-être à un client déjà connu
+  // (commande passée un jour) : on le retrouve pour le prévenir en push +
+  // boîte de réception, en plus du WhatsApp manuel.
+  const normalise = normaliserTelephoneSN(demande?.telephone ?? "");
+  let prenom = "Bonjour";
+  if (normalise) {
+    const { data: client } = await supabaseAdmin
+      .from("clients")
+      .select("id, nom")
+      .eq("telephone_normalise", normalise)
+      .maybeSingle();
+    if (client) {
+      prenom = client.nom.trim().split(/\s+/)[0] || prenom;
+      await notifierEvenementClient({
+        clientId: client.id,
+        code: "produit_trouve",
+        variables: { prenom, lien_produit: lien, lien },
+        lien,
+      });
+    }
+  }
+
+  const { data: modeleWhatsapp } = await supabaseAdmin
+    .from("modeles_messages")
+    .select("contenu")
+    .eq("code", "produit_trouve")
+    .eq("canal", "whatsapp")
+    .eq("actif", true)
+    .maybeSingle();
+
+  const message = modeleWhatsapp?.contenu
+    ? rendreModele(modeleWhatsapp.contenu, { prenom, lien_produit: lien, lien })
+    : `Bonjour, c'est SacAdo. On a trouvé ce que tu cherchais : ${produit.nom}. Tu peux le commander ici : ${lien}`;
+
   return { ok: true, message, lien };
 }

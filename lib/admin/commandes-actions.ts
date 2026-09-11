@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import type { Commande, CommandeItem, StatutCommande } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
@@ -37,6 +38,7 @@ function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecCl
     localite_nom: row.localite_nom,
     frais_livraison_a_confirmer: row.frais_livraison_a_confirmer,
     message_livraison: row.message_livraison,
+    telephone_normalise: row.telephone_normalise,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
   };
@@ -96,9 +98,13 @@ export async function changerStatutCommande(id: number, statut: StatutCommande):
     return { ok: false, error: "Cette commande attend la confirmation du paiement Wave." };
   }
 
-  // Le trigger DB (Lot 1) insère automatiquement le message de suivi côté client.
+  // Le trigger DB insère automatiquement le message de suivi côté client
+  // (boîte de réception). Le push suit une matrice de canaux différente
+  // (TACHE_notifications_client.md §2) : géré à part, ci-dessous.
   const { error } = await supabaseAdmin.from("commandes").update({ statut }).eq("id", id);
   if (error) return { ok: false, error: "Impossible de changer le statut." };
+
+  await notifierPushStatutCommande(id, statut);
   return { ok: true };
 }
 
@@ -129,12 +135,17 @@ export async function changerStatutCommandesGroupe(
   // Une commande Wave en attente ne doit pas être basculée par une action
   // groupée (même règle que le changement individuel) : on l'exclut plutôt
   // que de faire échouer tout le lot.
-  const { error } = await supabaseAdmin
+  const { data: modifiees, error } = await supabaseAdmin
     .from("commandes")
     .update({ statut })
     .in("id", ids)
-    .neq("statut", "paiement_en_attente");
+    .neq("statut", "paiement_en_attente")
+    .select("id");
   if (error) return { ok: false, error: "Impossible de changer le statut des commandes sélectionnées." };
+
+  await Promise.all(
+    (modifiees ?? []).map((c) => notifierPushStatutCommande((c as { id: number }).id, statut)),
+  );
   return { ok: true };
 }
 

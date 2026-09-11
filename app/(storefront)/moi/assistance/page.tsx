@@ -1,9 +1,9 @@
 import { Mail, MessageCircle } from "lucide-react";
-import { WHATSAPP_AFFICHE, lienWhatsApp } from "@/lib/whatsapp";
+import { WHATSAPP_AFFICHE, lienAssistance } from "@/lib/whatsapp";
 
 const EMAIL = "service-client@sacado.sn";
 
-const urlWhatsApp = lienWhatsApp("Bonjour SacAdo, j'ai besoin d'aide : ");
+const urlWhatsApp = lienAssistance();
 
 const FAQ = [
   {

@@ -13,6 +13,7 @@ export const STATUTS_COMMANDE_CONFIRMEE: StatutCommande[] = [
   "preparation",
   "livraison",
   "livree",
+  "probleme",
 ];
 
 export function estCommandeConfirmee(statut: StatutCommande): boolean {
@@ -25,6 +26,7 @@ export const LIBELLES_STATUT_COMMANDE: Record<StatutCommande, string> = {
   preparation: "En préparation",
   livraison: "En livraison",
   livree: "Livrée",
+  probleme: "Souci en cours",
 };
 
 export const LIBELLES_STATUT_PAIEMENT: Record<StatutPaiement, string> = {

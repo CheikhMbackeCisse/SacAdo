@@ -6,6 +6,7 @@ import Image from "next/image";
 import { MapPin, Truck } from "lucide-react";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
+import { marquerCommandeFraiche } from "@/lib/local/push-invite";
 import { useKitsPanier } from "@/lib/local/kits-panier";
 import { getLieuxSpeciaux, getLocalites } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
@@ -231,6 +232,7 @@ export default function CheckoutPage() {
           setNoticeNom(result.nomEnregistre);
           await new Promise((resolve) => setTimeout(resolve, 1700));
         }
+        marquerCommandeFraiche(result.commandeId);
         window.location.href = result.waveLaunchUrl;
         return;
       }
@@ -250,6 +252,7 @@ export default function CheckoutPage() {
         setNoticeNom(result.nomEnregistre);
         await new Promise((resolve) => setTimeout(resolve, 1700));
       }
+      marquerCommandeFraiche(result.commandeId);
       router.push(`/suivi/${result.commandeId}?t=${result.jeton}`);
     } catch {
       // Coupure réseau / erreur inattendue : ne jamais laisser le bouton

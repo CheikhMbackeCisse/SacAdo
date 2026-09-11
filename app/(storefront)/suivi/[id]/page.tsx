@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifierJetonClient } from "@/lib/client-auth";
 import { formatPrice } from "@/lib/format";
-import { BookOpen } from "lucide-react";
+import { BookOpen, MessageCircle } from "lucide-react";
+import { lienAssistanceCommande } from "@/lib/whatsapp";
 import { OrderStepper } from "@/components/suivi/order-stepper";
+import { PushInvite } from "@/components/moi/push-invite";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
 import { EbookTelechargement } from "@/components/suivi/ebook-telechargement";
 import { getEbooksCommande } from "@/lib/ebooks/actions";
@@ -64,6 +66,8 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
       )}
 
       <OrderStepper statut={commande.statut} />
+
+      {!enAttentePaiement && <PushInvite commandeId={commande.id} />}
 
       {ebooks.length > 0 && (
         <section className="flex flex-col gap-2 rounded-2xl border border-decorative/30 bg-decorative/10 p-3">
@@ -126,6 +130,18 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
           <span>{formatPrice(commande.total)}</span>
         </div>
       </section>
+
+      {!enAttentePaiement && (
+        <a
+          href={lienAssistanceCommande(commande.id)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-full border border-ink/15 px-4 py-2.5 text-sm font-medium text-ink/70 active:scale-[0.98]"
+        >
+          <MessageCircle size={15} aria-hidden="true" />
+          Une question sur cette commande ?
+        </a>
+      )}
     </div>
   );
 }

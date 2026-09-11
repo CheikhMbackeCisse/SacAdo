@@ -4,6 +4,7 @@ import { getCommandeParReference } from "@/lib/checkout/actions";
 import { jetonClient } from "@/lib/client-auth";
 import { formatPrice } from "@/lib/format";
 import { ViderPanierAuMontage } from "@/components/checkout/paiement-retour";
+import { PushInvite } from "@/components/moi/push-invite";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,8 @@ export default async function ConfirmationPaiementPage(props: {
           <span>{formatPrice(commande.total)}</span>
         </div>
       </section>
+
+      {paye && <PushInvite commandeId={commande.id} />}
 
       <Link
         href={`/suivi/${commande.id}?t=${jetonClient(commande.client_id)}`}

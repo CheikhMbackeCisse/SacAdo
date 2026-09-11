@@ -10,6 +10,7 @@ const OPTIONS: { value: StatutCommande; label: string }[] = [
   { value: "preparation", label: "En préparation" },
   { value: "livraison", label: "En livraison" },
   { value: "livree", label: "Livrée" },
+  { value: "probleme", label: "Souci sur la commande" },
 ];
 
 export function StatutSelect({
@@ -56,7 +57,11 @@ export function StatutSelect({
         disabled={enCours}
         onChange={(event) => changer(event.target.value as StatutCommande)}
         className={`rounded-full border px-2 py-1 text-xs font-medium ${
-          valeur === "livree" ? "border-success/40 text-success" : "border-ink/15 text-ink/70"
+          valeur === "livree"
+            ? "border-success/40 text-success"
+            : valeur === "probleme"
+              ? "border-red-300 text-red-600"
+              : "border-ink/15 text-ink/70"
         }`}
       >
         {OPTIONS.map((option) => (

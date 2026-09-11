@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { EN_TETE_SIGNATURE, parseEvenementWave, verifierSignatureWave } from "@/lib/wave/webhook";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
+import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,14 @@ export async function POST(request: NextRequest) {
       .select("id")
       .eq("client_reference", evenement.reference)
       .maybeSingle();
-    if (commande) await declencherPreparationsAuto((commande as { id: number }).id);
+    if (commande) {
+      const commandeId = (commande as { id: number }).id;
+      await declencherPreparationsAuto(commandeId);
+      // La boîte de réception est déjà couverte par le trigger DB ; le push
+      // "commande confirmée" suit sa propre matrice de canaux et a besoin de
+      // Node (web-push), donc géré ici plutôt que dans traiter_paiement_wave().
+      await notifierPushStatutCommande(commandeId, "recue");
+    }
   }
 
   return Response.json({ ok: true, resultat: data });

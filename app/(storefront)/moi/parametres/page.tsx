@@ -6,6 +6,8 @@ import { Moon, Pencil, Smartphone, Sun } from "lucide-react";
 import { useIdentite, type Identite } from "@/lib/local/identite";
 import { useTheme, type Theme } from "@/lib/local/theme";
 import { InstallCard } from "@/components/pwa/install-card";
+import { ActiverPushClient } from "@/components/moi/activer-push-client";
+import { PreferencesNotificationsSection } from "@/components/moi/preferences-notifications";
 import { modifierNomClient } from "@/lib/moi/actions";
 import { reinitialiserRecommandations } from "@/lib/reco-actions";
 
@@ -52,6 +54,8 @@ export default function ParametresPage() {
             })}
           </div>
         </div>
+        <ActiverPushClient />
+        <PreferencesNotificationsSection />
         <div className="flex flex-col gap-2 px-4 py-3">
           <span className="text-sm text-ink">Compte</span>
           {identite ? (

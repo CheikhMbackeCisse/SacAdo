@@ -10,6 +10,7 @@ const STATUTS: { value: StatutCommande | "toutes"; label: string }[] = [
   { value: "preparation", label: "En préparation" },
   { value: "livraison", label: "En livraison" },
   { value: "livree", label: "Livrée" },
+  { value: "probleme", label: "Souci" },
 ];
 
 const TAILLE_PAGE = 50;

@@ -68,7 +68,11 @@ export default function MesCommandesPage() {
                 <span className="text-sm font-semibold text-ink">Commande #{commande.id}</span>
                 <span
                   className={`text-xs font-medium ${
-                    commande.statut === "livree" ? "text-success" : "text-ink/60"
+                    commande.statut === "livree"
+                      ? "text-success"
+                      : commande.statut === "probleme"
+                        ? "text-red-600"
+                        : "text-ink/60"
                   }`}
                 >
                   {LABELS_STATUT[commande.statut]}

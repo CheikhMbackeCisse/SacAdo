@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Inbox } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { getMessagesParTelephone, marquerMessageLu } from "@/lib/moi/actions";
@@ -41,6 +42,15 @@ export default function MessagesPage() {
     }
   };
 
+  const lienMessage = (message: Message) => {
+    if (!message.lien) return null;
+    // Le suivi d'une commande exige le jeton du client.
+    if (message.lien.startsWith("/suivi/") && identite?.jeton) {
+      return `${message.lien}?t=${identite.jeton}`;
+    }
+    return message.lien.startsWith("/suivi/") ? null : message.lien;
+  };
+
   return (
     <div className="animate-fade-in-up flex flex-col gap-4 px-4 py-4">
       <h1 className="font-heading text-xl font-bold text-ink">Boîte de réception</h1>
@@ -64,13 +74,12 @@ export default function MessagesPage() {
       ) : (
         <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated">
           {messages.map((message) => (
-            <button
-              key={message.id}
-              type="button"
-              onClick={() => ouvrir(message)}
-              className="flex flex-col gap-1 px-4 py-3 text-left active:bg-ink/5"
-            >
-              <div className="flex items-center gap-2">
+            <div key={message.id} className="flex flex-col gap-1.5 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => ouvrir(message)}
+                className="flex items-center gap-2 text-left"
+              >
                 {!message.lu && (
                   <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />
                 )}
@@ -78,9 +87,18 @@ export default function MessagesPage() {
                   {message.titre}
                 </span>
                 <span className="shrink-0 text-[11px] text-ink/40">{formatDate(message.date)}</span>
-              </div>
-              {ouvert === message.id && <p className="pl-4 text-xs text-ink/60">{message.corps}</p>}
-            </button>
+              </button>
+              {ouvert === message.id && (
+                <div className="flex flex-col items-start gap-1.5 pl-4">
+                  <p className="text-xs text-ink/60">{message.corps}</p>
+                  {lienMessage(message) && (
+                    <Link href={lienMessage(message)!} className="text-xs font-semibold text-brand">
+                      Voir le détail
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

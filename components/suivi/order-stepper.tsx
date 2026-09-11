@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, TriangleAlert } from "lucide-react";
 import type { StatutCommande } from "@/lib/supabase/types";
 
 const ETAPES: { value: StatutCommande; label: string }[] = [
@@ -9,6 +9,22 @@ const ETAPES: { value: StatutCommande; label: string }[] = [
 ];
 
 export function OrderStepper({ statut }: { statut: StatutCommande }) {
+  // « Souci » n'est pas une étape du parcours : on affiche un encart dédié.
+  // Le suivi reprendra son cours quand l'admin remet un statut normal.
+  if (statut === "probleme") {
+    return (
+      <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-3.5">
+        <TriangleAlert size={18} className="mt-0.5 shrink-0 text-red-600" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-semibold text-ink">Souci sur ta commande</p>
+          <p className="mt-0.5 text-xs text-ink/65">
+            On te contacte par WhatsApp pour trouver une solution. Ton suivi reprend juste après.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const indexActuel = ETAPES.findIndex((e) => e.value === statut);
 
   return (

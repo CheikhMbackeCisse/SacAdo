@@ -266,12 +266,19 @@ export type StatutCommande =
   | "recue"
   | "preparation"
   | "livraison"
-  | "livree";
+  | "livree"
+  // État d'exception (migration 0058) : souci sur la commande (article
+  // indisponible…). L'admin y passe pour prévenir le client, puis reprend le
+  // flux normal.
+  | "probleme";
 
 export type Client = {
   id: number;
   nom: string;
   telephone: string;
+  // Numéro normalisé `221XXXXXXXXX` pour wa.me (migration 0056). NULL = numéro
+  // saisi inexploitable — le bouton WhatsApp est masqué et l'anomalie signalée.
+  telephone_normalise: string | null;
   zone_id: number | null;
   date_creation: string;
 };
@@ -317,6 +324,9 @@ export type Commande = {
   // Message figé de la destination (lieu spécial ou groupe) : quand il est
   // présent, il s'affiche À LA PLACE du délai « 24h / 6j » (migration 0054).
   message_livraison: string | null;
+  // Numéro de livraison normalisé, figé à la commande (migration 0056) : recopié
+  // du client au moment de la commande, inchangé s'il corrige son profil ensuite.
+  telephone_normalise: string | null;
 };
 
 export type CommandeItem = {
@@ -424,6 +434,43 @@ export type DemandePreparationItem = {
   note: string | null;
 };
 
+// Modèles de messages éditables (migration 0057). Une ligne par (code, canal).
+export type CanalModele = "whatsapp" | "push" | "inbox";
+
+export type ModeleMessage = {
+  code: string;
+  canal: CanalModele;
+  libelle: string;
+  titre: string | null;
+  contenu: string;
+  ordre: number;
+  actif: boolean;
+  maj_le: string;
+};
+
+// Préférences de notifications push du client (migration 0062). Absence de
+// ligne = valeurs par défaut (tout activé) — voir lib/messages/preferences.ts.
+export type PreferencesNotifications = {
+  client_id: number;
+  suivi_commandes: boolean;
+  produits_attendus: boolean;
+  rentree_nouveautes: boolean;
+  maj_le: string;
+};
+
+// Journal des envois WhatsApp manuels (migration 0059).
+export type EnvoiWhatsApp = {
+  id: number;
+  commande_id: number | null;
+  client_id: number | null;
+  telephone: string;
+  code_modele: string | null;
+  contenu_envoye: string;
+  envoye_par: string | null;
+  confirme: boolean;
+  cree_le: string;
+};
+
 export type TypeMessage = "commande" | "info" | "promo";
 
 export type Message = {
@@ -434,4 +481,8 @@ export type Message = {
   corps: string;
   lu: boolean;
   date: string;
+  // Destination au clic (migration 0058) : ex. `/suivi/42`. NULL = pas de lien.
+  lien: string | null;
+  // File des heures calmes (22h-7h Dakar, lot B4) : true = pas encore parti.
+  envoi_differe: boolean;
 };

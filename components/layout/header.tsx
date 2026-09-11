@@ -20,7 +20,7 @@ import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
 import { useIdentite } from "@/lib/local/identite";
 import { useRecherchesRecentes } from "@/lib/local/recherches";
-import { lienWhatsApp } from "@/lib/whatsapp";
+import { lienRechercheSansResultat } from "@/lib/whatsapp";
 import {
   placeholdersPourCategorie,
   slugCategorieDepuisPath,
@@ -291,7 +291,7 @@ export function Header() {
                     Aucun produit ne correspond à «&nbsp;{termeSaisi}&nbsp;».
                   </p>
                   <a
-                    href={lienWhatsApp(`Bonjour SacAdo, je cherche : ${termeSaisi}`)}
+                    href={lienRechercheSansResultat(termeSaisi)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"

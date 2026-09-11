@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  BellRing,
   BookOpen,
   ClipboardList,
   FolderTree,
@@ -16,6 +17,7 @@ import {
   MapPin,
   MapPinned,
   Menu,
+  MessageSquareText,
   Package,
   PackageCheck,
   PackageSearch,
@@ -42,6 +44,8 @@ const LIENS = [
   { href: "/admin/attributs", label: "Attributs", icon: SlidersHorizontal },
   { href: "/admin/synonymes", label: "Synonymes", icon: Repeat2 },
   { href: "/admin/recherches", label: "Ce que les clients cherchent", icon: PackageSearch },
+  { href: "/admin/modeles", label: "Modèles de messages", icon: MessageSquareText },
+  { href: "/admin/notifications", label: "Notifications", icon: BellRing },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
   { href: "/admin/ebooks", label: "Ebooks", icon: BookOpen },
   { href: "/admin/zones", label: "Groupes de livraison", icon: MapPin },

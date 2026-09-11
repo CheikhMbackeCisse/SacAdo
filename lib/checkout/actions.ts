@@ -10,6 +10,7 @@ import { journaliserCommande } from "@/lib/mesure";
 import { fusionnerSessionCourante } from "@/lib/affinites";
 import { getSeuilLivraisonGratuite } from "@/lib/parametres";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
+import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import type { LignePanier } from "@/lib/local/panier";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
 
@@ -630,6 +631,10 @@ export async function passerCommande(
   if (input.modeLivraison === "24h") {
     await declencherPreparationsAuto(commandeId as number);
   }
+
+  // Push "commande confirmée" (matrice de canaux) : no-op silencieux si le
+  // client n'a pas encore d'abonnement (cas le plus courant à la 1re commande).
+  await notifierPushStatutCommande(commandeId as number, "recue");
 
   return {
     ok: true,

@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCommandeAdmin, getCommandeItemsAdmin } from "@/lib/admin/commandes-actions";
+import { getBlocWhatsApp } from "@/lib/admin/whatsapp-actions";
 import { formatPrice } from "@/lib/format";
 import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
 import { StatutSelect } from "@/components/admin/statut-select";
+import { BlocWhatsAppFiche } from "@/components/admin/bloc-whatsapp";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
 import { TableauDesktop } from "@/components/admin/liste-mobile";
 
@@ -12,9 +14,10 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
   const commandeId = Number(id);
   if (!Number.isFinite(commandeId)) notFound();
 
-  const [commande, items] = await Promise.all([
+  const [commande, items, blocWhatsApp] = await Promise.all([
     getCommandeAdmin(commandeId),
     getCommandeItemsAdmin(commandeId),
+    getBlocWhatsApp(commandeId),
   ]);
   if (!commande) notFound();
 
@@ -96,6 +99,8 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
           </p>
         )}
       </div>
+
+      {blocWhatsApp && <BlocWhatsAppFiche commandeId={commande.id} bloc={blocWhatsApp} />}
 
       <ul className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white px-4 text-sm lg:hidden">
         {items.map((item) => (

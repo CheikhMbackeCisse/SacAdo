@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, MessageCircle, Search } from "lucide-react";
-import { lienWhatsApp } from "@/lib/whatsapp";
+import { lienLocaliteLivraison } from "@/lib/whatsapp";
 import type { Localite, LieuSpecial } from "@/lib/supabase/types";
 
 // Sélection = TOUJOURS une entrée de la liste (localité ou lieu particulier).
@@ -172,7 +172,7 @@ export function LocalitePicker({ localites, lieuxSpeciaux, value, onChange }: Pr
         <div className="absolute left-0 right-0 top-full z-20 mt-1 flex flex-col gap-2 rounded-xl border border-ink/15 bg-surface p-3 shadow-lg">
           <p className="text-xs text-ink/60">Cette localité n&apos;est pas encore desservie.</p>
           <a
-            href={lienWhatsApp(`Bonjour SacAdo, je voudrais être livré à : ${texte.trim()}`)}
+            href={lienLocaliteLivraison(texte.trim())}
             target="_blank"
             rel="noopener noreferrer"
             onMouseDown={(e) => e.preventDefault()}

@@ -37,7 +37,11 @@ l'emploi** (une liste de fournitures par classe, achetable en un geste).
 - **Une seule connexion admin** (email + mot de passe). L'admin gère produits,
   stocks, commandes, statuts, kits, zones, et les vues de reporting.
 - **Identité client par numéro de téléphone** (pas de compte/mot de passe côté
-  client en v1). Favoris et "déjà consultés" stockés localement sur l'appareil.
+  client en v1). Favoris et "déjà consultés" **en base** (migration 0064, chantier
+  NOTIFICATIONS_CLIENT lot B6) : anonymes par session (cookie `sacado_sid`) tant que
+  le visiteur n'a pas commandé, puis unifiés par compte après — nécessaire pour
+  détecter en base un retour en stock ou une baisse de prix sur un produit favori/
+  consulté. Décision mise à jour le 2026-09-11 (remplace l'ancien "stockés localement").
 - **Données de démo au départ** (~30 produits, kits, catégories, variantes), que
   l'admin remplacera par les vrais produits.
 
