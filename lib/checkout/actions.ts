@@ -126,7 +126,6 @@ type LigneResolue = {
   // pour le calcul du bénéfice, migration 0055). null si non renseigné.
   prixAchat: number | null;
   nom: string;
-  stockDisponible: number;
 };
 
 type CommandeResolue = {
@@ -245,8 +244,8 @@ async function resoudreLivraison(params: {
 // Prix et frais recalculés EN BASE (jamais depuis le client) à partir du
 // panier et de la localité. Partagé par passerCommande() (création) et
 // getOptionsPaiement() (règle du seuil de paiement) pour qu'un seul et même
-// total serve à décider et à facturer. Ne fait pas le contrôle de stock dur :
-// il expose stockDisponible par ligne, l'appelant décide quoi en faire.
+// total serve à décider et à facturer. Le stock n'est plus un critère de
+// disponibilité (le fournisseur source à la demande) : aucun contrôle ici.
 async function resoudreCommande(
   lignes: LignePanier[],
   params: {
@@ -307,7 +306,6 @@ async function resoudreCommande(
       prixUnitaire: variante?.prix ?? produit.prix,
       prixAchat: produit.prix_achat ?? null,
       nom: produit.nom,
-      stockDisponible: variante ? variante.stock : produit.stock,
     });
   }
 
@@ -507,15 +505,7 @@ async function trouverOuCreerClient(params: {
   return { ok: true, clientId: nouveauClient.id, nomEnregistre: null };
 }
 
-// Traduit l'erreur brute de creer_commande() (souvent STOCK_INSUFFISANT:<id>)
-// en message client.
-function messageErreurCreerCommande(message: string, lignesResolues: LigneResolue[]): string {
-  const match = /STOCK_INSUFFISANT:(\d+)/.exec(message);
-  if (match) {
-    const nomProduit =
-      lignesResolues.find((l) => l.produitId === Number(match[1]))?.nom ?? "un article";
-    return `Stock insuffisant pour "${nomProduit}" — quelqu'un d'autre vient de le commander. Retire-le ou ajuste la quantité.`;
-  }
+function messageErreurCreerCommande(): string {
   return "Impossible de créer la commande.";
 }
 
@@ -533,11 +523,8 @@ function lignesPourRpc(lignesResolues: LigneResolue[]) {
 // la seule route autorisée à écrire dans clients/commandes/commande_items
 // (RLS n'accorde aucun accès public à ces tables, voir supabase/README.md).
 //
-// Le stock est vérifié ici une première fois (retour rapide et clair dans le
-// cas courant), mais la vérification qui compte vraiment est celle, atomique,
-// de creer_commande() côté base : c'est elle qui empêche deux commandes
-// simultanées de survendre le dernier exemplaire d'un article (voir
-// 0004_performance.sql pour le détail du problème corrigé).
+// Le stock n'est plus un critère de disponibilité (le fournisseur source à la
+// demande, migration 0071) : creer_commande() ne bloque plus dessus.
 export async function passerCommande(
   lignes: LignePanier[],
   input: CheckoutInput,
@@ -569,15 +556,6 @@ export async function passerCommande(
   // (Si Wave n'est pas branché, waveDisponible()=false => tout reste "livraison".)
   if (!paiementAutorise("livraison", total, waveDisponible())) {
     return { ok: false, error: "Pour ce montant, le paiement se fait d'avance par Wave." };
-  }
-
-  for (const ligne of lignesResolues) {
-    if (ligne.stockDisponible < ligne.quantite) {
-      return {
-        ok: false,
-        error: `Stock insuffisant pour "${ligne.nom}" (${ligne.stockDisponible} disponible${ligne.stockDisponible > 1 ? "s" : ""}).`,
-      };
-    }
   }
 
   const client = await trouverOuCreerClient({
@@ -614,7 +592,7 @@ export async function passerCommande(
   });
 
   if (commandeError) {
-    return { ok: false, error: messageErreurCreerCommande(commandeError.message, lignesResolues) };
+    return { ok: false, error: messageErreurCreerCommande() };
   }
 
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
@@ -709,23 +687,14 @@ export async function demarrerPaiementWave(
     return { ok: false, error: "Le paiement Wave n'est pas disponible pour cette commande." };
   }
 
-  for (const ligne of lignesResolues) {
-    if (ligne.stockDisponible < ligne.quantite) {
-      return {
-        ok: false,
-        error: `Stock insuffisant pour "${ligne.nom}" (${ligne.stockDisponible} disponible${ligne.stockDisponible > 1 ? "s" : ""}).`,
-      };
-    }
-  }
-
   // Une commande déjà créée pour cette référence (double clic, retour arrière) :
   // on ne recrée rien, on relance juste une session de paiement dessus.
   const existante = await getCommandeParReference(input.reference);
   if (existante) return relancerSessionPourCommande(existante);
 
-  // Session Wave créée AVANT la commande : si Wave refuse, aucune commande ni
-  // décrément de stock (rien à nettoyer). Si la commande échoue ensuite (course
-  // sur le stock), la session Wave orpheline expire d'elle-même.
+  // Session Wave créée AVANT la commande : si Wave refuse, aucune commande n'est
+  // créée (rien à nettoyer). Si la commande échoue ensuite pour une autre raison,
+  // la session Wave orpheline expire d'elle-même.
   const { successUrl, errorUrl } = await urlsRetourWave(input.reference);
   const session = await creerSessionWave({
     montant: total,
@@ -771,7 +740,7 @@ export async function demarrerPaiementWave(
   });
 
   if (commandeError) {
-    return { ok: false, error: messageErreurCreerCommande(commandeError.message, lignesResolues) };
+    return { ok: false, error: messageErreurCreerCommande() };
   }
 
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);

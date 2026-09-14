@@ -395,7 +395,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
           <option value="epuise">Épuisé</option>
         </select>
         <span className="text-[11px] text-ink/40">
-          Repasse automatiquement à « épuisé » si le stock tombe à 0.
+          Le stock n&apos;influence plus ce statut : c&apos;est toi qui décides.
         </span>
       </label>
 
