@@ -8,6 +8,7 @@ import { useTheme, type Theme } from "@/lib/local/theme";
 import { InstallCard } from "@/components/pwa/install-card";
 import { ActiverPushClient } from "@/components/moi/activer-push-client";
 import { PreferencesNotificationsSection } from "@/components/moi/preferences-notifications";
+import { SacadosSection } from "@/components/moi/sacados-section";
 import { modifierNomClient } from "@/lib/moi/actions";
 import { reinitialiserRecommandations } from "@/lib/reco-actions";
 
@@ -73,6 +74,8 @@ export default function ParametresPage() {
           <ReinitialiserReco identite={identite} />
         </div>
       </section>
+
+      <SacadosSection />
 
       {identite && (
         <button

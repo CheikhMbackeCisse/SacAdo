@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Backpack, ClipboardList, Heart, History, Inbox, LifeBuoy } from "lucide-react";
+import { ClipboardList, Heart, History, Inbox, LifeBuoy, Search } from "lucide-react";
+import { NavIcon } from "@/components/layout/nav-icon";
 import { useIdentite } from "@/lib/local/identite";
 import { useFavoris } from "@/lib/local/favoris";
 import { useConsultes } from "@/lib/local/consultes";
@@ -13,13 +14,15 @@ import { DemanderProduit } from "@/components/demande/demander-produit";
 import type { Produit } from "@/lib/supabase/types";
 
 // 6 entrées disposées en 2 lignes × 3 colonnes (voir la grille plus bas).
+// `img` = icône fournie par la marque, affichée en masque teinté par
+// `NavIcon` (voir components/layout/nav-icon.tsx) ; sinon repli sur `icon`.
 const ONGLETS = [
-  { href: "/moi/assistance", label: "Assistance", icon: LifeBuoy },
-  { href: "/commandes", label: "Mes commandes", icon: ClipboardList },
-  { href: "/moi/messages", label: "Boîte de réception", icon: Inbox },
-  { href: "/favoris", label: "Favoris", icon: Heart },
-  { href: "/moi/consultes", label: "Déjà consultés", icon: History },
-  { href: "/moi/sacados", label: "Mes sacados", icon: Backpack },
+  { href: "/moi/assistance", label: "Assistance", icon: LifeBuoy, img: "/images/moi-assistance.png" },
+  { href: "/commandes", label: "Mes commandes", icon: ClipboardList, img: "/images/moi-commandes.png" },
+  { href: "/moi/messages", label: "Boîte de réception", icon: Inbox, img: "/images/moi-boite-reception.png" },
+  { href: "/favoris", label: "Favoris", icon: Heart, img: undefined },
+  { href: "/moi/consultes", label: "Déjà consultés", icon: History, img: undefined },
+  { href: "/recherche", label: "Rechercher un produit", icon: Search, img: "/images/moi-recherche.png" },
 ] as const;
 
 const APERCU_MAX = 4;
@@ -87,10 +90,10 @@ export default function MoiPage() {
   return (
     <div className="flex flex-col gap-5 px-4 py-4">
       <div className="grid grid-cols-3 gap-x-2 gap-y-4 rounded-2xl border border-ink/10 bg-elevated p-4">
-        {ONGLETS.map(({ href, label, icon: Icon }) => (
+        {ONGLETS.map(({ href, label, icon, img }) => (
           <Link key={href} href={href} className="flex flex-col items-center gap-1.5 text-center">
             <span className="relative flex size-10 items-center justify-center rounded-full bg-brand/10 text-brand">
-              <Icon size={17} aria-hidden="true" />
+              <NavIcon icon={icon} img={img} size={17} />
               {label === "Boîte de réception" && nonLusAffiches > 0 && (
                 <span className="absolute -right-1 -top-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold leading-none text-on-brand">
                   {nonLusAffiches}
