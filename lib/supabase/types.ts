@@ -80,6 +80,18 @@ export type Produit = {
   // tableau standard tour de poitrine / longueur sur la fiche. Obligatoire sur
   // tout produit textile à variantes de taille.
   guide_tailles: boolean;
+  // Ordinateurs reconditionnés (migration 0070). Tous nullables : seuls les
+  // produits informatiques de ce type de fournisseur les renseignent.
+  processeur: string | null;
+  ram_go: number | null;
+  stockage_go: number | null;
+  type_stockage: string | null;
+  taille_ecran: number | null;
+  ecran_tactile: boolean | null;
+  convertible: boolean | null;
+  etat: "neuf" | "reconditionne" | null;
+  garantie_mois: number | null;
+  marque: string | null;
 };
 
 export type ScoreDetails = {
@@ -364,6 +376,9 @@ export type CommandeItem = {
   // Date à laquelle le net vendeur de cette ligne a été reversé (migration 0032).
   // NULL = pas encore reversé.
   reverse_le: string | null;
+  // Fin de garantie (migration 0070), figée à la livraison : date de livraison
+  // + produits.garantie_mois. NULL = pas encore livrée, ou produit sans garantie.
+  garantie_fin: string | null;
 };
 
 // Suivi de trésorerie admin (GROUPE_B §2, migration 0032 ; catégories revues en
@@ -415,12 +430,20 @@ export type Vendeur = {
 // Vue « fournisseur » de l'admin : un vendeur vu comme point de retrait de
 // marchandise (écran /admin/fournisseurs, carte /admin/livraisons). Depuis
 // l'unification (migration 0036) c'est une projection de `vendeurs`.
+// Un palier de tarification (migration 0070) : `seuil` = borne haute
+// exclusive du prix affiché par le fournisseur (null = dernier palier,
+// illimité), `valeur` = montant appliqué (remise ou majoration) en FCFA.
+export type PalierTarif = { seuil: number | null; valeur: number };
+
 export type Fournisseur = {
   id: string;
   nom: string;
   adresse: string | null;
   lat: number | null;
   lng: number | null;
+  telephone: string | null;
+  grilleRemise: PalierTarif[] | null;
+  grilleMajoration: PalierTarif[] | null;
 };
 
 // Demande de préparation adressée à un vendeur/fournisseur (migration 0038).

@@ -21,6 +21,16 @@ type CategoryProductListProps = {
 // Niveaux lycée : le filtre Série ne s'affiche que pour ceux-là (TACHE_livres_korka §1.5).
 const NIVEAUX_LYCEE = new Set(["2nde", "1ere", "Terminale"]);
 
+// Tranches de prix pour Ordinateurs portables (§3) : fixes plutôt que dérivées
+// du lot chargé, pour rester stables d'une page à l'autre. `max` exclusif,
+// `null` = dernière tranche, illimitée.
+const TRANCHES_PRIX: { label: string; min: number; max: number | null }[] = [
+  { label: "Moins de 150 000", min: 0, max: 150000 },
+  { label: "150 000 – 250 000", min: 150000, max: 250000 },
+  { label: "250 000 – 400 000", min: 250000, max: 400000 },
+  { label: "Plus de 400 000", min: 400000, max: null },
+];
+
 // "S" est la série générique : S1/S2 en sont des sous-séries (retour
 // testeur), donc choisir "S" doit aussi remonter les titres S1 et S2.
 // "S1"/"S2" restent des choix précis.
@@ -92,6 +102,15 @@ export function CategoryProductList({
   const [serieFiltre, setSerieFiltre] = useState<string | null>(null);
   const [matiereFiltre, setMatiereFiltre] = useState<string | null>(null);
   const [typeFiltre, setTypeFiltre] = useState<string | null>(null);
+  // Filtres Ordinateurs portables (TACHE_seye_dynamique_integration.md §3) :
+  // Prix, RAM, Stockage, Taille d'écran, Écran tactile, Marque, dans cet ordre.
+  const estOrdinateursPortables = categorieSlug === "ordinateurs" && scSlug === "ordinateurs-portables";
+  const [prixFiltre, setPrixFiltre] = useState<string | null>(null);
+  const [ramFiltre, setRamFiltre] = useState<string | null>(null);
+  const [stockageFiltre, setStockageFiltre] = useState<string | null>(null);
+  const [ecranFiltre, setEcranFiltre] = useState<string | null>(null);
+  const [tactileFiltre, setTactileFiltre] = useState<string | null>(null);
+  const [marqueFiltre, setMarqueFiltre] = useState<string | null>(null);
 
   // Signal de classement « vue de catégorie » (poids 0.5), une fois par
   // catégorie affichée.
@@ -232,19 +251,72 @@ export function CategoryProductList({
 
   const serieVisible = niveauFiltre !== null && NIVEAUX_LYCEE.has(niveauFiltre);
 
+  // Facettes Ordinateurs portables, calculées sur le lot chargé (même principe
+  // que les facettes livres — cette sous-catégorie ne dépasse pas non plus
+  // TAILLE_PAGE_CATALOGUE en pratique pour un seul fournisseur).
+  const facettesOrdinateurs = useMemo(() => {
+    if (!estOrdinateursPortables) return null;
+    const rams = new Set<string>();
+    const stockages = new Set<string>();
+    const ecrans = new Set<string>();
+    const marques = new Set<string>();
+    for (const p of produits) {
+      if (p.ram_go) rams.add(`${p.ram_go} Go`);
+      if (p.stockage_go) stockages.add(`${p.stockage_go} Go`);
+      if (p.taille_ecran) ecrans.add(`${p.taille_ecran} pouces`);
+      if (p.marque) marques.add(p.marque);
+    }
+    const triNumerique = (a: string, b: string) => parseFloat(a) - parseFloat(b);
+    return {
+      rams: [...rams].sort(triNumerique),
+      stockages: [...stockages].sort(triNumerique),
+      ecrans: [...ecrans].sort(triNumerique),
+      marques: [...marques].sort((a, b) => a.localeCompare(b, "fr")),
+    };
+  }, [estOrdinateursPortables, produits]);
+
   const resultats = useMemo(() => {
-    if (!estLivres) return produits;
-    return produits.filter((p) => {
-      // Une édition ancienne ne s'affiche jamais dans les listes quand son
-      // édition en vigueur existe (§3.5.1).
-      if (p.edition_statut === "ancienne" && p.ouvrage_id !== null) return false;
-      if (niveauFiltre && p.niveau !== niveauFiltre) return false;
-      if (serieVisible && serieFiltre && !serieCorrespond(serieFiltre, p.serie)) return false;
-      if (matiereFiltre && p.matiere !== matiereFiltre) return false;
-      if (typeFiltre && p.type_ouvrage !== typeFiltre) return false;
-      return true;
-    });
-  }, [produits, estLivres, niveauFiltre, serieFiltre, serieVisible, matiereFiltre, typeFiltre]);
+    if (estLivres) {
+      return produits.filter((p) => {
+        // Une édition ancienne ne s'affiche jamais dans les listes quand son
+        // édition en vigueur existe (§3.5.1).
+        if (p.edition_statut === "ancienne" && p.ouvrage_id !== null) return false;
+        if (niveauFiltre && p.niveau !== niveauFiltre) return false;
+        if (serieVisible && serieFiltre && !serieCorrespond(serieFiltre, p.serie)) return false;
+        if (matiereFiltre && p.matiere !== matiereFiltre) return false;
+        if (typeFiltre && p.type_ouvrage !== typeFiltre) return false;
+        return true;
+      });
+    }
+    if (estOrdinateursPortables) {
+      const tranche = prixFiltre ? TRANCHES_PRIX.find((t) => t.label === prixFiltre) : null;
+      return produits.filter((p) => {
+        if (tranche && (p.prix < tranche.min || (tranche.max !== null && p.prix >= tranche.max))) return false;
+        if (ramFiltre && `${p.ram_go} Go` !== ramFiltre) return false;
+        if (stockageFiltre && `${p.stockage_go} Go` !== stockageFiltre) return false;
+        if (ecranFiltre && `${p.taille_ecran} pouces` !== ecranFiltre) return false;
+        if (tactileFiltre && (p.ecran_tactile ? "Oui" : "Non") !== tactileFiltre) return false;
+        if (marqueFiltre && p.marque !== marqueFiltre) return false;
+        return true;
+      });
+    }
+    return produits;
+  }, [
+    produits,
+    estLivres,
+    niveauFiltre,
+    serieFiltre,
+    serieVisible,
+    matiereFiltre,
+    typeFiltre,
+    estOrdinateursPortables,
+    prixFiltre,
+    ramFiltre,
+    stockageFiltre,
+    ecranFiltre,
+    tactileFiltre,
+    marqueFiltre,
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -341,6 +413,50 @@ export function CategoryProductList({
             valeurs={facettesLivres.types}
             actif={typeFiltre}
             onChoisir={setTypeFiltre}
+          />
+        </div>
+      )}
+
+      {/* Filtres Ordinateurs portables (§3) : Prix, RAM, Stockage, Taille
+          d'écran, Écran tactile, Marque, dans cet ordre — le prix d'abord,
+          premier critère pour un étudiant. */}
+      {estOrdinateursPortables && facettesOrdinateurs && (
+        <div className="flex flex-wrap gap-2 px-4">
+          <FiltreSelect
+            label="Prix"
+            valeurs={TRANCHES_PRIX.map((t) => t.label)}
+            actif={prixFiltre}
+            onChoisir={setPrixFiltre}
+          />
+          <FiltreSelect
+            label="RAM"
+            valeurs={facettesOrdinateurs.rams}
+            actif={ramFiltre}
+            onChoisir={setRamFiltre}
+          />
+          <FiltreSelect
+            label="Stockage"
+            valeurs={facettesOrdinateurs.stockages}
+            actif={stockageFiltre}
+            onChoisir={setStockageFiltre}
+          />
+          <FiltreSelect
+            label="Écran"
+            valeurs={facettesOrdinateurs.ecrans}
+            actif={ecranFiltre}
+            onChoisir={setEcranFiltre}
+          />
+          <FiltreSelect
+            label="Tactile"
+            valeurs={["Oui", "Non"]}
+            actif={tactileFiltre}
+            onChoisir={setTactileFiltre}
+          />
+          <FiltreSelect
+            label="Marque"
+            valeurs={facettesOrdinateurs.marques}
+            actif={marqueFiltre}
+            onChoisir={setMarqueFiltre}
           />
         </div>
       )}

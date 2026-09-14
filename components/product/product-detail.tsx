@@ -97,6 +97,25 @@ export function ProductDetail({
         : [];
   const prix = selectedVariante?.prix ?? produit.prix;
 
+  // Ordinateurs reconditionnés (migration 0070) : les attributs techniques
+  // doivent être visibles, pas seulement filtrables (TACHE_seye_dynamique
+  // _integration.md §3). Liste vide pour tout produit qui n'en a aucun.
+  const caracteristiques = useMemo(() => {
+    const lignes: [string, string][] = [];
+    if (produit.processeur) lignes.push(["Processeur", produit.processeur]);
+    if (produit.ram_go) lignes.push(["RAM", `${produit.ram_go} Go`]);
+    if (produit.stockage_go) {
+      lignes.push([
+        "Stockage",
+        produit.type_stockage ? `${produit.type_stockage} ${produit.stockage_go} Go` : `${produit.stockage_go} Go`,
+      ]);
+    }
+    if (produit.taille_ecran) lignes.push(["Écran", `${produit.taille_ecran} pouces`]);
+    if (produit.ecran_tactile != null) lignes.push(["Tactile", produit.ecran_tactile ? "Oui" : "Non"]);
+    if (produit.convertible) lignes.push(["Convertible", "Oui"]);
+    return lignes;
+  }, [produit]);
+
   const majSlide = () => {
     const el = carrouselRef.current;
     if (el && el.clientWidth > 0) setSlide(Math.round(el.scrollLeft / el.clientWidth));
@@ -193,7 +212,21 @@ export function ProductDetail({
           </span>
         )}
 
-        <span className="text-base font-semibold text-ink">{formatPrice(prix)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-base font-semibold text-ink">{formatPrice(prix)}</span>
+          {produit.etat === "reconditionne" && (
+            <span className="inline-flex items-center rounded-full bg-[#64B6AC]/15 px-2.5 py-1 text-[11px] font-semibold text-[#0B3D91]">
+              Reconditionné
+            </span>
+          )}
+        </div>
+        {produit.etat === "reconditionne" && (
+          <p className="text-xs leading-relaxed text-ink/60">
+            Machine professionnelle remise à neuf, testée, <strong>garantie
+            {produit.garantie_mois ? ` ${produit.garantie_mois} mois` : ""}</strong>.
+            Des traces d&apos;usage légères sont possibles.
+          </p>
+        )}
 
         {produit.edition_statut === "ancienne" && (
           <p className="rounded-lg bg-ink/5 px-3 py-2.5 text-xs leading-relaxed text-ink/60">
@@ -306,6 +339,20 @@ export function ProductDetail({
               ? "Ajouté ✓"
               : "Ajouter au panier"}
         </button>
+
+        {caracteristiques.length > 0 && (
+          <section className="mt-1 flex flex-col gap-1.5 border-t border-ink/10 pt-3">
+            <h2 className="text-xs font-medium text-ink/60">Caractéristiques techniques</h2>
+            <dl className="flex flex-col gap-1 text-xs">
+              {caracteristiques.map(([label, valeur]) => (
+                <div key={label} className="flex justify-between gap-3">
+                  <dt className="text-ink/50">{label}</dt>
+                  <dd className="text-right font-medium text-ink">{valeur}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
 
         {produit.description && (
           <section className="mt-1 flex flex-col gap-1.5 border-t border-ink/10 pt-3">

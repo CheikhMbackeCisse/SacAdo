@@ -104,8 +104,42 @@ export async function changerStatutCommande(id: number, statut: StatutCommande):
   const { error } = await supabaseAdmin.from("commandes").update({ statut }).eq("id", id);
   if (error) return { ok: false, error: "Impossible de changer le statut." };
 
+  if (statut === "livree") await figerGarantieCommande([id]);
+
   await notifierPushStatutCommande(id, statut);
   return { ok: true };
+}
+
+// Ordinateurs reconditionnés (migration 0070) : à la livraison, la date de
+// fin de garantie est figée sur la ligne de commande (date du jour +
+// produits.garantie_mois), comme le prix d'achat l'est déjà. Ne touche que
+// les lignes dont le produit a une garantie renseignée, et jamais deux fois
+// (garantie_fin encore nulle) — relancer un changement de statut ne l'écrase
+// pas une deuxième fois avec une date différente.
+async function figerGarantieCommande(commandeIds: number[]): Promise<void> {
+  const { data } = await supabaseAdmin
+    .from("commande_items")
+    .select("id, produit:produits(garantie_mois)")
+    .in("commande_id", commandeIds)
+    .is("garantie_fin", null);
+
+  type Row = { id: number; produit: { garantie_mois: number | null } | { garantie_mois: number | null }[] | null };
+  const rows = (data ?? []) as unknown as Row[];
+
+  const today = new Date();
+  await Promise.all(
+    rows.map((row) => {
+      const produit = Array.isArray(row.produit) ? row.produit[0] : row.produit;
+      const mois = produit?.garantie_mois;
+      if (!mois) return Promise.resolve();
+      const fin = new Date(today);
+      fin.setMonth(fin.getMonth() + mois);
+      return supabaseAdmin
+        .from("commande_items")
+        .update({ garantie_fin: fin.toISOString().slice(0, 10) })
+        .eq("id", row.id);
+    }),
+  );
 }
 
 // Nombre de commandes 'recue', tous filtres/pagination confondus — alimente le
@@ -143,9 +177,10 @@ export async function changerStatutCommandesGroupe(
     .select("id");
   if (error) return { ok: false, error: "Impossible de changer le statut des commandes sélectionnées." };
 
-  await Promise.all(
-    (modifiees ?? []).map((c) => notifierPushStatutCommande((c as { id: number }).id, statut)),
-  );
+  const idsModifiees = (modifiees ?? []).map((c) => (c as { id: number }).id);
+  if (statut === "livree" && idsModifiees.length > 0) await figerGarantieCommande(idsModifiees);
+
+  await Promise.all(idsModifiees.map((id) => notifierPushStatutCommande(id, statut)));
   return { ok: true };
 }
 
@@ -185,6 +220,7 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       prix_unitaire: row.prix_unitaire,
       prix_achat_unitaire: row.prix_achat_unitaire,
       reverse_le: row.reverse_le,
+      garantie_fin: row.garantie_fin,
       produit_nom: produit?.nom ?? "Produit supprimé",
     };
   });

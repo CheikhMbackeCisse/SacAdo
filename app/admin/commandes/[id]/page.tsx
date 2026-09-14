@@ -9,6 +9,14 @@ import { BlocWhatsAppFiche } from "@/components/admin/bloc-whatsapp";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
 import { TableauDesktop } from "@/components/admin/liste-mobile";
 
+// Garantie ordinateurs reconditionnés (migration 0070) : la première question
+// d'un client qui revient avec une panne est de savoir s'il est encore
+// couvert, la réponse doit tenir en un coup d'oeil (TACHE_seye_dynamique
+// _integration.md §4).
+function formatDateGarantie(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("fr-FR");
+}
+
 export default async function AdminCommandeDetailPage(props: PageProps<"/admin/commandes/[id]">) {
   const { id } = await props.params;
   const commandeId = Number(id);
@@ -110,6 +118,11 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
               <span className="block text-xs text-ink/45">
                 {item.quantite} × {formatPrice(item.prix_unitaire)}
               </span>
+              {item.garantie_fin && (
+                <span className="block text-xs font-medium text-[#16A34A]">
+                  Garantie jusqu&apos;au {formatDateGarantie(item.garantie_fin)}
+                </span>
+              )}
             </span>
             <span className="shrink-0 font-medium text-ink">
               {formatPrice(item.prix_unitaire * item.quantite)}
@@ -126,6 +139,7 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
               <th className="px-4 py-3 font-medium">Qté</th>
               <th className="px-4 py-3 font-medium">Prix unitaire</th>
               <th className="px-4 py-3 font-medium">Total</th>
+              <th className="px-4 py-3 font-medium">Garantie</th>
             </tr>
           </thead>
           <tbody>
@@ -136,6 +150,15 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
                 <td className="px-4 py-3 text-ink/60">{formatPrice(item.prix_unitaire)}</td>
                 <td className="px-4 py-3 font-medium text-ink">
                   {formatPrice(item.prix_unitaire * item.quantite)}
+                </td>
+                <td className="px-4 py-3 text-ink/60">
+                  {item.garantie_fin ? (
+                    <span className="font-medium text-[#16A34A]">
+                      {formatDateGarantie(item.garantie_fin)}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </td>
               </tr>
             ))}

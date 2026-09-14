@@ -11,8 +11,9 @@ export default async function AdminFournisseursPage() {
       <div>
         <h1 className="font-heading text-xl font-bold text-ink">Fournisseurs</h1>
         <p className="mt-1 text-sm text-ink/55">
-          Points où récupérer la marchandise. Ils apparaissent sur la carte
-          « Livraisons » pour préparer les tournées.
+          Points où récupérer la marchandise (affichés sur la carte
+          « Livraisons » pour préparer les tournées), contact et grilles de
+          tarification par palier.
         </p>
       </div>
       <FournisseursEditor fournisseurs={fournisseurs} />
