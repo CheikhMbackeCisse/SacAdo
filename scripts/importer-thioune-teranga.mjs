@@ -54,6 +54,7 @@ const PHOTOS_DIR =
 
 const VENDEUR_NOM = "Thioune Teranga";
 const LARGEUR_MAX = 800;
+const LARGEUR_MIN_SOURCE = 400;
 const QUALITE_WEBP = 82;
 
 // Grille de remise par catégorie fournisseur (négociée, classeur "Grille de
@@ -108,6 +109,12 @@ async function uploaderPhoto(filename) {
   const buf = await readFile(path.join(PHOTOS_DIR, filename));
   if (!snifferImage(buf.subarray(0, 12))) {
     throw new Error(`Fichier non reconnu comme image : ${filename}`);
+  }
+  // Contrôle bloquant (TACHE_photos_et_accueil.md §A.2) : une source trop
+  // petite ne doit jamais entrer au catalogue, agrandie ou non.
+  const { width } = await sharp(buf).metadata();
+  if ((width ?? 0) < LARGEUR_MIN_SOURCE) {
+    throw new Error(`Source trop petite : ${filename} fait ${width}px de large (minimum ${LARGEUR_MIN_SOURCE}px)`);
   }
   const webp = await sharp(buf)
     .resize({ width: LARGEUR_MAX, withoutEnlargement: true })

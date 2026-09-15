@@ -49,6 +49,12 @@ next-env.d.ts
 /categorie.png
 /sac-decole.png
 
+# manifestes/rapports de scripts ponctuels (scratch local, jamais versionnés)
+/cache_dimensions_photos.jsonl
+/rapport_photos_sous_400px.jsonl
+/reparation_*.jsonl
+/remplacement_*.jsonl
+
 # worker MapLibre copié depuis node_modules par scripts/copier-worker-maplibre.mjs
 # (regénéré à chaque predev/prebuild — inutile de le versionner)
 /public/vendor/

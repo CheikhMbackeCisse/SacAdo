@@ -22,7 +22,7 @@ const SELECT_VARIANTE = "*, variante_attributs(attribut_id, valeur, attributs(no
 // (il n'existe que pour la composante « marge » du score, calculée en base).
 // L'admin lit l'intégralité via le service_role.
 const COLONNES_PRODUIT_PUBLIC =
-  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id,guide_tailles,processeur,ram_go,stockage_go,type_stockage,taille_ecran,ecran_tactile,convertible,etat,garantie_mois,marque,est_kit,niveau_difficulte,notice_url,technologie,couleur_impression,compatibilite,score_global" as const;
+  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id,guide_tailles,processeur,ram_go,stockage_go,type_stockage,taille_ecran,ecran_tactile,convertible,etat,garantie_mois,marque,est_kit,niveau_difficulte,notice_url,technologie,couleur_impression,compatibilite,score_global,photo_a_ameliorer" as const;
 
 // Aplatit une réponse Supabase (avec ou sans jointure) en VarianteAvecAttributs.
 function versVariantes(
@@ -66,13 +66,15 @@ export async function getCategorieById(id: number): Promise<Categorie | null> {
   return data;
 }
 
-export async function getPopulaires(limit = 8): Promise<Produit[]> {
-  const { data, error } = await supabase
+export async function getPopulaires(limit = 8, categorieId?: number): Promise<Produit[]> {
+  let requete = supabase
     .from("produits")
     .select(COLONNES_PRODUIT_PUBLIC)
     .or(FILTRE_EDITION_AFFICHABLE)
     .order("id", { ascending: true })
     .limit(limit);
+  if (categorieId != null) requete = requete.eq("categorie_id", categorieId);
+  const { data, error } = await requete;
   if (error) throw error;
   return data ?? [];
 }

@@ -202,17 +202,22 @@ export type CommandeItemAvecProduit = CommandeItem & {
   // fiche commande, pour savoir quoi mettre dans le carton — affichage
   // seulement, sans case à cocher (composition fixe, TACHE_kits_impression_classement.md §A.5).
   composants?: { nom: string; quantite: number }[];
+  // Photo catalogue insuffisante (migration 0082, TACHE_remplacement_14_photos.md
+  // §5) : rappel à l'emballage, seule source de vraies photos pour ces produits.
+  photo_a_ameliorer: boolean;
 };
 
 export async function getCommandeItemsAdmin(commandeId: number): Promise<CommandeItemAvecProduit[]> {
   await requireAdmin();
   const { data, error } = await supabaseAdmin
     .from("commande_items")
-    .select("*, produit:produits(nom, est_kit)")
+    .select("*, produit:produits(nom, est_kit, photo_a_ameliorer)")
     .eq("commande_id", commandeId);
   if (error) return [];
 
-  type Row = CommandeItem & { produit: { nom: string; est_kit: boolean } | { nom: string; est_kit: boolean }[] | null };
+  type Row = CommandeItem & {
+    produit: { nom: string; est_kit: boolean; photo_a_ameliorer: boolean } | { nom: string; est_kit: boolean; photo_a_ameliorer: boolean }[] | null;
+  };
   const rows = (data ?? []) as unknown as Row[];
 
   const idsKits = rows
@@ -251,6 +256,7 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       garantie_fin: row.garantie_fin,
       produit_nom: produit?.nom ?? "Produit supprimé",
       composants: produit?.est_kit ? compositionsParKit.get(row.produit_id) : undefined,
+      photo_a_ameliorer: produit?.photo_a_ameliorer ?? false,
     };
   });
 }

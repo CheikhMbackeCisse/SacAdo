@@ -132,6 +132,11 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
                   Garantie jusqu&apos;au {formatDateGarantie(item.garantie_fin)}
                 </span>
               )}
+              {item.photo_a_ameliorer && (
+                <span className="mt-1 block rounded border border-brand/30 bg-brand/5 px-1.5 py-0.5 text-xs font-medium text-ink">
+                  Photographier avant l&apos;emballage (fond neutre, lumière du jour)
+                </span>
+              )}
             </span>
             <span className="shrink-0 font-medium text-ink">
               {formatPrice(item.prix_unitaire * item.quantite)}
@@ -164,6 +169,11 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
                         </li>
                       ))}
                     </ul>
+                  )}
+                  {item.photo_a_ameliorer && (
+                    <span className="mt-1 block w-fit rounded border border-brand/30 bg-brand/5 px-1.5 py-0.5 text-xs font-medium text-ink">
+                      Photographier avant l&apos;emballage (fond neutre, lumière du jour)
+                    </span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-ink/60">{item.quantite}</td>

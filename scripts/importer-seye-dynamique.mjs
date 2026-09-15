@@ -28,6 +28,7 @@ const PHOTOS_DIR = process.env.PHOTOS_DIR ?? path.join(SCRATCHPAD, "sdt_images")
 const VENDEUR_NOM = "Seye Dynamique Technologie";
 const VENDEUR_TELEPHONE = "78 590 68 40";
 const LARGEUR_MAX = 800;
+const LARGEUR_MIN_SOURCE = 400;
 const QUALITE_WEBP = 82;
 
 // Grilles de tarification par palier (TACHE_sdt_correctif.md §1), rangées sur
@@ -85,6 +86,13 @@ async function uploaderPhoto(filename) {
   const buf = await readFile(path.join(PHOTOS_DIR, filename));
   if (!snifferImage(buf.subarray(0, 12))) {
     throw new Error(`Fichier non reconnu comme image : ${filename}`);
+  }
+  // Contrôle bloquant (TACHE_reparation_128_photos.md) : une source dégradée
+  // (ex. image extraite d'un classeur Excel, compressée par Excel lui-même)
+  // ne doit jamais entrer au catalogue, agrandie ou non.
+  const { width } = await sharp(buf).metadata();
+  if ((width ?? 0) < LARGEUR_MIN_SOURCE) {
+    throw new Error(`source trop petite : ${filename} fait ${width}px (minimum ${LARGEUR_MIN_SOURCE}px)`);
   }
   const webp = await sharp(buf)
     .resize({ width: LARGEUR_MAX, withoutEnlargement: true })

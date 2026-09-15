@@ -43,6 +43,7 @@ const BUCKET = "produits";
 const PREFIXE_STOCKAGE = "import-yuupee-photos";
 
 const LARGEUR_MAX = 800;
+const LARGEUR_MIN_SOURCE = 400;
 const TAILLE_MAX_OCTETS = 200 * 1024;
 const CONCURRENCE = 10;
 const TENTATIVES = 3;
@@ -122,6 +123,16 @@ async function traiterLigne(ligne) {
     meta = await sharp(brut).metadata();
   } catch (err) {
     return { ...basePourManifeste(ligne), ok: false, erreur: `image illisible : ${err.message}` };
+  }
+
+  // Contrôle bloquant (TACHE_photos_et_accueil.md §A.2) : une source trop
+  // petite ne doit jamais entrer au catalogue, agrandie ou non.
+  if ((meta.width ?? 0) < LARGEUR_MIN_SOURCE) {
+    return {
+      ...basePourManifeste(ligne),
+      ok: false,
+      erreur: `source trop petite : ${meta.width}px < ${LARGEUR_MIN_SOURCE}px (source : ${sourceUtilisee})`,
+    };
   }
 
   const webp = await convertirWebp(brut);
