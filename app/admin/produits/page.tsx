@@ -4,6 +4,7 @@ import { getProduitsAdminPage } from "@/lib/admin/produits-actions";
 import { getCategoriesAdmin } from "@/lib/admin/categories-actions";
 import { formatPrice } from "@/lib/format";
 import { DeleteProduitButton } from "@/components/admin/delete-produit-button";
+import { PublierProduitButton } from "@/components/admin/publier-produit-button";
 import { CarteListe, CartesListe, ChampCarte, TableauDesktop } from "@/components/admin/liste-mobile";
 
 const TAILLE_PAGE = 50;
@@ -54,6 +55,13 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
                   <span className={stockBas ? "font-medium text-red-600" : ""}>{produit.stock}</span>
                   <span className="text-ink/50"> · {produit.delai}</span>
                 </ChampCarte>
+                <ChampCarte label="Publication">
+                  {produit.prix_a_verifier ? (
+                    <span className="font-medium text-red-600">prix à vérifier</span>
+                  ) : (
+                    produit.statut_publication
+                  )}
+                </ChampCarte>
                 <div className="mt-1.5 flex justify-end gap-4 border-t border-ink/10 pt-2">
                   <Link
                     href={`/admin/produits/${produit.id}`}
@@ -61,6 +69,7 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
                   >
                     Modifier
                   </Link>
+                  <PublierProduitButton id={produit.id} publie={produit.statut_publication === "publie"} />
                   <DeleteProduitButton id={produit.id} nom={produit.nom} />
                 </div>
               </CarteListe>
@@ -79,6 +88,7 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
               <th className="px-4 py-3 font-medium">Délai</th>
               <th className="px-4 py-3 font-medium">Stock</th>
               <th className="px-4 py-3 font-medium">Statut</th>
+              <th className="px-4 py-3 font-medium">Publication</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -97,11 +107,19 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
                     {produit.stock}
                   </td>
                   <td className="px-4 py-3 text-ink/60">{produit.statut}</td>
+                  <td className="px-4 py-3">
+                    {produit.prix_a_verifier ? (
+                      <span className="font-medium text-red-600">prix à vérifier</span>
+                    ) : (
+                      <span className="text-ink/60">{produit.statut_publication}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-3">
                       <Link href={`/admin/produits/${produit.id}`} className="text-brand hover:underline">
                         Modifier
                       </Link>
+                      <PublierProduitButton id={produit.id} publie={produit.statut_publication === "publie"} />
                       <DeleteProduitButton id={produit.id} nom={produit.nom} />
                     </div>
                   </td>

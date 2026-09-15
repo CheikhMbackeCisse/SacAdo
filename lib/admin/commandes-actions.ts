@@ -196,18 +196,46 @@ export async function passerRecuesEnPreparation(): Promise<ActionResult> {
   return { ok: true };
 }
 
-export type CommandeItemAvecProduit = CommandeItem & { produit_nom: string };
+export type CommandeItemAvecProduit = CommandeItem & {
+  produit_nom: string;
+  // Kit électronique (migration 0073) : composition affichée dépliée sur la
+  // fiche commande, pour savoir quoi mettre dans le carton — affichage
+  // seulement, sans case à cocher (composition fixe, TACHE_kits_impression_classement.md §A.5).
+  composants?: { nom: string; quantite: number }[];
+};
 
 export async function getCommandeItemsAdmin(commandeId: number): Promise<CommandeItemAvecProduit[]> {
   await requireAdmin();
   const { data, error } = await supabaseAdmin
     .from("commande_items")
-    .select("*, produit:produits(nom)")
+    .select("*, produit:produits(nom, est_kit)")
     .eq("commande_id", commandeId);
   if (error) return [];
 
-  type Row = CommandeItem & { produit: { nom: string } | { nom: string }[] | null };
+  type Row = CommandeItem & { produit: { nom: string; est_kit: boolean } | { nom: string; est_kit: boolean }[] | null };
   const rows = (data ?? []) as unknown as Row[];
+
+  const idsKits = rows
+    .map((row) => (Array.isArray(row.produit) ? row.produit[0] : row.produit))
+    .map((produit, i) => (produit?.est_kit ? rows[i].produit_id : null))
+    .filter((id): id is number => id !== null);
+
+  const compositionsParKit = new Map<number, { nom: string; quantite: number }[]>();
+  if (idsKits.length > 0) {
+    // FK explicite : composition_kit référence produits deux fois (kit_id et
+    // composant_id), PostgREST refuse de deviner laquelle utiliser sinon.
+    const { data: compo } = await supabaseAdmin
+      .from("composition_kit")
+      .select("kit_id, quantite, composant:produits!composition_kit_composant_id_fkey(nom)")
+      .in("kit_id", idsKits);
+    type CompoRow = { kit_id: number; quantite: number; composant: { nom: string } | { nom: string }[] | null };
+    for (const c of (compo ?? []) as unknown as CompoRow[]) {
+      const composant = Array.isArray(c.composant) ? c.composant[0] : c.composant;
+      const liste = compositionsParKit.get(c.kit_id) ?? [];
+      liste.push({ nom: composant?.nom ?? "Composant supprimé", quantite: c.quantite });
+      compositionsParKit.set(c.kit_id, liste);
+    }
+  }
 
   return rows.map((row) => {
     const produit = Array.isArray(row.produit) ? row.produit[0] : row.produit;
@@ -222,6 +250,7 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       reverse_le: row.reverse_le,
       garantie_fin: row.garantie_fin,
       produit_nom: produit?.nom ?? "Produit supprimé",
+      composants: produit?.est_kit ? compositionsParKit.get(row.produit_id) : undefined,
     };
   });
 }

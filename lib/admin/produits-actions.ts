@@ -162,6 +162,57 @@ export async function modifierProduit(id: number, input: ProduitInput): Promise<
   return { ok: true };
 }
 
+// Publication d'un produit géré par l'admin (import fournisseur, catalogue
+// SacAdo en propre). Distinct du circuit marketplace (negociation-actions.ts,
+// statuts 'negociation'/'refuse') : ici on bascule seulement entre
+// 'en_attente' et 'publie'. Garde-fous TACHE_yuupee_integration_complete.md §7 :
+// jamais de photo manquante, de prix manquant, ni de prix_a_verifier actif.
+export async function basculerPublication(id: number, publier: boolean): Promise<ActionResult> {
+  await requireAdmin();
+
+  if (publier) {
+    const { data: produit } = await supabaseAdmin
+      .from("produits")
+      .select("photo, prix, prix_a_verifier")
+      .eq("id", id)
+      .maybeSingle();
+    if (!produit) return { ok: false, error: "Produit introuvable." };
+    if (!produit.photo) return { ok: false, error: "Impossible de publier : aucune photo." };
+    if (!estNombrePositifValide(produit.prix)) return { ok: false, error: "Impossible de publier : prix invalide." };
+    if (produit.prix_a_verifier) {
+      return { ok: false, error: "Impossible de publier : prix à vérifier (voir /admin/prix-a-verifier)." };
+    }
+  }
+
+  const { error } = await supabaseAdmin
+    .from("produits")
+    .update({ statut_publication: publier ? "publie" : "en_attente" })
+    .eq("id", id);
+  if (error) return { ok: false, error: "Impossible de changer le statut de publication." };
+  return { ok: true };
+}
+
+// Écran /admin/prix-a-verifier (TACHE_yuupee_integration_complete.md §5/§7).
+export async function getProduitsAVerifier(): Promise<Produit[]> {
+  await requireAdmin();
+  const { data } = await supabaseAdmin
+    .from("produits")
+    .select("*")
+    .eq("prix_a_verifier", true)
+    .order("nom", { ascending: true });
+  return data ?? [];
+}
+
+// L'admin corrige le prix ou la catégorie depuis la fiche produit, puis lève
+// le doute ici. Ne republie pas tout seul : juste une insertion normale dans
+// le circuit de publication habituel (basculerPublication).
+export async function leverPrixAVerifier(id: number): Promise<ActionResult> {
+  await requireAdmin();
+  const { error } = await supabaseAdmin.from("produits").update({ prix_a_verifier: false }).eq("id", id);
+  if (error) return { ok: false, error: "Impossible de lever le doute sur ce produit." };
+  return { ok: true };
+}
+
 export async function supprimerProduit(id: number): Promise<ActionResult> {
   await requireAdmin();
   const { error } = await supabaseAdmin.from("produits").delete().eq("id", id);

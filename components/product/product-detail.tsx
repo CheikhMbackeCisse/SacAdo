@@ -10,8 +10,14 @@ import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
 import { mesurer } from "@/lib/mesure-client";
-import type { EditionSoeur } from "@/lib/supabase/queries";
+import type { ComposantKit, EditionSoeur } from "@/lib/supabase/queries";
 import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
+
+const LIBELLE_NIVEAU: Record<string, string> = {
+  debutant: "Débutant",
+  intermediaire: "Intermédiaire",
+  avance: "Avancé",
+};
 
 type ProductDetailProps = {
   produit: Produit;
@@ -20,6 +26,8 @@ type ProductDetailProps = {
   // Livres et annales (migration 0068) : éditions soeurs (même ouvrage_id),
   // vide si le produit n'a pas d'édition alternative.
   autresEditions?: EditionSoeur[];
+  // Kit électronique assemblé (migration 0073) : vide si le produit n'est pas un kit.
+  composantsKit?: ComposantKit[];
 };
 
 export function ProductDetail({
@@ -27,6 +35,7 @@ export function ProductDetail({
   variantes,
   categorieNom,
   autresEditions = [],
+  composantsKit = [],
 }: ProductDetailProps) {
   const { ajouter } = usePanier();
   const { recordConsulte } = useConsultes();
@@ -212,6 +221,12 @@ export function ProductDetail({
           </span>
         )}
 
+        {produit.est_kit && produit.niveau_difficulte && (
+          <span className="inline-flex w-fit items-center rounded-full bg-ink/8 px-2.5 py-1 text-[11px] font-semibold text-ink/60">
+            Niveau {LIBELLE_NIVEAU[produit.niveau_difficulte] ?? produit.niveau_difficulte}
+          </span>
+        )}
+
         <div className="flex items-center gap-2">
           <span className="text-base font-semibold text-ink">{formatPrice(prix)}</span>
           {produit.etat === "reconditionne" && (
@@ -351,6 +366,40 @@ export function ProductDetail({
                 </div>
               ))}
             </dl>
+          </section>
+        )}
+
+        {produit.est_kit && composantsKit.length > 0 && (
+          <section className="mt-1 flex flex-col gap-2 border-t border-ink/10 pt-3">
+            <h2 className="text-xs font-medium text-ink/60">Ce que contient le kit</h2>
+            <ul className="flex flex-col gap-1.5">
+              {composantsKit.map((c) => (
+                <li key={c.id}>
+                  <a
+                    href={`/produit/${c.id}`}
+                    className="flex items-center gap-2.5 rounded-lg px-1 py-1 text-xs transition-colors hover:bg-ink/5"
+                  >
+                    <span className="relative size-9 shrink-0 overflow-hidden rounded-md bg-ink/5">
+                      <ProductImage src={c.photo} alt={c.nom} className="h-full w-full" />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-ink/80">{c.nom}</span>
+                    {c.quantite > 1 && <span className="shrink-0 text-ink/40">× {c.quantite}</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className="rounded-lg bg-ink/5 px-3 py-2.5 text-[11px] leading-relaxed text-ink/60">
+              {produit.notice_url
+                ? "La notice complète (schéma de câblage, code commenté) est incluse avec le kit."
+                : "Une notice de montage est incluse avec le kit."}
+              {" "}Le code fourni est un point de départ, pas une solution à recopier telle
+              quelle : à adapter et comprendre ligne par ligne.
+            </p>
+            {produit.notice_url && (
+              <a href={produit.notice_url} className="text-xs font-medium text-brand hover:underline">
+                Consulter la notice
+              </a>
+            )}
           </section>
         )}
 

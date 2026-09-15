@@ -111,6 +111,11 @@ export function CategoryProductList({
   const [ecranFiltre, setEcranFiltre] = useState<string | null>(null);
   const [tactileFiltre, setTactileFiltre] = useState<string | null>(null);
   const [marqueFiltre, setMarqueFiltre] = useState<string | null>(null);
+  // Tri (TACHE_kits_impression_classement.md Chantier C.3) : "Pertinence" par
+  // défaut (score_global, qui intègre déjà coefficient_visibilite et le boost
+  // de tranche de prix) ; "Prix croissant" l'ignore volontairement — un tri
+  // demandé explicitement n'est jamais truqué.
+  const [triFiltre, setTriFiltre] = useState<string | null>(null);
 
   // Signal de classement « vue de catégorie » (poids 0.5), une fois par
   // catégorie affichée.
@@ -290,7 +295,7 @@ export function CategoryProductList({
     }
     if (estOrdinateursPortables) {
       const tranche = prixFiltre ? TRANCHES_PRIX.find((t) => t.label === prixFiltre) : null;
-      return produits.filter((p) => {
+      const filtres = produits.filter((p) => {
         if (tranche && (p.prix < tranche.min || (tranche.max !== null && p.prix >= tranche.max))) return false;
         if (ramFiltre && `${p.ram_go} Go` !== ramFiltre) return false;
         if (stockageFiltre && `${p.stockage_go} Go` !== stockageFiltre) return false;
@@ -299,6 +304,11 @@ export function CategoryProductList({
         if (marqueFiltre && p.marque !== marqueFiltre) return false;
         return true;
       });
+      if (triFiltre === "Prix croissant") {
+        return [...filtres].sort((a, b) => a.prix - b.prix);
+      }
+      // "Pertinence" (défaut) : score_global décroissant, nulls en dernier.
+      return [...filtres].sort((a, b) => (b.score_global ?? -1) - (a.score_global ?? -1));
     }
     return produits;
   }, [
@@ -316,6 +326,7 @@ export function CategoryProductList({
     ecranFiltre,
     tactileFiltre,
     marqueFiltre,
+    triFiltre,
   ]);
 
   return (
@@ -422,6 +433,12 @@ export function CategoryProductList({
           premier critère pour un étudiant. */}
       {estOrdinateursPortables && facettesOrdinateurs && (
         <div className="flex flex-wrap gap-2 px-4">
+          <FiltreSelect
+            label="Trier"
+            valeurs={["Pertinence", "Prix croissant"]}
+            actif={triFiltre}
+            onChoisir={setTriFiltre}
+          />
           <FiltreSelect
             label="Prix"
             valeurs={TRANCHES_PRIX.map((t) => t.label)}

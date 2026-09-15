@@ -92,6 +92,28 @@ export type Produit = {
   etat: "neuf" | "reconditionne" | null;
   garantie_mois: number | null;
   marque: string | null;
+  // Yuupee (migration 0072). Impression : technologie/couleur déduites de la
+  // catégorie source, compatibilite = modèles compatibles (texte libre, filtre).
+  // Optionnels : absents du select restreint du storefront public
+  // (COLONNES_PRODUIT dans lib/supabase/queries.ts), chargés seulement côté admin.
+  technologie?: "jet d encre" | "laser" | null;
+  couleur_impression?: "couleur" | "monochrome" | null;
+  compatibilite?: string | null;
+  // Déclassement générique dans le classement (pas réservé à Yuupee) : le score
+  // final est multiplié par ce coefficient. 1.00 = neutre.
+  coefficient_visibilite?: number;
+  // true = prix importé sous le plancher de sa sous-catégorie : jamais
+  // publiable tant qu'un admin n'a pas vérifié et levé le doute (écran
+  // /admin/prix-a-verifier).
+  prix_a_verifier?: boolean;
+  // Kits électroniques assemblés (migration 0073). `est_kit` : la fiche
+  // produit affiche le bloc composition (composition_kit) au lieu des
+  // variantes/attributs habituels. `niveau_difficulte` filtre la
+  // sous-catégorie Kits SacAdo. `notice_url` : vide tant qu'aucune vraie
+  // notice de montage n'a été fournie.
+  est_kit?: boolean;
+  niveau_difficulte?: "debutant" | "intermediaire" | "avance" | null;
+  notice_url?: string | null;
 };
 
 export type ScoreDetails = {

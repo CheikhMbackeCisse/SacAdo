@@ -118,6 +118,15 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
               <span className="block text-xs text-ink/45">
                 {item.quantite} × {formatPrice(item.prix_unitaire)}
               </span>
+              {item.composants && item.composants.length > 0 && (
+                <ul className="mt-1 border-l-2 border-ink/10 pl-2 text-xs text-ink/55">
+                  {item.composants.map((c, i) => (
+                    <li key={i}>
+                      {c.nom} × {c.quantite}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {item.garantie_fin && (
                 <span className="block text-xs font-medium text-[#16A34A]">
                   Garantie jusqu&apos;au {formatDateGarantie(item.garantie_fin)}
@@ -145,7 +154,18 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
           <tbody>
             {items.map((item) => (
               <tr key={item.id} className="border-b border-ink/5 last:border-0">
-                <td className="px-4 py-3 text-ink">{item.produit_nom}</td>
+                <td className="px-4 py-3 text-ink">
+                  {item.produit_nom}
+                  {item.composants && item.composants.length > 0 && (
+                    <ul className="mt-1 border-l-2 border-ink/10 pl-2 text-xs font-normal text-ink/55">
+                      {item.composants.map((c, i) => (
+                        <li key={i}>
+                          {c.nom} × {c.quantite}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-ink/60">{item.quantite}</td>
                 <td className="px-4 py-3 text-ink/60">{formatPrice(item.prix_unitaire)}</td>
                 <td className="px-4 py-3 font-medium text-ink">

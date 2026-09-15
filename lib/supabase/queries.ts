@@ -21,7 +21,7 @@ const SELECT_VARIANTE = "*, variante_attributs(attribut_id, valeur, attributs(no
 // (il n'existe que pour la composante « marge » du score, calculée en base).
 // L'admin lit l'intégralité via le service_role.
 const COLONNES_PRODUIT_PUBLIC =
-  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id,guide_tailles,processeur,ram_go,stockage_go,type_stockage,taille_ecran,ecran_tactile,convertible,etat,garantie_mois,marque" as const;
+  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id,guide_tailles,processeur,ram_go,stockage_go,type_stockage,taille_ecran,ecran_tactile,convertible,etat,garantie_mois,marque,est_kit,niveau_difficulte,notice_url,technologie,couleur_impression,compatibilite,score_global" as const;
 
 // Aplatit une réponse Supabase (avec ou sans jointure) en VarianteAvecAttributs.
 function versVariantes(
@@ -187,6 +187,27 @@ export async function getAutresEditions(
     .neq("id", produitIdActuel);
   if (error) throw error;
   return data ?? [];
+}
+
+// Kit électronique (migration 0073) : composants pour le bloc "Ce que
+// contient le kit" (TACHE_kits_impression_classement.md §A.6). Volontairement
+// sans le prix du composant — "ne pas afficher le prix des composants pris
+// séparément, la somme est proche du prix du kit et l'afficher invite à comparer."
+export type ComposantKit = { id: number; nom: string; photo: string | null; quantite: number };
+
+export async function getCompositionKit(kitId: number): Promise<ComposantKit[]> {
+  // FK explicite : composition_kit référence produits deux fois (kit_id et
+  // composant_id), PostgREST refuse de deviner laquelle utiliser sinon.
+  const { data, error } = await supabase
+    .from("composition_kit")
+    .select("quantite, composant:produits!composition_kit_composant_id_fkey(id, nom, photo)")
+    .eq("kit_id", kitId);
+  if (error) throw error;
+  type Row = { quantite: number; composant: { id: number; nom: string; photo: string | null } | { id: number; nom: string; photo: string | null }[] | null };
+  return ((data ?? []) as unknown as Row[]).flatMap((row) => {
+    const composant = Array.isArray(row.composant) ? row.composant[0] : row.composant;
+    return composant ? [{ ...composant, quantite: row.quantite }] : [];
+  });
 }
 
 export async function getProduitsByIds(ids: number[]): Promise<Produit[]> {
