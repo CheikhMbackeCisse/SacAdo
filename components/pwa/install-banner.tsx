@@ -8,8 +8,7 @@ import { onInstallChange, promptInstall, useInstallState } from "@/lib/pwa/insta
 // l'utilisateur désinstalle l'app entre-temps (voir plus bas).
 const DISMISS_KEY = "sacado_install_dismiss";
 const INSTALLED_KEY = "sacado_pwa_installed";
-const VISITES_KEY = "sacado_visites";
-const RE_ASK_MS = 30 * 24 * 60 * 60 * 1000;
+const RE_ASK_MS = 3 * 24 * 60 * 60 * 1000;
 
 // "beforeinstallprompt" n'existe que sur Chrome/Edge/Android — pas de bannière
 // sur iOS Safari (l'événement n'y est jamais déclenché). L'option reste
@@ -18,18 +17,6 @@ export function InstallBanner() {
   const { canPrompt, installed } = useInstallState();
   // Masquée par défaut ; révélée après évaluation de l'historique local.
   const [masquee, setMasquee] = useState(true);
-
-  // Compte les visites une seule fois par chargement (pas à chaque
-  // réévaluation de `evaluer` ci-dessous) : la bannière ne doit apparaître
-  // qu'à partir de la 2e visite, jamais à la toute première.
-  useEffect(() => {
-    try {
-      const visites = Number(window.localStorage.getItem(VISITES_KEY) || 0) + 1;
-      window.localStorage.setItem(VISITES_KEY, String(visites));
-    } catch {
-      // tant pis, comptée comme première visite par défaut
-    }
-  }, []);
 
   useEffect(() => {
     const evaluer = () => {
@@ -41,9 +28,8 @@ export function InstallBanner() {
           window.localStorage.removeItem(DISMISS_KEY);
         }
         if (installed) window.localStorage.setItem(INSTALLED_KEY, "1");
-        const premiereVisite = Number(window.localStorage.getItem(VISITES_KEY) || 0) < 2;
         const rejetLe = Number(window.localStorage.getItem(DISMISS_KEY) || 0);
-        setMasquee(premiereVisite || Date.now() - rejetLe < RE_ASK_MS);
+        setMasquee(Date.now() - rejetLe < RE_ASK_MS);
       } catch {
         setMasquee(false);
       }
