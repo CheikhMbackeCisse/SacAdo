@@ -15,6 +15,13 @@
 //
 // Usage : node scripts/telecharger-images-yuupee.mjs
 // Reprise : relire manifeste.jsonl, ignorer les nom_fichier_cible déjà faits.
+//
+// Toutes les photos du manifeste sont téléversées ici, pas seulement celles
+// qui seront finalement retenues par l'import (le script d'import choisit
+// après coup combien de photos garder par produit). Une fois l'import terminé
+// et les produits publiés, lancer scripts/purger-brouillons-images.mjs
+// --prefixe=import-yuupee-photos pour déplacer les photos non retenues vers
+// une corbeille réversible (jamais de suppression directe du bucket).
 import { readFileSync, appendFileSync, existsSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";

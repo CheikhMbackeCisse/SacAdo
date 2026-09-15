@@ -73,6 +73,18 @@ html {
      pas « site web » (CORRECTIONS_V8 §4). Les scrolls internes (carrousels,
      panneaux) gardent leur propre comportement. */
   overscroll-behavior-y: none;
+  /* Taille du texte (Préférences > Affichage) : multiplicateur de la taille de
+     police racine, jamais de px figés dans les composants — ils héritent tous
+     en rem/em/Tailwind. */
+  font-size: calc(1rem * var(--echelle-texte, 1));
+}
+
+html.taille-grande {
+  --echelle-texte: 1.15;
+}
+
+html.taille-tres-grande {
+  --echelle-texte: 1.3;
 }
 
 body {

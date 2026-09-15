@@ -70,6 +70,20 @@ export async function getProfilsAffichage(): Promise<ProfilsAffichage> {
       compteId = (lien?.compte_id ?? null) as number | null;
     }
 
+    // Le client peut couper sa propre personnalisation (Préférences >
+    // Recommandations, TACHE_nettoyage_carrousel_preferences.md §C.4), en plus
+    // du réglage admin global vérifié plus haut. Les deux sont un "et" logique.
+    if (compteId) {
+      const { data: pref } = await supabaseAdmin
+        .from("preferences_utilisateur")
+        .select("personnalisation")
+        .eq("client_id", compteId)
+        .maybeSingle();
+      if (pref?.personnalisation === false) {
+        return { perso: false, facteur, profils: [PROFIL_COMPTE_VIDE] };
+      }
+    }
+
     // --- Affinité du compte (ou de la session anonyme) ---
     let compteAff: Record<string, number> = {};
     if (compteId) {

@@ -539,13 +539,23 @@ export type ModeleMessage = {
   maj_le: string;
 };
 
-// Préférences de notifications push du client (migration 0062). Absence de
-// ligne = valeurs par défaut (tout activé) — voir lib/messages/preferences.ts.
-export type PreferencesNotifications = {
+export type Theme = "clair" | "sombre" | "systeme";
+export type TailleTexte = "normale" | "grande" | "tres_grande";
+
+// Préférences du client (migration 0062, étendue en 0080 : TACHE_nettoyage_
+// carrousel_preferences.md §C). Absence de ligne = valeurs par défaut (tout
+// activé côté notifications) — voir lib/messages/preferences.ts.
+export type PreferencesUtilisateur = {
   client_id: number;
   suivi_commandes: boolean;
   produits_attendus: boolean;
   rentree_nouveautes: boolean;
+  theme: Theme;
+  taille_texte: TailleTexte;
+  personnalisation: boolean;
+  localite_defaut_id: number | null;
+  lieu_special_defaut_id: number | null;
+  precision_livreur: string | null;
   maj_le: string;
 };
 

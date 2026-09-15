@@ -13,6 +13,7 @@ import { formatPrice } from "@/lib/format";
 import {
   demarrerPaiementWave,
   getDernierePosition,
+  getLivraisonDefaut,
   getOptionsPaiement,
   passerCommande,
 } from "@/lib/checkout/actions";
@@ -96,6 +97,19 @@ export default function CheckoutPage() {
     getDernierePosition(numero, jeton).then((pos) => {
       if (!pos) return;
       setPrecisionLivreur((actuel) => actuel || pos.precisionLivreur || "");
+    });
+    // Localité et précision choisies dans Préférences (§C.6) : appliquées
+    // seulement si rien n'est déjà sélectionné (getDernierePosition ci-dessus,
+    // ou une saisie de l'utilisateur, restent prioritaires).
+    getLivraisonDefaut(numero, jeton).then((defaut) => {
+      if (!defaut) return;
+      setPrecisionLivreur((actuel) => actuel || defaut.precisionLivreur || "");
+      setSelectionLocalite((actuel) => {
+        if (actuel) return actuel;
+        if (defaut.localite) return { type: "localite", id: defaut.localite.id, nom: defaut.localite.nom };
+        if (defaut.lieuSpecial) return { type: "special", id: defaut.lieuSpecial.id, nom: defaut.lieuSpecial.nom };
+        return actuel;
+      });
     });
   }, [telephone, identite]);
 

@@ -6,6 +6,12 @@
 // (sortie/iot_composants/images, lot "extraction images"). On les héberge
 // telles quelles : mieux qu'aucune photo, en attendant mieux du fournisseur.
 // Usage : node scripts/uploader-photos-iot-composants.mjs
+//
+// Toutes les entrées du manifeste sont téléversées, y compris celles dont le
+// composant ne sera finalement pas publié au catalogue. Une fois l'import des
+// produits terminé, lancer scripts/purger-brouillons-images.mjs
+// --prefixe=import-yuupee-iot-composants pour déplacer les photos non
+// utilisées vers une corbeille réversible (jamais de suppression directe).
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";

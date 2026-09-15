@@ -874,3 +874,47 @@ export async function getDernierePosition(
     precisionLivreur: data.derniere_precision_livreur ?? null,
   };
 }
+
+export type LivraisonDefautCheckout = {
+  localite: { id: number; nom: string } | null;
+  lieuSpecial: { id: number; nom: string } | null;
+  precisionLivreur: string | null;
+};
+
+// Localité par défaut + précision livreur choisies dans Préférences (§C.6) :
+// pré-remplissent le checkout suivant. Même exigence de jeton que
+// getDernierePosition ci-dessus.
+export async function getLivraisonDefaut(
+  telephone: string,
+  jeton: string,
+): Promise<LivraisonDefautCheckout | null> {
+  const numero = telephone.trim();
+  if (!numero || !jeton) return null;
+  const { data: client } = await supabaseAdmin
+    .from("clients")
+    .select("id")
+    .eq("telephone", numero)
+    .maybeSingle();
+  if (!client || !verifierJetonClient(client.id, jeton)) return null;
+
+  const { data: pref } = await supabaseAdmin
+    .from("preferences_utilisateur")
+    .select("localite_defaut_id, lieu_special_defaut_id, precision_livreur, localites(id, nom), lieux_speciaux(id, nom)")
+    .eq("client_id", client.id)
+    .maybeSingle();
+  if (!pref) return null;
+
+  // Jointure belongs-to : Supabase renvoie tantôt un objet, tantôt un tableau
+  // à un élément selon le contexte — même garde que resoudreLivraison ci-dessus.
+  const unJoint = <T>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+  const localite = unJoint(pref.localites as { id: number; nom: string } | { id: number; nom: string }[] | null);
+  const lieuSpecial = unJoint(
+    pref.lieux_speciaux as { id: number; nom: string } | { id: number; nom: string }[] | null,
+  );
+
+  return {
+    localite,
+    lieuSpecial,
+    precisionLivreur: pref.precision_livreur ?? null,
+  };
+}

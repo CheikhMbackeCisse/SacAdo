@@ -51,6 +51,10 @@ export const viewport: Viewport = {
 // Le mode "système" ne pose aucun attribut : la media query de globals.css gère.
 const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('sacado_theme');if(t==='sombre')document.documentElement.setAttribute('data-theme','dark');else if(t==='clair')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();`;
 
+// Même principe pour la taille de texte (Préférences > Affichage) : la classe
+// doit être posée avant l'hydratation, sinon l'app clignote en taille normale.
+const TAILLE_TEXTE_SCRIPT = `(function(){try{var t=localStorage.getItem('sacado_taille_texte');if(t==='grande')document.documentElement.classList.add('taille-grande');else if(t==='tres_grande')document.documentElement.classList.add('taille-tres-grande');}catch(e){}})();`;
+
 // Root layout du site client (voir app/admin/layout.tsx pour le back-office,
 // qui est un second root layout indépendant — pas de Header/BottomNav là-bas).
 export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
@@ -62,6 +66,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
     >
       <body className="flex min-h-full flex-col bg-surface text-ink">
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: TAILLE_TEXTE_SCRIPT }} />
         <SplashScreen />
         <a
           href="#main-content"

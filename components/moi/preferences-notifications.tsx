@@ -80,7 +80,7 @@ export function PreferencesNotificationsSection() {
   );
 }
 
-function Interrupteur({
+export function Interrupteur({
   actif,
   occupe,
   onChange,

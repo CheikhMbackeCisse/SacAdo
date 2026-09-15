@@ -59,45 +59,142 @@ const SLIDES: Slide[] = [
   },
 ];
 
-const AUTO_SLIDE_MS = 4500;
+// TACHE_nettoyage_carrousel_preferences.md §B2 : 3500 ms, sinon trop rapide
+// pour certains, trop lent pour tenir en haleine les autres.
+const AUTO_SLIDE_MS = 3500;
+// Durée max de la transition programmatique (glissement auto ou clic sur une
+// pastille) : une transition lente mange le temps de lecture (§B2).
+const TRANSITION_MS = 400;
 // Un clone de la 1re slide est ajouté après la 5e : l'auto-rotation glisse
 // dessus normalement, puis on se replace sur la vraie 1re slide sans
 // animation une fois la transition finie -> boucle infinie sans saut visible.
 const LOOP_SLIDES = [...SLIDES, SLIDES[0]];
 const LAST_INDEX = LOOP_SLIDES.length - 1;
 // Délai après le dernier évènement "scroll" avant de considérer la position
-// stabilisée : lire scrollLeft PENDANT l'animation (au lieu d'attendre la fin)
-// donnait un index intermédiaire qui annulait la transition en cours -> c'est
-// ce qui bloquait l'auto-rotation.
+// stabilisée : lire scrollLeft PENDANT un swipe donnerait un index
+// intermédiaire et ferait sauter le glissement natif de l'utilisateur.
 const SCROLL_SETTLE_MS = 120;
 
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 export function HeroCarousel() {
+  const rootRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [trackIndex, setTrackIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [reduitMotion, setReduitMotion] = useState(false);
+  // Refs (pas de re-render) : lues dans les timers/observers/handlers.
+  const arreteDefinitivement = useRef(false);
+  const reduireAnimations = useRef(false);
+  const animationFrame = useRef<number | null>(null);
+  const programmatique = useRef(false);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Défilement programmatique borné à TRANSITION_MS (le swipe tactile natif,
+  // lui, n'est pas concerné — seul ce défilement scripté doit rester court).
+  const allerA = (index: number, instantane = false) => {
+    const track = trackRef.current;
+    if (!track) return;
+    if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+
+    const cible = index * track.clientWidth;
+    if (instantane || reduireAnimations.current) {
+      programmatique.current = true;
+      track.scrollLeft = cible;
+      programmatique.current = false;
+      return;
+    }
+
+    const depart = track.scrollLeft;
+    const distance = cible - depart;
+    const debut = performance.now();
+    programmatique.current = true;
+
+    const etape = (maintenant: number) => {
+      const t = Math.min(1, (maintenant - debut) / TRANSITION_MS);
+      track.scrollLeft = depart + distance * easeOutCubic(t);
+      if (t < 1) {
+        animationFrame.current = requestAnimationFrame(etape);
+      } else {
+        programmatique.current = false;
+        animationFrame.current = null;
+      }
+    };
+    animationFrame.current = requestAnimationFrame(etape);
+  };
+
+  // Réglage système de réduction des animations : pas de défilement auto du
+  // tout (§B2).
   useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const appliquer = () => {
+      reduireAnimations.current = media.matches;
+      setReduitMotion(media.matches);
+    };
+    appliquer();
+    media.addEventListener("change", appliquer);
+    return () => media.removeEventListener("change", appliquer);
+  }, []);
+
+  // Le carrousel ne tourne pas quand il est hors de l'écran (économie de
+  // batterie, personne ne le regarde) — §B2.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), {
+      threshold: 0.25,
+    });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible || reduitMotion) return;
     const id = setInterval(() => {
+      if (arreteDefinitivement.current) return;
       setTrackIndex((current) => Math.min(current + 1, LAST_INDEX));
     }, AUTO_SLIDE_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [visible, reduitMotion]);
 
   useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    track.scrollTo({ left: trackIndex * track.clientWidth, behavior: "smooth" });
+    allerA(trackIndex);
   }, [trackIndex]);
 
-  useEffect(() => () => {
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    [],
+  );
+
+  // Un balayage, un clic, un appui = l'utilisateur prend la main : le
+  // défilement automatique s'arrête définitivement, il ne redémarre pas (§B2).
+  const arreter = () => {
+    arreteDefinitivement.current = true;
+  };
+
+  const allerALaSlide = (i: number) => {
+    arreter();
+    if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+    programmatique.current = false;
+    setTrackIndex(i);
+  };
 
   return (
-    <div className="px-4 pt-3">
+    <div ref={rootRef} className="px-4 pt-3">
       <div
         ref={trackRef}
+        onPointerDown={arreter}
+        onWheel={arreter}
         onScroll={(event) => {
+          // Ignorer les scrolls déclenchés par notre propre animation : seul
+          // un scroll natif (swipe, molette) doit couper l'auto-rotation via
+          // onPointerDown/onWheel ci-dessus.
+          if (programmatique.current) return;
           const track = event.currentTarget;
           if (settleTimer.current) clearTimeout(settleTimer.current);
           settleTimer.current = setTimeout(() => {
@@ -105,7 +202,9 @@ export function HeroCarousel() {
             if (settledIndex === LAST_INDEX) {
               // Le clone de la 1re slide est identique à la vraie : le saut
               // instantané est invisible pour l'œil.
-              track.scrollTo({ left: 0, behavior: "auto" });
+              programmatique.current = true;
+              track.scrollLeft = 0;
+              programmatique.current = false;
               setTrackIndex(0);
             } else {
               setTrackIndex(settledIndex);
@@ -150,12 +249,32 @@ export function HeroCarousel() {
               </p>
               <Link
                 href={slide.href}
+                onClick={arreter}
                 className="mt-1 inline-flex w-fit items-center rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-transform active:scale-95"
               >
                 {slide.cta}
               </Link>
             </div>
           </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-center gap-1 pt-2">
+        {SLIDES.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={`Aller à la diapositive ${i + 1}`}
+            aria-current={trackIndex % SLIDES.length === i}
+            onClick={() => allerALaSlide(i)}
+            className="flex size-11 items-center justify-center"
+          >
+            <span
+              className={`h-1.5 rounded-full transition-all ${
+                trackIndex % SLIDES.length === i ? "w-5 bg-brand" : "w-1.5 bg-ink/20"
+              }`}
+            />
+          </button>
         ))}
       </div>
     </div>

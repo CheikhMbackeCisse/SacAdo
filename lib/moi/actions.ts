@@ -100,3 +100,60 @@ export async function modifierNomClient(
   if (error) return { ok: false, error: "Impossible de mettre à jour le nom." };
   return { ok: true, nom };
 }
+
+export type SupprimerCompteResult = { ok: boolean; error?: string };
+
+// Suppression de compte (Préférences > Compte, confirmation en deux temps
+// côté écran). Un client qui n'a jamais commandé est supprimé pour de vrai
+// (le cascade FK nettoie tout : favoris, consultés, affinités, push,
+// sacados, boîte de réception, préférences). Un client qui a des commandes
+// ne peut pas être supprimé (elles doivent rester pour la compta) : on
+// anonymise à la place — nom et numéro effacés (le vrai numéro est libéré
+// pour une réinscription future), toutes les données personnelles annexes
+// supprimées. La déconnexion normale, elle, reste purement locale et ne
+// touche jamais ces données.
+export async function supprimerCompte(
+  telephone: string,
+  jeton: string,
+): Promise<SupprimerCompteResult> {
+  const clientId = await clientAutorise(telephone, jeton);
+  if (!clientId) return { ok: false, error: "Session invalide, réessaie." };
+
+  const { count: nbCommandes } = await supabaseAdmin
+    .from("commandes")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", clientId);
+
+  if (!nbCommandes) {
+    const { error } = await supabaseAdmin.from("clients").delete().eq("id", clientId);
+    if (error) return { ok: false, error: "Impossible de supprimer le compte." };
+    return { ok: true };
+  }
+
+  const tombstone = `supprime-${clientId}-${Date.now()}`;
+  const { error } = await supabaseAdmin
+    .from("clients")
+    .update({
+      nom: "Compte supprimé",
+      telephone: tombstone,
+      zone_id: null,
+      derniere_lat: null,
+      derniere_lng: null,
+      derniere_precision_livreur: null,
+    })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: "Impossible de supprimer le compte." };
+
+  await Promise.all([
+    supabaseAdmin.from("favoris_compte").delete().eq("client_id", clientId),
+    supabaseAdmin.from("consultes_compte").delete().eq("client_id", clientId),
+    supabaseAdmin.from("affinites_utilisateur").delete().eq("utilisateur_id", clientId),
+    supabaseAdmin.from("abonnements_push_client").delete().eq("client_id", clientId),
+    supabaseAdmin.from("push_differes").delete().eq("client_id", clientId),
+    supabaseAdmin.from("beneficiaires").delete().eq("compte_id", clientId),
+    supabaseAdmin.from("messages").delete().eq("client_id", clientId),
+    supabaseAdmin.from("preferences_utilisateur").delete().eq("client_id", clientId),
+  ]);
+
+  return { ok: true };
+}
