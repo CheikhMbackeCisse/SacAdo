@@ -177,13 +177,6 @@ export function HeroCarousel() {
     arreteDefinitivement.current = true;
   };
 
-  const allerALaSlide = (i: number) => {
-    arreter();
-    if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
-    programmatique.current = false;
-    setTrackIndex(i);
-  };
-
   return (
     <div ref={rootRef} className="px-4 pt-3">
       <div
@@ -256,25 +249,6 @@ export function HeroCarousel() {
               </Link>
             </div>
           </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-center gap-1 pt-2">
-        {SLIDES.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            aria-label={`Aller à la diapositive ${i + 1}`}
-            aria-current={trackIndex % SLIDES.length === i}
-            onClick={() => allerALaSlide(i)}
-            className="flex size-11 items-center justify-center"
-          >
-            <span
-              className={`h-1.5 rounded-full transition-all ${
-                trackIndex % SLIDES.length === i ? "w-5 bg-brand" : "w-1.5 bg-ink/20"
-              }`}
-            />
-          </button>
         ))}
       </div>
     </div>

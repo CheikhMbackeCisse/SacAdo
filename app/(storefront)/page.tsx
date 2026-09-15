@@ -1,6 +1,5 @@
 import { HeroCarousel } from "@/components/home/hero-carousel";
 import { CategoryScroll } from "@/components/home/category-scroll";
-import { BandeauEtablissement } from "@/components/home/bandeau-etablissement";
 import { Feed } from "@/components/home/feed";
 import { getAccueilFeed } from "@/lib/accueil";
 import { getCategories } from "@/lib/supabase/queries";
@@ -10,19 +9,20 @@ import { getCategories } from "@/lib/supabase/queries";
 // ligne ; ici on ne fait qu'un tri sur colonne indexée + une jointure par id.
 export const dynamic = "force-dynamic";
 
+// TACHE_correction_accueil.md : recherche (header) -> carrousel ->
+// catégories -> produits Fournitures d'école. Rien d'autre : pas de bloc
+// kits (déjà l'onglet central du bottom nav), pas de bandeau établissements
+// (Impression et consommables reste accessible via la rangée de catégories
+// et la recherche).
 export default async function Home() {
-  const [feed, categoriesToutes] = await Promise.all([getAccueilFeed(20), getCategories()]);
-  // "Impression et consommables" s'adresse aux établissements, pas au flux
-  // grand public : hors de la grille, accessible via le bandeau dédié.
-  const categories = categoriesToutes.filter((c) => c.slug !== "impression-consommables");
+  const [feed, categories] = await Promise.all([getAccueilFeed(20), getCategories()]);
 
   return (
     <div className="flex flex-col pb-6">
       <HeroCarousel />
       <CategoryScroll categories={categories} />
-      <BandeauEtablissement />
-      <section className="mt-4">
-        <h2 className="px-4 pb-3 font-heading text-base font-semibold text-ink">À découvrir</h2>
+      <section className="mt-5">
+        <h2 className="px-4 pb-3 font-heading text-base font-semibold text-ink">Fournitures scolaires</h2>
         <Feed feed={feed} />
       </section>
     </div>

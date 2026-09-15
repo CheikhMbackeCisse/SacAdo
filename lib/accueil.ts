@@ -1,6 +1,6 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getPopulaires, getProduitsByIds } from "@/lib/supabase/queries";
+import { getCategorieBySlug, getPopulaires, getProduitsByIds } from "@/lib/supabase/queries";
 import {
   assemblerAccueil,
   type LigneAccueil,
@@ -26,12 +26,21 @@ export type AccueilFeed = {
   profils: ProfilAccueil[];
 };
 
+// TACHE_correction_accueil.md : la section produits de l'accueil ne montre
+// que la catégorie Fournitures d'école (ce que cherchent parents/élèves,
+// l'essentiel du trafic) — informatique/électronique/livres restent
+// accessibles par la rangée de catégories et la recherche.
+const CATEGORIE_ACCUEIL_SLUG = "fournitures-ecole";
+
 // Flux d'accueil classé + personnalisé (TACHE_algorithme_classement.md §3-4 +
 // TACHE_identite §2.4). Un appel RPC par profil (compte + chaque bénéficiaire),
 // en parallèle ; chaque appel ne fait qu'un tri sur colonne indexée + jointure.
 // Aucune lecture de `evenements`.
 export async function getAccueilFeed(limit = 20): Promise<AccueilFeed> {
-  const { facteur, profils: profilsAff } = await getProfilsAffichage();
+  const [{ facteur, profils: profilsAff }, categorie] = await Promise.all([
+    getProfilsAffichage(),
+    getCategorieBySlug(CATEGORIE_ACCUEIL_SLUG),
+  ]);
 
   const reponses = await Promise.all(
     profilsAff.map((pr) =>
@@ -39,6 +48,7 @@ export async function getAccueilFeed(limit = 20): Promise<AccueilFeed> {
         p_limit: limit,
         p_affinites: pr.affinites,
         p_facteur: facteur,
+        p_categorie_id: categorie?.id ?? null,
       }),
     ),
   );
@@ -48,7 +58,7 @@ export async function getAccueilFeed(limit = 20): Promise<AccueilFeed> {
       "accueil_classement indisponible, repli populaires :",
       reponses.find((r) => r.error)?.error?.message,
     );
-    const repli = await getPopulaires(limit);
+    const repli = await getPopulaires(limit, categorie?.id);
     return {
       multi: false,
       profils: [
