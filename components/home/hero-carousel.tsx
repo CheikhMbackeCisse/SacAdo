@@ -177,13 +177,6 @@ export function HeroCarousel() {
     arreteDefinitivement.current = true;
   };
 
-  const allerALaSlide = (i: number) => {
-    arreter();
-    if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
-    programmatique.current = false;
-    setTrackIndex(i);
-  };
-
   return (
     <div ref={rootRef} className="px-4 pt-3">
       <div
@@ -216,7 +209,7 @@ export function HeroCarousel() {
         {LOOP_SLIDES.map((slide, i) => (
           <div
             key={i}
-            className="relative flex min-h-[16.2rem] w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-black sm:min-h-[19.8rem] lg:min-h-[23.4rem]"
+            className="relative flex min-h-[18rem] w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-black sm:min-h-[21.6rem] lg:min-h-[25.2rem]"
           >
             {slide.image ? (
               <Image
@@ -256,25 +249,6 @@ export function HeroCarousel() {
               </Link>
             </div>
           </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-center gap-1 pt-2">
-        {SLIDES.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            aria-label={`Aller à la diapositive ${i + 1}`}
-            aria-current={trackIndex % SLIDES.length === i}
-            onClick={() => allerALaSlide(i)}
-            className="flex size-11 items-center justify-center"
-          >
-            <span
-              className={`h-1.5 rounded-full transition-all ${
-                trackIndex % SLIDES.length === i ? "w-5 bg-brand" : "w-1.5 bg-ink/20"
-              }`}
-            />
-          </button>
         ))}
       </div>
     </div>
