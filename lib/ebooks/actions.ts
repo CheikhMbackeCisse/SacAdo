@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifierJetonClient } from "@/lib/client-auth";
+import { commandeHonoree } from "@/lib/commandes/honoree";
 
 // MODULE_EBOOKS.md, Partie 1, lot 4 — accès de l'acheteur à l'ebook offert.
 // L'ebook est dans un bucket PRIVÉ : le client ne l'obtient que via une URL
@@ -31,15 +32,6 @@ async function lireCommande(commandeId: number, jeton: string): Promise<Commande
   const commande = data as CommandeEbook | null;
   if (!commande || !verifierJetonClient(commande.client_id, jeton)) return null;
   return commande;
-}
-
-// La commande donne droit à l'ebook une fois « payée » : commande Wave passée
-// à 'payee', ou commande à la livraison simplement confirmée (hors du statut
-// 'paiement_en_attente', propre aux sessions Wave non abouties).
-function commandeHonoree(commande: CommandeEbook): boolean {
-  if (commande.statut === "paiement_en_attente") return false;
-  if (commande.mode_paiement === "wave") return commande.statut_paiement === "payee";
-  return true;
 }
 
 // Classes de kit de la commande pour lesquelles un ebook est réellement

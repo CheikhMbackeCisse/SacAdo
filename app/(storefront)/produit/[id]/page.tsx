@@ -3,6 +3,7 @@ import {
   getAutresEditions,
   getCategorieById,
   getCompositionKit,
+  getDocumentsApercu,
   getProduitById,
   getProduitsSimilaires,
   getVariantesByProduit,
@@ -22,12 +23,13 @@ export default async function ProduitPage(props: PageProps<"/produit/[id]">) {
   const produit = await getProduitById(produitId);
   if (!produit) notFound();
 
-  const [variantes, similaires, categorie, autresEditions, composantsKit] = await Promise.all([
+  const [variantes, similaires, categorie, autresEditions, composantsKit, documents] = await Promise.all([
     getVariantesByProduit(produit.id),
     getProduitsSimilaires(produit.categorie_id, produit.id),
     getCategorieById(produit.categorie_id),
     produit.ouvrage_id ? getAutresEditions(produit.ouvrage_id, produit.id) : Promise.resolve([]),
     produit.est_kit ? getCompositionKit(produit.id) : Promise.resolve([]),
+    produit.est_kit ? getDocumentsApercu(produit.id) : Promise.resolve([]),
   ]);
 
   return (
@@ -38,6 +40,7 @@ export default async function ProduitPage(props: PageProps<"/produit/[id]">) {
         categorieNom={categorie?.nom ?? null}
         autresEditions={autresEditions}
         composantsKit={composantsKit}
+        documents={documents}
       />
 
       {similaires.length > 0 && (

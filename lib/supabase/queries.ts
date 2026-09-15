@@ -3,6 +3,7 @@ import { GAMME_ORDER } from "@/lib/gammes";
 import { aplatirAttributs } from "@/lib/variantes";
 import type {
   Categorie,
+  DocumentApercu,
   Gamme,
   Kit,
   Localite,
@@ -207,6 +208,27 @@ export async function getCompositionKit(kitId: number): Promise<ComposantKit[]> 
   return ((data ?? []) as unknown as Row[]).flatMap((row) => {
     const composant = Array.isArray(row.composant) ? row.composant[0] : row.composant;
     return composant ? [{ ...composant, quantite: row.quantite }] : [];
+  });
+}
+
+const COLONNES_DOCUMENT_APERCU =
+  "id, titre, type, acces, apercu_url, nombre_pages, apercu_texte, materiel_supplementaire";
+
+// Aperçu public des notices de montage d'un kit (migration 0077,
+// TACHE_documents_telechargeables.md §5) : jamais `chemin_fichier`, colonne
+// absente de cette liste — le fichier n'est accessible que via une server
+// action authentifiée (lib/documents/actions.ts).
+export async function getDocumentsApercu(produitId: number): Promise<DocumentApercu[]> {
+  const { data, error } = await supabase
+    .from("documents_produits")
+    .select(`document:documents!inner(${COLONNES_DOCUMENT_APERCU})`)
+    .eq("produit_id", produitId)
+    .eq("documents.actif", true);
+  if (error) throw error;
+  type Row = { document: DocumentApercu | DocumentApercu[] | null };
+  return ((data ?? []) as unknown as Row[]).flatMap((row) => {
+    const document = Array.isArray(row.document) ? row.document[0] : row.document;
+    return document ? [document] : [];
   });
 }
 

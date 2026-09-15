@@ -3,13 +3,15 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifierJetonClient } from "@/lib/client-auth";
 import { formatPrice } from "@/lib/format";
-import { BookOpen, MessageCircle } from "lucide-react";
+import { BookOpen, FileText, MessageCircle } from "lucide-react";
 import { lienAssistanceCommande } from "@/lib/whatsapp";
 import { OrderStepper } from "@/components/suivi/order-stepper";
 import { PushInvite } from "@/components/moi/push-invite";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
 import { EbookTelechargement } from "@/components/suivi/ebook-telechargement";
+import { DocumentTelechargement } from "@/components/suivi/document-telechargement";
 import { getEbooksCommande } from "@/lib/ebooks/actions";
+import { getDocumentsCommande } from "@/lib/documents/actions";
 import type { Commande } from "@/lib/supabase/types";
 
 export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
@@ -36,6 +38,7 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
 
   const enAttentePaiement = commande.statut === "paiement_en_attente";
   const ebooks = enAttentePaiement ? [] : await getEbooksCommande(commande.id, jeton);
+  const documents = enAttentePaiement ? [] : await getDocumentsCommande(commande.id, jeton);
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-6 px-4 py-6">
@@ -83,6 +86,24 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
               cycle={ebook.cycle}
               niveau={ebook.niveau}
               titre={ebook.titre}
+            />
+          ))}
+        </section>
+      )}
+
+      {documents.length > 0 && (
+        <section className="flex flex-col gap-2 rounded-2xl border border-decorative/30 bg-decorative/10 p-3">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-ink/70">
+            <FileText size={14} aria-hidden="true" />
+            Notice de montage de ton kit
+          </span>
+          {documents.map((doc) => (
+            <DocumentTelechargement
+              key={doc.id}
+              commandeId={commande.id}
+              jeton={jeton}
+              documentId={doc.id}
+              titre={doc.titre}
             />
           ))}
         </section>

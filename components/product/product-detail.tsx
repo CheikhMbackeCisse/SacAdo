@@ -6,12 +6,13 @@ import { ProductImage } from "@/components/ui/product-image";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { ShareButton } from "@/components/ui/share-button";
 import { GuideTailles } from "@/components/product/guide-tailles";
+import { NoticeKit } from "@/components/product/notice-kit";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
 import { mesurer } from "@/lib/mesure-client";
 import type { ComposantKit, EditionSoeur } from "@/lib/supabase/queries";
-import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
+import type { DocumentApercu, Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
 const LIBELLE_NIVEAU: Record<string, string> = {
   debutant: "Débutant",
@@ -28,6 +29,9 @@ type ProductDetailProps = {
   autresEditions?: EditionSoeur[];
   // Kit électronique assemblé (migration 0073) : vide si le produit n'est pas un kit.
   composantsKit?: ComposantKit[];
+  // Notice de montage du kit, aperçu public (migration 0077) : vide si le
+  // produit n'est pas un kit ou si aucune notice n'a encore été rattachée.
+  documents?: DocumentApercu[];
 };
 
 export function ProductDetail({
@@ -36,6 +40,7 @@ export function ProductDetail({
   categorieNom,
   autresEditions = [],
   composantsKit = [],
+  documents = [],
 }: ProductDetailProps) {
   const { ajouter } = usePanier();
   const { recordConsulte } = useConsultes();
@@ -388,17 +393,14 @@ export function ProductDetail({
                 </li>
               ))}
             </ul>
-            <p className="rounded-lg bg-ink/5 px-3 py-2.5 text-[11px] leading-relaxed text-ink/60">
-              {produit.notice_url
-                ? "La notice complète (schéma de câblage, code commenté) est incluse avec le kit."
-                : "Une notice de montage est incluse avec le kit."}
-              {" "}Le code fourni est un point de départ, pas une solution à recopier telle
-              quelle : à adapter et comprendre ligne par ligne.
-            </p>
-            {produit.notice_url && (
-              <a href={produit.notice_url} className="text-xs font-medium text-brand hover:underline">
-                Consulter la notice
-              </a>
+            {documents.length > 0 ? (
+              <NoticeKit documents={documents} />
+            ) : (
+              <p className="rounded-lg bg-ink/5 px-3 py-2.5 text-[11px] leading-relaxed text-ink/60">
+                Une notice de montage est incluse avec le kit. Le code fourni est un point de
+                départ, pas une solution à recopier telle quelle : à adapter et comprendre
+                ligne par ligne.
+              </p>
             )}
           </section>
         )}

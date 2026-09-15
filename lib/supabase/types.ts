@@ -116,6 +116,31 @@ export type Produit = {
   notice_url?: string | null;
 };
 
+// Notice de montage d'un kit électronique (migration 0077, TACHE_documents_
+// telechargeables.md). Distinct des ebooks scolaires (tables ebooks/
+// ebook_classes) : ici l'accès se vérifie par produit_id + jeton client, pas
+// par cycle/niveau. `chemin_fichier` n'est jamais exposé au storefront public
+// (absent du select d'aperçu) : seule une server action de téléchargement,
+// après vérification du jeton, y accède via service_role.
+export type DocumentApercu = {
+  id: number;
+  titre: string;
+  type: "notice" | "guide";
+  acces: "libre" | "apres_achat";
+  apercu_url: string | null;
+  nombre_pages: number | null;
+  apercu_texte: string | null;
+  materiel_supplementaire: string | null;
+};
+
+export type Document = DocumentApercu & {
+  chemin_fichier: string;
+  taille_ko: number | null;
+  actif: boolean;
+  cree_le: string;
+  updated_at: string;
+};
+
 export type ScoreDetails = {
   performance: number;
   saisonnalite: number;
