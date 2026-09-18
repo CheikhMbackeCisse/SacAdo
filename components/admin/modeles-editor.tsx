@@ -17,9 +17,9 @@ const EXEMPLE = {
   montant: "18 500",
   localite: "Diamaguène Sicap Mbao",
   articles: "Cahier 200 pages Sandwich",
-  lien_commande: "https://sacadosn.vercel.app/suivi/1042",
-  lien_produit: "https://sacadosn.vercel.app/produit/12",
-  lien: "https://sacadosn.vercel.app/suivi/1042",
+  lien_commande: "https://sacado.sn/suivi/1042",
+  lien_produit: "https://sacado.sn/produit/12",
+  lien: "https://sacado.sn/suivi/1042",
 };
 
 const ORDRE_CANAUX: CanalModele[] = ["whatsapp", "push", "inbox"];

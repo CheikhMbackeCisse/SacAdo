@@ -12,8 +12,18 @@ import { NavigationGuardProvider } from "@/components/ui/navigation-guard";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { SplashScreen } from "@/components/pwa/splash-screen";
+import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
+import { WHATSAPP_NUMERO } from "@/lib/whatsapp";
+
+// Même règle que lib/site-url.ts (utilisée côté serveur pour les liens de
+// messages) : variable d'environnement, repli sur le domaine de prod — jamais
+// une URL en dur sans échappatoire. metadataBase doit être une valeur connue
+// à l'évaluation du module (pas de requête entrante ici), d'où le repli fixe
+// plutôt que la détection par en-tête `host` de origineSite().
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://sacado.sn").replace(/\/$/, "");
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "SacAdo — Fournitures scolaires au Sénégal",
   description:
     "Kits scolaires et fournitures d'étude, livrés partout au Sénégal.",
@@ -65,6 +75,8 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
       className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-surface text-ink">
+        <JsonLd data={organizationJsonLd({ siteUrl: SITE_URL, whatsappE164: `+${WHATSAPP_NUMERO}` })} />
+        <JsonLd data={websiteJsonLd({ siteUrl: SITE_URL })} />
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: TAILLE_TEXTE_SCRIPT }} />
         <SplashScreen />

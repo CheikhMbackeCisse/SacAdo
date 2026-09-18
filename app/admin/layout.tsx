@@ -16,6 +16,9 @@ import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register"
 export const metadata: Metadata = {
   title: "SacAdo Admin",
   applicationName: "SacAdo Admin",
+  // Protégé par l'auth (middleware), mais on ne laisse pas non plus un robot
+  // indexer l'écran de connexion — même règle que vendeur/preparation.
+  robots: { index: false, follow: false },
   manifest: "/admin/manifest.webmanifest",
   // iOS ne lit pas le manifeste pour « Ajouter à l'écran d'accueil ».
   icons: { apple: "/icons/admin-512.png" },

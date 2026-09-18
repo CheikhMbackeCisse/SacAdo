@@ -3,6 +3,7 @@ import { Minus, Plus, X } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
 import { libelleVariante } from "@/lib/variantes";
+import { slugAvecId } from "@/lib/slug";
 import type { LigneDetaillee } from "@/lib/local/use-panier-detaille";
 
 type PanierLineProps = {
@@ -14,10 +15,11 @@ type PanierLineProps = {
 export function PanierLine({ ligne, onQuantiteChange, onRetirer }: PanierLineProps) {
   const { produit, variante, quantite, prixUnitaire, totalLigne } = ligne;
   const label = variante ? libelleVariante(variante) || null : null;
+  const href = `/produits/${slugAvecId(produit.nom, produit.id)}`;
 
   return (
     <div className="flex items-center gap-3 py-3">
-      <Link href={`/produit/${produit.id}`} className="relative size-16 shrink-0 overflow-hidden rounded-xl">
+      <Link href={href} className="relative size-16 shrink-0 overflow-hidden rounded-xl">
         <ProductImage
           src={variante?.photo ?? produit.photo}
           alt={produit.nom}
@@ -27,7 +29,7 @@ export function PanierLine({ ligne, onQuantiteChange, onRetirer }: PanierLinePro
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <Link href={`/produit/${produit.id}`} className="truncate text-sm text-ink">
+        <Link href={href} className="truncate text-sm text-ink">
           {produit.nom}
         </Link>
         {label && <span className="text-xs text-ink/50">{label}</span>}

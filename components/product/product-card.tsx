@@ -7,6 +7,7 @@ import { ProductImage } from "@/components/ui/product-image";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
+import { slugAvecId } from "@/lib/slug";
 import type { Produit } from "@/lib/supabase/types";
 
 export function ProductCard({
@@ -23,7 +24,7 @@ export function ProductCard({
 
   return (
     <Link
-      href={`/produit/${produit.id}`}
+      href={`/produits/${slugAvecId(produit.nom, produit.id)}`}
       className={`group flex flex-col overflow-hidden rounded-2xl border border-ink/10 bg-elevated transition-shadow hover:shadow-md ${
         epuise ? "opacity-60" : ""
       }`}

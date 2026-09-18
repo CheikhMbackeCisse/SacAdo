@@ -174,6 +174,19 @@ export async function getProduitById(id: number): Promise<Produit | null> {
   return data;
 }
 
+// Pour le sitemap (app/sitemap.ts) : juste de quoi construire l'URL, jamais
+// un produit masqué (non publié) ou en rupture n'y figure.
+export type ProduitPourSitemap = Pick<Produit, "id" | "nom">;
+
+export async function getProduitsPubliesPourSitemap(): Promise<ProduitPourSitemap[]> {
+  const { data, error } = await supabase
+    .from("produits")
+    .select("id, nom")
+    .eq("statut_publication", "publie");
+  if (error) throw error;
+  return data ?? [];
+}
+
 // Livres et annales (migration 0068, §3.4) : les autres éditions publiées du
 // même ouvrage, pour le bloc "Autres éditions disponibles" de la fiche produit.
 export type EditionSoeur = Pick<Produit, "id" | "prix" | "edition" | "couverture_epreuves">;

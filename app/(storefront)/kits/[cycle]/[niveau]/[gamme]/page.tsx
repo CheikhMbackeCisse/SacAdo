@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Package } from "lucide-react";
@@ -10,8 +11,36 @@ import {
 } from "@/lib/supabase/queries";
 import { KitBuilder } from "@/components/kits/kit-builder";
 import { ShareButton } from "@/components/ui/share-button";
+import { origineSite } from "@/lib/site-url";
+import { tronquer } from "@/lib/format";
 
 export const revalidate = 120;
+
+export async function generateMetadata(
+  props: PageProps<"/kits/[cycle]/[niveau]/[gamme]">,
+): Promise<Metadata> {
+  const { cycle, niveau: niveauParam, gamme } = await props.params;
+  const niveau = decodeURIComponent(niveauParam);
+  const cycleDef = getCycleByValue(cycle);
+  if (!cycleDef || !cycleDef.classes.includes(niveau) || !isGamme(gamme)) return {};
+
+  const gammeDef = getGammeDef(gamme);
+  const site = await origineSite();
+  const url = `${site}/kits/${cycle}/${encodeURIComponent(niveau)}/${gamme}`;
+  const titre = tronquer(`Kit scolaire ${niveau} — ${gammeDef?.label ?? ""} | SacAdo`, 60);
+  const description = tronquer(
+    `Kit scolaire complet pour ${niveau}, gamme ${gammeDef?.label ?? ""} : liste ajustable, ebook de la classe offert, livraison partout au Sénégal.`,
+    155,
+  );
+
+  return {
+    title: titre,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title: titre, description, url, siteName: "SacAdo", locale: "fr_SN" },
+    twitter: { card: "summary_large_image", title: titre, description },
+  };
+}
 
 export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[niveau]/[gamme]">) {
   const { cycle, niveau: niveauParam, gamme } = await props.params;

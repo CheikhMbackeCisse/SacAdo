@@ -18,6 +18,7 @@ import { NavIcon } from "@/components/layout/nav-icon";
 import { InstallHeaderButton } from "@/components/pwa/install-header-button";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
+import { slugAvecId } from "@/lib/slug";
 import { useIdentite } from "@/lib/local/identite";
 import { useRecherchesRecentes } from "@/lib/local/recherches";
 import { lienRechercheSansResultat } from "@/lib/whatsapp";
@@ -356,7 +357,7 @@ export function Header() {
                     <SuggestionProduitLigne
                       key={`p-${p.id}`}
                       produit={p}
-                      onSelect={() => allerVers(`/produit/${p.id}`)}
+                      onSelect={() => allerVers(`/produits/${slugAvecId(p.nom, p.id)}`)}
                     />
                   ))}
 
@@ -369,7 +370,7 @@ export function Header() {
                     <SuggestionProduitLigne
                       key={`p-${p.id}`}
                       produit={p}
-                      onSelect={() => allerVers(`/produit/${p.id}`)}
+                      onSelect={() => allerVers(`/produits/${slugAvecId(p.nom, p.id)}`)}
                     />
                   ))}
 

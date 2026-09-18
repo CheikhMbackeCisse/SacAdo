@@ -43,13 +43,12 @@ gens ne le lisent pas. Le domaine personnalisé payant (ci-dessous) est reporté
    - **Nom de l'application** : `SacAdo`
    - **Logo** : `public/images/logo.jpg` (cartable sur fond blanc, carré, < 1 Mo)
    - **E-mail d'assistance utilisateur**
-   - **Page d'accueil de l'application** : `https://sacadosn.vercel.app`
+   - **Page d'accueil de l'application** : `https://sacado.sn`
    - **Lien politique de confidentialité** :
-     `https://sacadosn.vercel.app/politique-confidentialite`
+     `https://sacado.sn/politique-confidentialite`
    - **Lien conditions d'utilisation** : à créer (ou pointer vers la politique
      de confidentialité en attendant)
-   - **Domaines autorisés** : `vercel.app` (et `sacado.sn` le jour où le domaine
-     perso est branché)
+   - **Domaines autorisés** : `sacado.sn`
    - **E-mail de contact du développeur**
 4. **Enregistrer**.
 

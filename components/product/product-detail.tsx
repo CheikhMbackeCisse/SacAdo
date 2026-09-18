@@ -8,6 +8,7 @@ import { ShareButton } from "@/components/ui/share-button";
 import { GuideTailles } from "@/components/product/guide-tailles";
 import { NoticeKit } from "@/components/product/notice-kit";
 import { formatPrice } from "@/lib/format";
+import { slugAvecId } from "@/lib/slug";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
 import { mesurer } from "@/lib/mesure-client";
@@ -207,7 +208,7 @@ export function ProductDetail({
             )}
           </div>
           <ShareButton
-            path={`/produit/${produit.id}`}
+            path={`/produits/${slugAvecId(produit.nom, produit.id)}`}
             title={produit.nom}
             className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-ink/15 text-ink/70 transition-transform active:scale-90"
             size={17}
@@ -263,7 +264,7 @@ export function ProductDetail({
               return (
                 <a
                   key={edition.id}
-                  href={`/produit/${edition.id}`}
+                  href={`/produits/${edition.id}`}
                   className="flex flex-col gap-0.5 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-ink/5"
                 >
                   <span className="font-medium text-ink">
@@ -381,7 +382,7 @@ export function ProductDetail({
               {composantsKit.map((c) => (
                 <li key={c.id}>
                   <a
-                    href={`/produit/${c.id}`}
+                    href={`/produits/${slugAvecId(c.nom, c.id)}`}
                     className="flex items-center gap-2.5 rounded-lg px-1 py-1 text-xs transition-colors hover:bg-ink/5"
                   >
                     <span className="relative size-9 shrink-0 overflow-hidden rounded-md bg-ink/5">

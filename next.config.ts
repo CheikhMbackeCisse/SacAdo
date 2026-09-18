@@ -52,6 +52,14 @@ const nextConfig: NextConfig = {
       static: 180,
     },
   },
+  async redirects() {
+    return [
+      // Ancienne URL de fiche produit (id numérique seul) : conserve les
+      // liens déjà partagés/indexés, la page /produits/[slugId] accepte
+      // aussi bien un id nu qu'un slug complet.
+      { source: "/produit/:path*", destination: "/produits/:path*", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
