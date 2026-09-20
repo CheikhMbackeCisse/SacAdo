@@ -2,28 +2,48 @@
 // d'entrée de gamme + livres/manuels sourcés via LPD.
 // Usage : node scripts/importer-lpd.mjs
 // Prérequis : migration 0083 déjà exécutée en base. Lit .env.local. Idempotent
-// par (vendeur_id, reference_fournisseur) — relancer après une coupure ne
-// recrée jamais un article déjà importé (index unique posé par 0083).
+// par (vendeur_id, reference_fournisseur) : relancer met à jour un article déjà
+// présent (prix, catégorie, photo…) au lieu d'en recréer un doublon — le
+// prompt a été corrigé une première fois après le premier import (prix
+// recalibrés, vraies photos fournies, unite_vente débloqué), ce script est
+// désormais celui qui fait foi.
 //
-// Sources : manifest_lpd.json, produit par scratchpad/build_manifest.py à
-// partir des 3 classeurs fournis (LPD_grille_complete.xlsx, SacAdo_livres_LPD.xlsx,
-// SacAdo_livres_prix.xlsx). Aucune photo importée : les vignettes intégrées aux
-// deux fichiers (grille ET livres) ne font que 95 px de large réellement (la
-// colonne "Largeur photo" du fichier livres se réfère à une source externe non
-// fournie, pas à la vignette Excel) — sous le plancher de 400 px, donc écartées
-// pour ne pas répéter l'erreur des vignettes étirées (§ Règles d'import n°6).
-// Tous les articles entrent donc `en_attente`, sans photo : la garde de
-// publication (lib/admin/produits-actions.ts) bloque déjà leur mise en ligne
-// tant qu'une vraie photo n'a pas été ajoutée à la main.
+// Sources : manifest_lpd_v2.json, produit par scratchpad/build_manifest_v2.py
+// à partir des 3 classeurs corrigés + IMAGES_LPD_pleine_resolution.zip
+// (MANIFEST.csv : ref, produit, categorie, fichier, largeur, hauteur, publiable).
+//
+// Écarts assumés par rapport au prompt (comme les imports précédents,
+// cf. importer-seye-dynamique.mjs) :
+//   - `S066` (Cahier Calligraphe 200 pages) : le manifeste le marque
+//     `publiable = oui`, mais l'image est une génération IA avec un logo
+//     inventé et illisible (signalé explicitement par le prompt). Écartée
+//     manuellement malgré le manifeste — jamais de photo générée au catalogue.
+//   - Une seule taille stockée par photo (max 1200px, jamais agrandie), pas
+//     de fichier 400px séparé : next/image sert déjà les tailles réduites à
+//     la volée depuis une source ≥ 400px (next.config.ts), comme pour tous
+//     les imports précédents.
+//   - `S065` (crayons Sénégal) scindé en 2 produits distincts : lot de 12
+//     (600 FCFA, `unite_vente = paquet`, `quantite_conditionnement = 12`,
+//     réf. `S065`) et à l'unité (75 FCFA, `unite_vente = unite`, nouvelle
+//     réf. `S065-UNITE`) — les deux conditionnements confirmés par la Note
+//     du classeur, tous deux rattachés à la même photo.
+//   - Livres (35 + 235) : aucune couverture fournie dans ce lot (le manifeste
+//     d'images ne couvre que la papeterie). Import masqué sans photo, comme
+//     avant — seuls les prix/catégories sont corrigés.
 import { readFile, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import sharp from "sharp";
 
-const MANIFEST = process.env.MANIFEST ?? "C:\\Users\\WORLD INFORMATIQUE\\Downloads\\integration_lpd_extracted\\manifest_lpd.json";
+const MANIFEST = process.env.MANIFEST ?? "C:\\Users\\WORLD INFORMATIQUE\\Downloads\\files17_extracted\\manifest_lpd_v2.json";
 const RAPPORT = "rapport_import_lpd.md";
 
 const VENDEUR_NOM = "LPD";
-const DELAI = "6j"; // sourcé à la demande, comme les autres imports fournisseur récents.
+const DELAI = "6j";
+const LARGEUR_MAX = 1200;
+const LARGEUR_MIN_SOURCE = 380; // tolérance assumée du prompt (386-399px acceptés par l'équipe)
+const QUALITE_WEBP = 82;
 
 const env = Object.fromEntries(
   readFileSync(".env.local", "utf8")
@@ -35,6 +55,43 @@ const env = Object.fromEntries(
     }),
 );
 const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+function snifferImage(octets) {
+  if (octets.length >= 3 && octets[0] === 0xff && octets[1] === 0xd8 && octets[2] === 0xff) return "jpg";
+  if (
+    octets.length >= 8 &&
+    octets[0] === 0x89 && octets[1] === 0x50 && octets[2] === 0x4e && octets[3] === 0x47 &&
+    octets[4] === 0x0d && octets[5] === 0x0a && octets[6] === 0x1a && octets[7] === 0x0a
+  ) return "png";
+  if (
+    octets.length >= 12 &&
+    octets[0] === 0x52 && octets[1] === 0x49 && octets[2] === 0x46 && octets[3] === 0x46 &&
+    octets[8] === 0x57 && octets[9] === 0x45 && octets[10] === 0x42 && octets[11] === 0x50
+  ) return "webp";
+  return null;
+}
+
+async function uploaderPhoto(fichier, ref) {
+  const buf = await readFile(fichier);
+  if (!snifferImage(buf.subarray(0, 12))) {
+    throw new Error(`Fichier non reconnu comme image : ${fichier}`);
+  }
+  const { width } = await sharp(buf).metadata();
+  if ((width ?? 0) < LARGEUR_MIN_SOURCE) {
+    throw new Error(`source trop petite : ${fichier} fait ${width}px (minimum ${LARGEUR_MIN_SOURCE}px)`);
+  }
+  const webp = await sharp(buf)
+    .resize({ width: LARGEUR_MAX, withoutEnlargement: true })
+    .webp({ quality: QUALITE_WEBP })
+    .toBuffer();
+  const chemin = `import-lpd/${ref}-${randomUUID()}.webp`;
+  const { error } = await supabase.storage
+    .from("produits")
+    .upload(chemin, webp, { contentType: "image/webp", upsert: false });
+  if (error) throw new Error(`Upload échoué (${fichier}) : ${error.message}`);
+  const { data } = supabase.storage.from("produits").getPublicUrl(chemin);
+  return data.publicUrl;
+}
 
 async function assurerVendeurLPD() {
   const { data: existant, error } = await supabase
@@ -55,18 +112,16 @@ async function assurerVendeurLPD() {
   return cree.id;
 }
 
-// Construit la ligne `produits` commune aux trois sources du manifest.
 function construireLigne(item, vendeurId) {
   return {
     nom: item.nom,
     categorie_id: item.categorie_id,
-    sous_categorie_id: item.sous_categorie_id ?? null,
+    sous_categorie_id: null,
     prix: item.prix,
     prix_achat: item.prix_achat ?? null,
     prix_achat_previsionnel: item.prix_achat_previsionnel ?? false,
     prix_a_verifier: item.prix_a_verifier ?? false,
     delai: DELAI,
-    photo: null,
     stock: 0,
     statut: "dispo",
     statut_publication: "en_attente",
@@ -74,7 +129,8 @@ function construireLigne(item, vendeurId) {
     vendeur_id: vendeurId,
     reference_fournisseur: item.reference_fournisseur,
     gamme: "essentiel",
-    unite_vente: "inconnu",
+    unite_vente: item.unite_vente ?? "unite",
+    quantite_conditionnement: item.quantite_conditionnement ?? null,
     mots_cles: item.mots_cles ?? null,
     auteur: item.auteur ?? null,
     editeur: item.editeur ?? null,
@@ -83,33 +139,46 @@ function construireLigne(item, vendeurId) {
   };
 }
 
-// Livres = unité de vente sans ambiguïté possible (jamais vendus au paquet).
-// Papeterie = conditionnement non confirmé dans ce lot -> reste "inconnu"
-// (§ Le piège du conditionnement : ne jamais déduire d'un prix).
-function uniteVente(source) {
-  return source === "grille" ? "inconnu" : "unite";
-}
-
 async function importerLot(items, source, vendeurId, journal) {
   let crees = 0;
-  let ignores = 0;
+  let mis_a_jour = 0;
   for (const item of items) {
     const { data: existant, error: errLecture } = await supabase
       .from("produits")
-      .select("id")
+      .select("id, photo")
       .eq("vendeur_id", vendeurId)
       .eq("reference_fournisseur", item.reference_fournisseur)
       .maybeSingle();
     if (errLecture) throw new Error(`Lecture échouée (${item.reference_fournisseur}) : ${errLecture.message}`);
 
-    if (existant) {
-      console.log(`= déjà présent, ignoré : ${item.reference_fournisseur} — ${item.nom}`);
-      ignores++;
-      continue;
+    const ligne = construireLigne(item, vendeurId);
+
+    // Photo : uploadée une seule fois. Si le produit existe déjà et a déjà
+    // une photo, on ne la remplace pas (évite de recréer un fichier storage
+    // à chaque relance) — sauf si l'item n'a explicitement plus de source
+    // (jamais le cas ici, une photo publiable ne redevient pas non publiable).
+    if (item.photo_fichier && !(existant?.photo)) {
+      console.log(`… photo : ${item.reference_fournisseur} — ${item.nom}`);
+      const url = await uploaderPhoto(item.photo_fichier, item.reference_fournisseur);
+      ligne.photo = url;
+      ligne.photos = [url];
+    } else if (existant?.photo) {
+      ligne.photo = existant.photo; // conserve la photo déjà en place
+    } else {
+      ligne.photo = null;
     }
 
-    const ligne = construireLigne(item, vendeurId);
-    ligne.unite_vente = uniteVente(source);
+    if (existant) {
+      const { error } = await supabase.from("produits").update(ligne).eq("id", existant.id);
+      if (error) throw new Error(`Mise à jour échouée (${item.reference_fournisseur} — ${item.nom}) : ${error.message}`);
+      console.log(`↻ mis à jour #${existant.id} : ${item.reference_fournisseur} — ${item.nom}`);
+      mis_a_jour++;
+      journal.push({
+        ref: item.reference_fournisseur, produit_id: existant.id, nom: item.nom, source,
+        publiable: !item.motif_non_publiable, motif_non_publiable: item.motif_non_publiable ?? null,
+      });
+      continue;
+    }
 
     const { data: cree, error } = await supabase.from("produits").insert(ligne).select("id").single();
     if (error || !cree) {
@@ -117,17 +186,12 @@ async function importerLot(items, source, vendeurId, journal) {
     }
     console.log(`✓ créé #${cree.id} : ${item.reference_fournisseur} — ${item.nom}`);
     crees++;
-
     journal.push({
-      ref: item.reference_fournisseur,
-      produit_id: cree.id,
-      nom: item.nom,
-      source,
-      publiable: !item.motif_non_publiable,
-      motif_non_publiable: item.motif_non_publiable ?? null,
+      ref: item.reference_fournisseur, produit_id: cree.id, nom: item.nom, source,
+      publiable: !item.motif_non_publiable, motif_non_publiable: item.motif_non_publiable ?? null,
     });
   }
-  return { crees, ignores };
+  return { crees, mis_a_jour };
 }
 
 function construireRapport(journal, resultats) {
@@ -146,14 +210,15 @@ function construireRapport(journal, resultats) {
   lignes.push("## Résumé");
   lignes.push("");
   for (const [source, r] of Object.entries(resultats)) {
-    lignes.push(`- **${source}** : ${r.crees} créés, ${r.ignores} déjà présents (idempotent).`);
+    lignes.push(`- **${source}** : ${r.crees} créés, ${r.mis_a_jour} mis à jour.`);
   }
   lignes.push("");
   lignes.push(
-    "Tous les articles sont importés **masqués** (`statut_publication = en_attente`), " +
-    "sans photo, `unite_vente = inconnu` pour la papeterie (aucun conditionnement " +
-    "confirmé dans ce lot). Publication bloquée tant que photo, prix et unité de " +
-    "vente ne sont pas confirmés (voir lib/admin/produits-actions.ts).",
+    "Tous les articles sont importés **masqués** (`statut_publication = en_attente`). " +
+    "`unite_vente = unite` partout (décision commerciale, ne bloque pas la publication), " +
+    "sauf le lot de crayons Sénégal (`S065`, `paquet` de 12) scindé de sa version à " +
+    "l'unité (`S065-UNITE`). La papeterie a une vraie photo quand le manifeste la " +
+    "juge publiable ; les livres n'en ont aucune dans ce lot (couvertures non fournies).",
   );
   lignes.push("");
   lignes.push("## Articles non publiables, par motif");
@@ -180,8 +245,8 @@ async function main() {
   resultats.catalogue_livres = await importerLot(manifest.catalogue_livres, "catalogue_livres", vendeurId, journal);
 
   const totalCrees = Object.values(resultats).reduce((s, r) => s + r.crees, 0);
-  const totalIgnores = Object.values(resultats).reduce((s, r) => s + r.ignores, 0);
-  console.log(`\nTerminé : ${totalCrees} créés, ${totalIgnores} déjà présents.`);
+  const totalMaj = Object.values(resultats).reduce((s, r) => s + r.mis_a_jour, 0);
+  console.log(`\nTerminé : ${totalCrees} créés, ${totalMaj} mis à jour.`);
 
   const rapport = construireRapport(journal, resultats);
   await writeFile(RAPPORT, rapport, "utf8");
