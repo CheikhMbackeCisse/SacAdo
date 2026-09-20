@@ -167,13 +167,16 @@ export async function modifierProduit(id: number, input: ProduitInput): Promise<
 // statuts 'negociation'/'refuse') : ici on bascule seulement entre
 // 'en_attente' et 'publie'. Garde-fous TACHE_yuupee_integration_complete.md §7 :
 // jamais de photo manquante, de prix manquant, ni de prix_a_verifier actif.
+// Garde-fou supplémentaire PROMPT_integration_LPD.md règle n°5 : jamais
+// d'unité de vente inconnue (le piège du conditionnement — un article ne se
+// publie pas tant que "pièce", "paquet" ou "lot" n'a pas été confirmé).
 export async function basculerPublication(id: number, publier: boolean): Promise<ActionResult> {
   await requireAdmin();
 
   if (publier) {
     const { data: produit } = await supabaseAdmin
       .from("produits")
-      .select("photo, prix, prix_a_verifier")
+      .select("photo, prix, prix_a_verifier, unite_vente")
       .eq("id", id)
       .maybeSingle();
     if (!produit) return { ok: false, error: "Produit introuvable." };
@@ -181,6 +184,9 @@ export async function basculerPublication(id: number, publier: boolean): Promise
     if (!estNombrePositifValide(produit.prix)) return { ok: false, error: "Impossible de publier : prix invalide." };
     if (produit.prix_a_verifier) {
       return { ok: false, error: "Impossible de publier : prix à vérifier (voir /admin/prix-a-verifier)." };
+    }
+    if (produit.unite_vente == null || produit.unite_vente === "inconnu") {
+      return { ok: false, error: "Impossible de publier : unité de vente inconnue (pièce, paquet ou lot ?)." };
     }
   }
 
