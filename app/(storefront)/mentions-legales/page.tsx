@@ -14,28 +14,17 @@ export default function MentionsLegalesPage() {
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Éditeur du service</h2>
         <p className="text-sm text-ink/70">
-          SacAdo est un service édité et exploité par {EDITEUR.raisonSociale}, entreprise
-          individuelle exploitée par {EDITEUR.exploitant}.
+          SacAdo est un service édité et exploité par {EDITEUR.raisonSociale}.
         </p>
         <ul className="mt-1 flex flex-col gap-0.5 text-sm text-ink/70">
           <li>Dénomination : {EDITEUR.raisonSociale}</li>
           <li>Forme juridique : {EDITEUR.formeJuridique}</li>
-          <li>Exploitant : {EDITEUR.exploitant}</li>
           <li>NINEA : {EDITEUR.ninea}</li>
           <li>RCCM : {EDITEUR.rccm}</li>
           <li>Localisation : {EDITEUR.localisation}</li>
           <li>Téléphone : {EDITEUR.telephone}</li>
           <li>E-mail : {EDITEUR.email}</li>
         </ul>
-        <p className="mt-1 text-sm text-ink/70">
-          Une entreprise individuelle n&apos;a pas de personnalité juridique distincte de son
-          exploitant : le nom de l&apos;exploitant figure donc à côté de la dénomination.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <h2 className="text-sm font-semibold text-ink">Directeur de la publication</h2>
-        <p className="text-sm text-ink/70">{EDITEUR.directeurPublication}.</p>
       </section>
 
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">

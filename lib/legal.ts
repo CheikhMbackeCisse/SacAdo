@@ -5,13 +5,11 @@
 export const EDITEUR = {
   raisonSociale: "UNISHOP SENEGAL",
   formeJuridique: "Entreprise individuelle",
-  exploitant: "Cheikh Mbacke Cisse",
   ninea: "013237343",
   rccm: "SN DKR 2026 A 27798",
   localisation: "Dakar, Sénégal",
   telephone: "+221 77 779 35 22",
   email: "contact@sacado.sn",
-  directeurPublication: "Cheikh Mbacke Cisse",
 } as const;
 
 // Formule imposée (§1) : jamais « développé par » — l'éditeur est le
