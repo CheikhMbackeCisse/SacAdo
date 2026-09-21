@@ -28,15 +28,6 @@ export default function MentionsLegalesPage() {
       </section>
 
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <h2 className="text-sm font-semibold text-ink">Hébergement</h2>
-        <p className="text-sm text-ink/70">
-          L&apos;application est hébergée par Vercel Inc., 340 S Lemon Ave #4133, Walnut, CA
-          91789, États-Unis.
-        </p>
-        <p className="text-sm text-ink/70">Les données sont stockées par Supabase Inc.</p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Paiement</h2>
         <p className="text-sm text-ink/70">
           Les paiements en ligne sont traités par Wave. Sur l&apos;écran de paiement, le
