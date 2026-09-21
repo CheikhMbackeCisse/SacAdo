@@ -1,72 +1,7 @@
-export default function PolitiqueConfidentialitePage() {
-  return (
-    <div className="animate-fade-in-up flex flex-col gap-6 px-4 py-6">
-      <div>
-        <h1 className="font-heading text-xl font-bold text-ink">Politique de confidentialité</h1>
-        <p className="mt-1 text-xs text-ink/50">Dernière mise à jour : 2026.</p>
-      </div>
+import { redirect } from "next/navigation";
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <h2 className="text-sm font-semibold text-ink">Ce que nous collectons</h2>
-        <p className="text-sm text-ink/70">
-          Uniquement ce qui est nécessaire pour traiter une commande : ton nom, ton numéro de
-          téléphone, ton adresse de livraison et l&apos;historique de tes commandes. Nous ne
-          demandons ni email, ni mot de passe. Un éventuel paiement en ligne passe par Wave —
-          nous ne voyons ni ne conservons tes informations bancaires.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <h2 className="text-sm font-semibold text-ink">Pourquoi</h2>
-        <p className="text-sm text-ink/70">
-          Ton numéro de téléphone sert d&apos;identifiant pour retrouver tes commandes et tes
-          messages, sans avoir à créer de compte. Ton nom et ton adresse servent à préparer et
-          livrer ta commande.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <h2 className="text-sm font-semibold text-ink">Ce qui reste sur ton appareil</h2>
-        <p className="text-sm text-ink/70">
-          Tes favoris, les produits déjà consultés et le contenu de ton panier sont gardés
-          uniquement sur ton téléphone/ordinateur (jamais envoyés à un serveur tant que tu n&apos;as
-          pas validé une commande). Effacer les données de ton navigateur les efface aussi.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <h2 className="text-sm font-semibold text-ink">Suivi de navigation et recommandations</h2>
-        <p className="text-sm text-ink/70">
-          Dès ta première visite, un identifiant de session anonyme est déposé dans un cookie.
-          Il nous sert à retenir les rayons et les produits que tu consultes, ce que tu ajoutes
-          au panier et ce que tu recherches, afin d&apos;adapter l&apos;ordre des produits sur
-          l&apos;accueil à ce qui t&apos;intéresse. Ce suivi n&apos;est associé à aucune donnée
-          personnelle tant que tu n&apos;as pas passé de commande ; à ce moment-là, ce qui a été
-          appris est rattaché à ton numéro. Si tu enregistres un enfant (prénom + niveau), ses
-          signaux sont suivis séparément pour lui proposer le bon matériel — jamais mélangés.
-        </p>
-        <p className="text-sm text-ink/70">
-          Tu peux tout effacer à tout moment depuis <span className="font-medium">Paramètres →
-          Recommandations → « Réinitialiser mes recommandations »</span>. Les données de
-          navigation sont automatiquement supprimées après 24&nbsp;mois.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <h2 className="text-sm font-semibold text-ink">Qui y a accès</h2>
-        <p className="text-sm text-ink/70">
-          Seul l&apos;administrateur de SacAdo peut consulter tes informations, pour préparer et
-          suivre tes commandes. Elles ne sont jamais vendues ni partagées avec un tiers.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
-        <h2 className="text-sm font-semibold text-ink">Tes droits</h2>
-        <p className="text-sm text-ink/70">
-          Tu peux demander à tout moment la suppression de tes données (nom, adresse, historique
-          de commandes) en nous contactant via la page Assistance.
-        </p>
-      </section>
-    </div>
-  );
+// Ancienne route, remplacée par /confidentialite (TACHE_pages_legales_wave.md
+// §4) — redirection pour ne pas casser un lien déjà partagé ou indexé.
+export default function PolitiqueConfidentialiteRedirect() {
+  redirect("/confidentialite");
 }

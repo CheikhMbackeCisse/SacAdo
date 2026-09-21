@@ -5,6 +5,7 @@ import { verifierJetonClient } from "@/lib/client-auth";
 import { formatPrice } from "@/lib/format";
 import { BookOpen, FileText, MessageCircle } from "lucide-react";
 import { lienAssistanceCommande } from "@/lib/whatsapp";
+import { MENTION_BENEFICIAIRE_WAVE } from "@/lib/legal";
 import { OrderStepper } from "@/components/suivi/order-stepper";
 import { PushInvite } from "@/components/moi/push-invite";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
@@ -150,6 +151,9 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
           <span>Total</span>
           <span>{formatPrice(commande.total)}</span>
         </div>
+        {commande.mode_paiement === "wave" && (
+          <p className="mt-0.5 text-[11px] text-ink/50">{MENTION_BENEFICIAIRE_WAVE}</p>
+        )}
       </section>
 
       {!enAttentePaiement && (

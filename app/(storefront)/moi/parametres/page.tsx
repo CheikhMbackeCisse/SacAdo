@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { InstallCard } from "@/components/pwa/install-card";
+import { LIENS_LEGAUX } from "@/lib/legal";
 
 // Menu court (TACHE_nettoyage_carrousel_preferences.md §C.1) : tous les
 // réglages ajustables (thème, notifications, recommandations, livraison,
@@ -21,10 +22,22 @@ export default function ParametresPage() {
           <span className="text-sm text-ink">Préférences</span>
           <ChevronRight size={16} className="text-ink/40" aria-hidden="true" />
         </Link>
-        <Link href="/politique-confidentialite" className="flex items-center justify-between px-4 py-3">
-          <span className="text-sm text-ink">Confidentialité</span>
-          <span className="text-xs text-brand">Voir la politique →</span>
-        </Link>
+      </section>
+
+      <section className="flex flex-col gap-1 px-1">
+        <span className="px-3 text-xs font-medium text-ink/50">Informations légales</span>
+        <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated">
+          {LIENS_LEGAUX.map((lien) => (
+            <Link
+              key={lien.href}
+              href={lien.href}
+              className="flex items-center justify-between px-4 py-3"
+            >
+              <span className="text-sm text-ink">{lien.label}</span>
+              <ChevronRight size={16} className="text-ink/40" aria-hidden="true" />
+            </Link>
+          ))}
+        </div>
       </section>
     </div>
   );

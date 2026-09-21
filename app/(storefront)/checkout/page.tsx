@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { MapPin, Truck } from "lucide-react";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
@@ -18,6 +19,7 @@ import {
   passerCommande,
 } from "@/lib/checkout/actions";
 import { SEUIL_PAIEMENT_AVANCE } from "@/lib/checkout/montants";
+import { MENTION_BENEFICIAIRE_WAVE } from "@/lib/legal";
 import { LocalitePicker, type SelectionLocalite } from "@/components/checkout/localite-picker";
 import {
   useAllowNextNavigation,
@@ -518,6 +520,9 @@ export default function CheckoutPage() {
           <span>Total</span>
           <span>{formatPrice(total)}</span>
         </div>
+        {modePaiementEffectif === "wave" && (
+          <p className="mt-0.5 text-[11px] text-ink/50">{MENTION_BENEFICIAIRE_WAVE}</p>
+        )}
       </section>
 
       {error && <p className="rounded-xl bg-ink/5 px-3 py-2 text-xs text-ink/80">{error}</p>}
@@ -525,6 +530,13 @@ export default function CheckoutPage() {
       {/* Écran "tunnel" : pas de bottom nav ici (voir ROUTES_SANS_BOTTOM_NAV),
           le bouton reste collé tout en bas de l'écran. */}
       <div className="sticky bottom-0 z-40 mt-auto border-t border-ink/10 bg-surface/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+        <p className="mb-2 text-center text-[11px] text-ink/50">
+          En confirmant, tu acceptes les{" "}
+          <Link href="/cgv" className="font-medium text-brand">
+            conditions générales de vente
+          </Link>
+          .
+        </p>
         <button
           type="submit"
           disabled={submitting || !selectionLocalite}
