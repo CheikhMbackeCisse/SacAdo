@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getClientIp, verifierLimite } from "@/lib/security/rate-limit";
 import { optionsPaiementPourTotal, paiementAutorise, type OptionsPaiement } from "@/lib/checkout/montants";
@@ -11,6 +10,7 @@ import { fusionnerSessionCourante } from "@/lib/affinites";
 import { getSeuilLivraisonGratuite } from "@/lib/parametres";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
+import { origineSite } from "@/lib/site-url";
 import type { LignePanier } from "@/lib/local/panier";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
 
@@ -629,17 +629,6 @@ export async function passerCommande(
 export type PaiementWaveResult =
   | { ok: true; waveLaunchUrl: string; commandeId: number; jeton: string; nomEnregistre: string | null }
   | { ok: false; error: string };
-
-// Origine publique du site, pour construire les URLs de retour passées à Wave.
-async function origineSite(): Promise<string> {
-  const configuree = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  if (configuree) return configuree;
-  // Repli dev (site lancé sur une IP réseau sans variable configurée).
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  return host ? `${proto}://${host}` : "http://localhost:3000";
-}
 
 async function urlsRetourWave(reference: string) {
   const base = await origineSite();

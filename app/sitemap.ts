@@ -2,8 +2,7 @@ import type { MetadataRoute } from "next";
 import { getCategories, getProduitsPubliesPourSitemap } from "@/lib/supabase/queries";
 import { slugAvecId } from "@/lib/slug";
 import { CYCLES } from "@/lib/cycles";
-
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://sacado.sn").replace(/\/$/, "");
+import { SITE_URL } from "@/lib/site";
 
 // Généré depuis la base à chaque requête du crawler (pas de fichier écrit à
 // la main) : ne contient que les catégories actives et les produits publiés.
