@@ -153,7 +153,12 @@ export function ProductDetail({
       <div className="relative">
         {galerie.length <= 1 ? (
           <div className="relative aspect-square w-full bg-ink/5">
-            <ProductImage src={galerie[0] ?? null} alt={produit.nom} className="h-full w-full" />
+            <ProductImage
+              src={galerie[0] ?? null}
+              alt={produit.nom}
+              className="h-full w-full"
+              sizes="100vw"
+            />
           </div>
         ) : (
           <>
@@ -171,6 +176,7 @@ export function ProductDetail({
                     src={src}
                     alt={`${produit.nom} — photo ${index + 1}`}
                     className="h-full w-full"
+                    sizes="100vw"
                   />
                 </div>
               ))}

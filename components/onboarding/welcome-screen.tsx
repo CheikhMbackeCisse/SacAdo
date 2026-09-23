@@ -147,6 +147,9 @@ export function WelcomeScreen() {
         priority
         sizes="100vw"
         className="object-cover"
+        // Illustration statique (même fichier pour tout le monde) : inutile
+        // de passer par l'optimiseur (quota).
+        unoptimized
       />
       {/* Voile radial : centre très clair pour que le texte reste lisible,
           bords plus transparents pour laisser voir l'illustration. */}
@@ -166,6 +169,7 @@ export function WelcomeScreen() {
             height={200}
             priority
             className="animate-float-soft size-[84px] rounded-[26px] object-cover shadow-xl shadow-[#0B3D91]/25"
+            unoptimized
           />
         </div>
 

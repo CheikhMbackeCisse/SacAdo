@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Quota d'optimisation d'images Vercel épuisé (photos qui ne s'affichent plus)
+
+Sur Vercel, variable d'environnement Production `NEXT_IMAGES_UNOPTIMIZED=true`, puis redéployer (`vercel --prod --yes`). Les photos redeviennent visibles (non compressées, un peu plus lourdes) le temps que le quota se réinitialise. Pour revenir à la normale : retirer la variable et redéployer.
+
 ## Getting Started
 
 First, run the development server:

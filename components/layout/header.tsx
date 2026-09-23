@@ -218,6 +218,9 @@ export function Header() {
             height={36}
             className="rounded-md object-cover"
             priority
+            // Logo statique servi sur chaque page : pas besoin de passer par
+            // l'optimiseur (quota), le fichier est déjà compressé.
+            unoptimized
           />
           <span className="hidden font-heading text-lg font-bold text-brand sm:inline">
             SacAdo

@@ -33,8 +33,17 @@ const CSP = [
 
 const nextConfig: NextConfig = {
   images: {
-    // AVIF avant WebP : Next choisit le plus léger que le navigateur supporte.
-    formats: ["image/avif", "image/webp"],
+    // Un seul format : chaque format double le nombre de transformations
+    // facturées par Vercel (quota Hobby limité). WebP seul reste net à l'oeil
+    // et largement supporté ; AVIF n'apportait qu'un gain de poids, pas de
+    // netteté supplémentaire.
+    formats: ["image/webp"],
+    // Paliers restreints à ce que la maquette utilise réellement (grille
+    // 2-6 colonnes, vignettes ~32-256px, bannières pleine largeur) plutôt que
+    // les 16 paliers par défaut de Next : moins de largeurs distinctes donc
+    // moins de transformations facturées, sans changer le rendu à l'écran.
+    deviceSizes: [640, 828, 1080, 1920],
+    imageSizes: [32, 64, 96, 128, 256],
     // Photos produits des vendeurs, stockées dans Supabase Storage (bucket public).
     remotePatterns: SUPABASE_HOST
       ? [{ protocol: "https", hostname: SUPABASE_HOST, pathname: "/storage/v1/object/public/**" }]
@@ -42,6 +51,11 @@ const nextConfig: NextConfig = {
     // 1 an : les photos produits/catégories changent rarement, inutile de
     // les redemander/reconvertir toutes les 60s (défaut Next).
     minimumCacheTTL: 31536000,
+    // Soupape d'urgence (voir README) : si le quota Vercel est épuisé en
+    // pleine rentrée, passer NEXT_IMAGES_UNOPTIMIZED=true sert les photos
+    // telles quelles (plus lourdes mais visibles) sans repasser par l'API
+    // d'optimisation, le temps que le quota se réinitialise.
+    unoptimized: process.env.NEXT_IMAGES_UNOPTIMIZED === "true",
   },
   experimental: {
     // Garde les segments déjà visités en cache côté client plus longtemps

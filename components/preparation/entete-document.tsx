@@ -14,6 +14,7 @@ export function EnteteDocument({ demandeId, creeLe }: { demandeId: number; creeL
           width={48}
           height={48}
           className="size-12 rounded-xl object-contain"
+          unoptimized
         />
         <div>
           <p className="font-heading text-lg font-bold text-brand">{ENTREPRISE.nomCommercial}</p>
