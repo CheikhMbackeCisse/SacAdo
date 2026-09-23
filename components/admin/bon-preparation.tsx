@@ -48,6 +48,9 @@ export function BonPreparation({
                       width={40}
                       height={40}
                       className="size-full object-cover"
+                      // Espace admin : pas de bénéfice visuel à optimiser ces
+                      // vignettes, ça consomme le quota pour rien.
+                      unoptimized
                     />
                   ) : (
                     <Package size={16} className="text-ink/30" aria-hidden="true" />

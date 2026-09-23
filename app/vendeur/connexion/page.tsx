@@ -11,6 +11,7 @@ export default function VendeurConnexionPage() {
         priority
         sizes="100vw"
         className="object-cover"
+        unoptimized
       />
       <div
         aria-hidden="true"

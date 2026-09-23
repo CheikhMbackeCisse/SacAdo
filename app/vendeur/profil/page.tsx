@@ -16,7 +16,15 @@ export default async function VendeurProfilPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
-      <Image src="/images/bg-page-form.jpg" alt="" fill priority sizes="100vw" className="object-cover" />
+      <Image
+        src="/images/bg-page-form.jpg"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
+        unoptimized
+      />
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(254,253,255,0.94)_0%,rgba(254,253,255,0.75)_55%,rgba(254,253,255,0.45)_100%)]"
