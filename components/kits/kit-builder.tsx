@@ -271,8 +271,8 @@ export function KitBuilder({ kitNom, cycle, niveau, items, sacParDefaut }: KitBu
                     onClick={() => choisirSac(produit)}
                     className={`flex flex-col overflow-hidden rounded-2xl border border-ink/10 bg-elevated text-left transition-shadow hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60`}
                   >
-                    <div className="relative aspect-square w-full">
-                      <ProductImage src={produit.photo} alt={produit.nom} className="h-full w-full" />
+                    <div className="relative aspect-square w-full bg-ink/5">
+                      <ProductImage src={produit.photo} alt={produit.nom} className="h-full w-full" fit="contain" />
                       {epuise && (
                         <div className="absolute inset-0 flex items-center justify-center bg-elevated/70">
                           <span className="rounded-full bg-ink/80 px-3 py-1 text-xs font-semibold text-on-brand">

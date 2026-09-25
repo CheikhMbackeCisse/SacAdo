@@ -10,6 +10,12 @@ type ProductImageProps = {
   className?: string;
   sizes?: string;
   priority?: boolean;
+  // "cover" (défaut) remplit le cadre en rognant : correct pour les petites
+  // vignettes (panier, recherche, admin) où l'espace est contraint. "contain"
+  // montre la photo entière sans recadrage : requis sur les cartes produit et
+  // la fiche produit, où les photos fournisseur n'ont pas toutes les mêmes
+  // proportions (prompt "images sans Vercel", règle "cadre fixe").
+  fit?: "cover" | "contain";
 };
 
 // next/image : compression + formats modernes (WebP/AVIF) + lazy loading
@@ -23,6 +29,7 @@ export function ProductImage({
   className = "",
   sizes = "(min-width: 1024px) 25vw, 50vw",
   priority = false,
+  fit = "cover",
 }: ProductImageProps) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -56,11 +63,13 @@ export function ProductImage({
         onDragStart={(event) => event.preventDefault()}
         onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}
-        // object-cover remplit tout le cadre (pas de marges mortes autour de
-        // l'image) ; object-top ancre le recadrage en haut — sur une photo
-        // plus haute que large (couverture de livre), c'est le bas qui est
-        // rogné, jamais le titre en haut de la couverture.
-        className={`select-none object-cover object-top transition-opacity duration-300 ${
+        // object-top (mode cover uniquement) ancre le recadrage en haut — sur
+        // une photo plus haute que large (couverture de livre), c'est le bas
+        // qui est rogné, jamais le titre en haut de la couverture. En mode
+        // contain, rien n'est rogné : le centrage par défaut suffit. Classes
+        // écrites en toutes lettres (pas d'interpolation) pour que Tailwind
+        // les détecte au build.
+        className={`select-none ${fit === "contain" ? "object-contain" : "object-cover object-top"} transition-opacity duration-300 ${
           loaded ? "opacity-100" : "opacity-0"
         } ${className}`}
       />

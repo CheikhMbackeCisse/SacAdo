@@ -1,14 +1,5 @@
 import type { NextConfig } from "next";
 
-// Hôte du projet Supabase (Storage sert les photos uploadées par les vendeurs).
-const SUPABASE_HOST = (() => {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname;
-  } catch {
-    return "";
-  }
-})();
-
 // CSP "raisonnable" : bloque les scripts/styles/images/connexions venant d'un
 // domaine tiers non listé (protège contre l'injection de scripts malveillants
 // même si une faille XSS apparaissait ailleurs). 'unsafe-inline' reste
@@ -33,29 +24,24 @@ const CSP = [
 
 const nextConfig: NextConfig = {
   images: {
-    // Un seul format : chaque format double le nombre de transformations
-    // facturées par Vercel (quota Hobby limité). WebP seul reste net à l'oeil
-    // et largement supporté ; AVIF n'apportait qu'un gain de poids, pas de
-    // netteté supplémentaire.
-    formats: ["image/webp"],
+    // Loader personnalisé : plus aucune image ne passe par l'API
+    // d'optimisation de Vercel (/_next/image), dont le quota de
+    // transformations est presque épuisé. lib/images/supabase-image-loader.ts
+    // choisit la variante -400/-800 déjà préparée par optimiser_images.py et
+    // téléversée telle quelle dans Supabase Storage ; toute autre image
+    // (logo, bannières, photos vendeur) est servie sans transformation.
+    loader: "custom",
+    loaderFile: "./lib/images/supabase-image-loader.ts",
     // Paliers restreints à ce que la maquette utilise réellement (grille
     // 2-6 colonnes, vignettes ~32-256px, bannières pleine largeur) plutôt que
     // les 16 paliers par défaut de Next : moins de largeurs distinctes donc
-    // moins de transformations facturées, sans changer le rendu à l'écran.
+    // moins d'appels différents au loader ci-dessus pour un même srcset.
     deviceSizes: [640, 828, 1080, 1920],
     imageSizes: [32, 64, 96, 128, 256],
-    // Photos produits des vendeurs, stockées dans Supabase Storage (bucket public).
-    remotePatterns: SUPABASE_HOST
-      ? [{ protocol: "https", hostname: SUPABASE_HOST, pathname: "/storage/v1/object/public/**" }]
-      : [],
     // 1 an : les photos produits/catégories changent rarement, inutile de
-    // les redemander/reconvertir toutes les 60s (défaut Next).
+    // les redemander toutes les 60s (défaut Next). N'affecte que le cache
+    // navigateur/CDN : le loader ne transforme plus rien côté serveur.
     minimumCacheTTL: 31536000,
-    // Soupape d'urgence (voir README) : si le quota Vercel est épuisé en
-    // pleine rentrée, passer NEXT_IMAGES_UNOPTIMIZED=true sert les photos
-    // telles quelles (plus lourdes mais visibles) sans repasser par l'API
-    // d'optimisation, le temps que le quota se réinitialise.
-    unoptimized: process.env.NEXT_IMAGES_UNOPTIMIZED === "true",
   },
   experimental: {
     // Garde les segments déjà visités en cache côté client plus longtemps

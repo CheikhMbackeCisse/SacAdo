@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, ZoomIn } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
+import { ProductZoom } from "@/components/product/product-zoom";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { ShareButton } from "@/components/ui/share-button";
 import { GuideTailles } from "@/components/product/guide-tailles";
@@ -56,6 +57,7 @@ export function ProductDetail({
   const [quantite, setQuantite] = useState(1);
   const [added, setAdded] = useState(false);
   const [slide, setSlide] = useState(0);
+  const [zoomOuvert, setZoomOuvert] = useState(false);
   const carrouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -158,6 +160,7 @@ export function ProductDetail({
               alt={produit.nom}
               className="h-full w-full"
               sizes="100vw"
+              fit="contain"
             />
           </div>
         ) : (
@@ -177,6 +180,7 @@ export function ProductDetail({
                     alt={`${produit.nom} — photo ${index + 1}`}
                     className="h-full w-full"
                     sizes="100vw"
+                    fit="contain"
                   />
                 </div>
               ))}
@@ -196,7 +200,26 @@ export function ProductDetail({
         <div className="absolute right-3 top-3 flex flex-col gap-2">
           <FavoriteButton produitId={produit.id} size={20} />
         </div>
+        {galerie.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setZoomOuvert(true)}
+            aria-label="Agrandir la photo"
+            className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-full bg-ink/60 text-white"
+          >
+            <ZoomIn size={18} aria-hidden="true" />
+          </button>
+        )}
       </div>
+
+      {zoomOuvert && (
+        <ProductZoom
+          photos={galerie}
+          index={slide}
+          alt={produit.nom}
+          onClose={() => setZoomOuvert(false)}
+        />
+      )}
 
       <div className="flex flex-col gap-3 px-4">
         <div className="flex items-start justify-between gap-3">

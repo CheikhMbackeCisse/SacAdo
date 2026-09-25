@@ -30,7 +30,7 @@ export function ProductCard({
       }`}
     >
       <div className="relative aspect-square w-full bg-ink/5">
-        <ProductImage src={produit.photo} alt={produit.nom} className="h-full w-full" />
+        <ProductImage src={produit.photo} alt={produit.nom} className="h-full w-full" fit="contain" />
 
         <div className="absolute right-2 top-2">
           <FavoriteButton produitId={produit.id} />
