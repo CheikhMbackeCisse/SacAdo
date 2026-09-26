@@ -1,7 +1,7 @@
 // Import des kits scolaires depuis import-kits/kits.json (voir
-// import-kits/PROMPT-claude-code-kits.md et la correction v7,
-// import-kits/PROMPT-correction-kits-v7.md). Usage : node scripts/import-kits.mjs
-// Lit .env.local. Idempotent : upsert sur `slug` (kits_slug_key, 0085) ; les
+// import-kits/PROMPT-claude-code-kits.md et la correction v10,
+// import-kits/PROMPT-correction-kits-v10.md). Usage : node scripts/import-kits.mjs
+// Lit .env.local. Idempotent : upsert sur `slug` (kits_slug_unique, 0086) ; les
 // lignes d'un kit sont entièrement remplacées à chaque lancement (delete +
 // insert), donc relancer ne crée jamais de doublon. Un kit déjà existant
 // garde son `statut` (publication = action manuelle, jamais écrasée par un
@@ -25,40 +25,48 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE
 
 const kitsJson = JSON.parse(readFileSync("import-kits/kits.json", "utf8"));
 
-// --- Résolution des références (Étape 1 du prompt, corrections v7) ---------
-// Alias décidés manuellement après lecture des consignes "recherche" — voir
-// import-kits/rapport-resolution.md pour le détail de chaque cas.
+// --- Résolution des références (Étape 1 du prompt, correction v10) --------
+// Alias décidés manuellement (références qui ne correspondent à aucun champ
+// direct du produit) — voir import-kits/rapport-resolution.md pour le détail.
 const ALIAS_REFERENCE_FOURNISSEUR = {
   S065: "S065-UNITE", // variante à l'unité, pas le pack de 12
   "CIS-ardoise": "ardoise-quadrillee",
   "A-CREER-01": "S066", // cahier Calligraphe 200p grand format (vert, #1237) — couleur par défaut
 };
-const ALIAS_NOM_EXACT = {
-  // La Clé des Cracks / Clé du Bac — Seconde S (pas de split S1/S2).
-  "CDC-2M": "KAAMILE DE MATHS - SECONDE S",
-  "CDC-2PC": "PHYSIQUE CHIMIE SECONDE S",
-  "CDC-2SVT": "SVT SECONDE S",
-  // Troisième — CDC-3PC : décision fondateur, garder Collection Kandia
-  // (déjà utilisé sur le kit 3e Confort publié) plutôt que la résolution
-  // générique "PHYSIQUE CHIMIE TROISIEME" trouvée par la recherche v7.
-  "CDC-3M": "MATHEMATIQUES TROISIEME",
-  "CDC-3PC": "Collection Kandia - Physique Chimie 3ème",
-  // Première — éditions distinctes S1/S2 (ne jamais croiser).
-  "CDC-1M-S1": "MATHS 1S1 (CRACKS EN MATHS)",
-  "CDC-1M-S2": "MATHS 1S2 - LA CLE DES CRACKS",
-  // Pas d'édition Sciences physiques séparée S1/S2 au catalogue : édition
-  // commune "PHYSIQUE CHIMIE PREMIERE S" utilisée pour les deux séries.
-  "CDC-1PC-S1": "PHYSIQUE CHIMIE PREMIERE S",
-  "CDC-1PC-S2": "PHYSIQUE CHIMIE PREMIERE S",
-  // SVT Première S2 : édition commune S1/S2/L au catalogue.
-  "CDC-1SVT-S2": "SVT PREMIERE S1 S2 L",
-  // Terminale — éditions distinctes S1/S2. CDC-TM-S1 et CDC-TPC-S1 : aucune
-  // édition spécifique S1 trouvée au catalogue (seulement des éditions S2 ou
-  // "Terminale S" génériques ambiguës) → non aliasées, lignes ignorées.
-  "CDC-TM-S2": "MATHS TS2 - LA CLE DU BAC",
-  "CDC-TPC-S2": "PHYSIQUE CHIMIE TS2",
-  "CDC-TSVT-S2": "SVT TERMINALE S2",
-};
+
+// Depuis la correction v10, les entrées `references` des livres Korka Diallo
+// (CDC-...) donnent le titre exact du catalogue Korka (import « Livres Korka
+// Diallo », scripts/importer-livres-korka.mjs, qui range le titre tel quel
+// dans `produits.nom`), suivi d'une annotation entre parenthèses ajoutée par
+// kits.json (auteur/collection) — ex. "MATHS 1S1 (CRACKS EN MATHS) (Korka
+// Diallo)" : le titre réel est "MATHS 1S1 (CRACKS EN MATHS)", le groupe final
+// "(Korka Diallo)" n'est qu'une note. On retire uniquement CE dernier groupe
+// parenthésé (jamais un parenthésage interne, qui fait partie du titre), puis
+// on compare sans tenir compte de la casse ni des accents.
+function normaliser(s) {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function retirerAnnotationFinale(nom) {
+  const m = nom.match(/^(.*?)\s*\([^()]*\)\s*$/);
+  return m ? m[1].trim() : nom;
+}
+
+function grouperNomNormalise(produits) {
+  const map = new Map();
+  for (const p of produits) {
+    if (!p.nom) continue;
+    const cle = normaliser(p.nom);
+    if (!map.has(cle)) map.set(cle, []);
+    map.get(cle).push(p);
+  }
+  return map;
+}
 
 async function fetchAllProduits() {
   const all = [];
@@ -92,21 +100,15 @@ function grouper(produits, cle) {
 }
 
 // Résout une référence vers { produit, methode } ou { ambigu: true } ou null
-// (introuvable). Ordre : alias référence fournisseur, alias nom exact,
-// référence fournisseur directe, nom exact direct.
-function resoudre(ref, nomAttendu, byRef, byNom) {
+// (introuvable). Ordre : alias référence fournisseur, référence fournisseur
+// directe, nom exact direct, nom normalisé (casse/accents), titre avant la
+// dernière parenthèse (livres Korka Diallo, correction v10) normalisé.
+function resoudre(ref, nomAttendu, byRef, byNom, byNomNormalise) {
   const aliasRef = ALIAS_REFERENCE_FOURNISSEUR[ref];
   if (aliasRef) {
     const trouves = byRef.get(aliasRef);
     if (trouves?.length === 1) return { produit: trouves[0], methode: "alias_reference_fournisseur" };
     if (trouves?.length > 1) return { ambigu: true, methode: "alias_reference_fournisseur" };
-  }
-
-  const aliasNom = ALIAS_NOM_EXACT[ref];
-  if (aliasNom) {
-    const trouves = byNom.get(aliasNom);
-    if (trouves?.length === 1) return { produit: trouves[0], methode: "alias_nom_exact" };
-    if (trouves?.length > 1) return { ambigu: true, methode: "alias_nom_exact" };
   }
 
   const parRef = byRef.get(ref);
@@ -117,14 +119,25 @@ function resoudre(ref, nomAttendu, byRef, byNom) {
     const parNom = byNom.get(nomAttendu);
     if (parNom?.length === 1) return { produit: parNom[0], methode: "nom_exact" };
     if (parNom?.length > 1) return { ambigu: true, methode: "nom_exact" };
+
+    const parNomNormalise = byNomNormalise.get(normaliser(nomAttendu));
+    if (parNomNormalise?.length === 1) return { produit: parNomNormalise[0], methode: "nom_normalise" };
+    if (parNomNormalise?.length > 1) return { ambigu: true, methode: "nom_normalise" };
+
+    const titre = retirerAnnotationFinale(nomAttendu);
+    if (titre !== nomAttendu) {
+      const parTitre = byNomNormalise.get(normaliser(titre));
+      if (parTitre?.length === 1) return { produit: parTitre[0], methode: "titre_avant_parenthese" };
+      if (parTitre?.length > 1) return { ambigu: true, methode: "titre_avant_parenthese" };
+    }
   }
 
   return null;
 }
 
-// A-CREER-03 (copies doubles) : garde-fou prix, comme demandé par la
-// correction v7 même si le produit existe déjà (créé lors d'un import
-// précédent). Ne modifie le prix d'aucun autre produit.
+// A-CREER-03 (copies doubles) : garde-fou prix, comme demandé depuis la
+// correction v7 (repris en v10) même si le produit existe déjà (créé lors
+// d'un import précédent). Ne modifie le prix d'aucun autre produit.
 async function assurerCopiesDoubles(byRef) {
   const trouves = byRef.get("A-CREER-03");
   const produit = trouves?.length === 1 ? trouves[0] : null;
@@ -173,9 +186,9 @@ async function assurerCopiesDoubles(byRef) {
   byRef.set("A-CREER-03", [inserted]);
 }
 
-function genererRapportResolution(byRef, byNom) {
+function genererRapportResolution(byRef, byNom, byNomNormalise) {
   const lignes = [
-    "# Rapport de résolution des références (correction v7)",
+    "# Rapport de résolution des références (correction v10)",
     "",
     `Lancé le ${new Date().toISOString()}.`,
     "",
@@ -189,7 +202,7 @@ function genererRapportResolution(byRef, byNom) {
   let introuvables = 0;
 
   for (const [ref, meta] of refs) {
-    const resultat = resoudre(ref, meta.nom, byRef, byNom);
+    const resultat = resoudre(ref, meta.nom, byRef, byNom, byNomNormalise);
     let colProduit = "—";
     let colMethode = "introuvable";
     let colDrapeau = "";
@@ -246,10 +259,11 @@ async function main() {
   const produits = await fetchAllProduits();
   const byRef = grouper(produits, "reference_fournisseur");
   const byNom = grouper(produits, "nom");
+  const byNomNormalise = grouperNomNormalise(produits);
 
   await supprimerAnciensKits();
   await assurerCopiesDoubles(byRef);
-  genererRapportResolution(byRef, byNom);
+  genererRapportResolution(byRef, byNom, byNomNormalise);
 
   const lignesIgnorees = [];
   let kitsCrees = 0;
@@ -306,7 +320,7 @@ async function main() {
     const lignesAInserer = [];
     for (const ligne of kit.lignes) {
       const meta = kitsJson.references[ligne.ref];
-      const resultat = resoudre(ligne.ref, meta?.nom, byRef, byNom);
+      const resultat = resoudre(ligne.ref, meta?.nom, byRef, byNom, byNomNormalise);
       if (!resultat || resultat.ambigu || !resultat.produit) {
         lignesIgnorees.push({
           kit: kit.slug,

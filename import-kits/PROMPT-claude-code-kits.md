@@ -2,8 +2,8 @@
 
 Ajoute les kits scolaires dans l'application : 63 kits, 21 classes du CI à la Terminale (séries L, S, S1, S2 et STEG), 3 gammes par classe. Tout est dans le dossier `import-kits/` à la racine du dépôt :
 
-- `kits.json` : les 63 kits, leurs lignes, les 148 références produits qu'ils utilisent, et les séries à venir
-- `SacAdo_kits_v9.xlsx` : la même chose en tableur, pour l'équipe. Ne l'utilise pas pour l'import.
+- `kits.json` : les 63 kits, leurs lignes, les 146 références produits qu'ils utilisent, et les séries à venir
+- `SacAdo_kits_v10.xlsx` : la même chose en tableur, pour l'équipe. Ne l'utilise pas pour l'import.
 
 Les kits sont déjà composés : chaque produit, chaque quantité, chaque section et ce qui est coché ont été décidés et validés côté SacAdo. Ton travail est de les rattacher aux produits de l'application et de les afficher. Ne change pas leur composition : pas de ligne ajoutée, retirée ou remplacée par un produit « équivalent ». Une référence introuvable se signale, elle ne se remplace pas.
 
@@ -19,9 +19,9 @@ Les champs `prix_vente_classeur` et `prix_achat_classeur` de `kits.json` servent
 
 - `essentiel` : les fournitures de la liste, au prix le plus bas. Les livres au programme sont proposés en dessous, décochés.
 - `complet` : toute la liste, fournitures de qualité supérieure et œuvres au programme (manuels Didactikos au primaire).
-- `confort` : le Complet, plus les manuels scolaires, la Casio fx-92 et des livres en plus (lectures conseillées, ou La Clé des Cracks pour les classes scientifiques).
+- `confort` : le Complet, plus les manuels scolaires, la Casio fx-92 et des livres en plus (lectures conseillées, ou les livres d'entraînement de Korka Diallo pour les classes scientifiques).
 
-En Première et en Terminale, la série S est séparée en **S1** et **S2** : ce sont des kits distincts. Les éditions de La Clé des Cracks ne sont pas les mêmes en S1 et en S2. Ne rattache jamais une édition S2 à une référence S1, ni l'inverse.
+En Première et en Terminale, la série S est séparée en **S1** et **S2** : ce sont des kits distincts. Les livres de maths de Korka Diallo ne sont pas les mêmes en S1 et en S2. Ne rattache jamais une édition S2 à une référence S1, ni l'inverse.
 
 S1 et S2 ont les mêmes matières, avec des horaires et des coefficients différents : leurs fournitures sont identiques, c'est normal. La différence est dans les livres.
 
@@ -32,7 +32,7 @@ Libellés affichés : Essentiel, Complet, Confort, dans cet ordre (`ordre_gamme`
 Ne modifie rien pendant cette étape.
 
 1. Trouve comment un produit est identifié. Les références de `kits.json` viennent des fichiers d'import : `SAC-xxx` (catalogue Papex), `Sxxx` (LPD), `LIT-xxx`, `NIO-xxx`, `DID-xxx` (livres), `CIS-ardoise` (Cissé & Frères). Regarde si ces références sont stockées dans un champ (référence d'origine, SKU, slug, champ fournisseur...).
-2. Résous chacune des 148 entrées de `references` vers un produit de l'application, dans cet ordre : par référence d'origine, puis par slug, puis par nom exact et fournisseur. Certaines entrées ont un champ `recherche` : suis ses consignes. Écris le résultat dans `import-kits/rapport-resolution.md`, un tableau avec : référence, nom attendu, produit trouvé (id, nom, prix actuel, statut), méthode, et un drapeau si le prix actuel s'écarte de plus de 50 % de `prix_vente_classeur`. Si une référence correspond à plusieurs produits, ne choisis pas : note-la « ambiguë ».
+2. Résous chacune des 146 entrées de `references` vers un produit de l'application, dans cet ordre : par référence d'origine, puis par slug, puis par nom exact et fournisseur. Certaines entrées ont un champ `recherche` : suis ses consignes. Écris le résultat dans `import-kits/rapport-resolution.md`, un tableau avec : référence, nom attendu, produit trouvé (id, nom, prix actuel, statut), méthode, et un drapeau si le prix actuel s'écarte de plus de 50 % de `prix_vente_classeur`. Si une référence correspond à plusieurs produits, ne choisis pas : note-la « ambiguë ».
 3. Regarde s'il existe déjà une notion de kit, pack ou bundle. La catégorie `Kits scolaires` existe dans l'application mais ne contient aucun produit.
 4. Regarde comment fonctionnent le panier et les lignes de commande, où est stocké le prix d'achat, et comment est géré le champ `statut` (`masque`, `disponible`, `rupture`).
 5. Regarde s'il y a du cache (ISR, cache de requêtes, pages statiques) qui pourrait afficher un prix de kit périmé.
@@ -74,7 +74,7 @@ Aucun champ prix, ni sur le kit, ni sur la ligne. Si le mécanisme existant impo
 - Section `option` : le sac, décoché, en bas.
 - Aucune mention d'ebook, offert ou payant : les ebooks ne sont pas encore prêts.
 - Une ligne dont le produit est `masque`, en `rupture` ou sans prix de vente n'est ni affichée ni comptée. Un kit sans aucune ligne principale affichable n'est pas affiché.
-- Si un kit a des lignes La Clé des Cracks (références `CDC-...`) et qu'aucune n'est affichable, affiche `description_si_aucune_cle_des_cracks` à la place de `description`. On n'annonce jamais un livre qui n'est pas dans le kit.
+- Si un kit a des lignes de livres Korka Diallo (références `CDC-...`) et qu'aucune n'est affichable, affiche `description_si_aucune_cle_des_cracks` à la place de `description`. On n'annonce jamais un livre qui n'est pas dans le kit.
 - Le prix affiché est la somme exacte des lignes cochées. Pas de prix barré, pas de pourcentage d'économie : le kit coûte le même prix que ses produits achetés séparément.
 - Visuel du kit : ne génère aucune image de produit. Utilise une mosaïque d'au plus 4 photos déjà publiées des produits du kit, ou une carte texte avec le nom de la classe et de la gamme.
 - `prix_achat`, `source_interne` et `manquants_connus` ne doivent jamais apparaître côté client : ni page, ni API publique, ni HTML.

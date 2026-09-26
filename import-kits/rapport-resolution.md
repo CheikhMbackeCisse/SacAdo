@@ -1,6 +1,6 @@
-# Rapport de résolution des références (correction v7)
+# Rapport de résolution des références (correction v10)
 
-Lancé le 2026-09-26T14:57:07.435Z.
+Lancé le 2026-09-26T17:10:21.375Z.
 
 | Référence | Nom attendu | Produit trouvé | Méthode | Drapeau prix |
 |---|---|---|---|---|
@@ -8,21 +8,19 @@ Lancé le 2026-09-26T14:57:07.435Z.
 | A-CREER-02 | Cahier Calligraphe 96 pages 24x32 (grand format) | — | introuvable |  |
 | A-CREER-03 | Paquet de copies doubles grand format | #1716 Paquet de copies doubles grand format — 1800 F (dispo/en_attente) | reference_fournisseur |  |
 | A-CREER-04 | Protège-cahier grand format (à l'unité) | — | introuvable |  |
-| CDC-1M-S1 | La Clé des Cracks : Mathématiques Première S1 | #47 MATHS 1S1 (CRACKS EN MATHS) — 15000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-1M-S2 | La Clé des Cracks : Mathématiques Première S2 | #50 MATHS 1S2 - LA CLE DES CRACKS — 6000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-1PC-S1 | La Clé des Cracks : Sciences physiques Première S1 | #51 PHYSIQUE CHIMIE PREMIERE S — 8000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-1PC-S2 | La Clé des Cracks : Sciences physiques Première S2 | #51 PHYSIQUE CHIMIE PREMIERE S — 8000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-1SVT-S2 | La Clé des Cracks : SVT Première S2 | #54 SVT PREMIERE S1 S2 L — 15000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-2M | La Clé des Cracks : Mathématiques Seconde S | #43 KAAMILE DE MATHS - SECONDE S — 10000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-2PC | La Clé des Cracks : Sciences physiques Seconde S | #44 PHYSIQUE CHIMIE SECONDE S — 10000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-2SVT | La Clé des Cracks : SVT Seconde S | #45 SVT SECONDE S — 15000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-3M | La Clé des Cracks : Mathématiques 3e | #39 MATHEMATIQUES TROISIEME — 10000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-3PC | La Clé des Cracks : Sciences physiques 3e | #1338 Collection Kandia - Physique Chimie 3ème — 4000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-TM-S1 | La Clé des Cracks : Mathématiques Terminale S1 | — | introuvable |  |
-| CDC-TM-S2 | La Clé des Cracks : Mathématiques Terminale S2 | #63 MATHS TS2 - LA CLE DU BAC — 10000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-TPC-S1 | La Clé des Cracks : Sciences physiques Terminale S1 | — | introuvable |  |
-| CDC-TPC-S2 | La Clé des Cracks : Sciences physiques Terminale S2 | #64 PHYSIQUE CHIMIE TS2 — 10000 F (dispo/publie) | alias_nom_exact |  |
-| CDC-TSVT-S2 | La Clé des Cracks : SVT Terminale S2 | #68 SVT TERMINALE S2 — 12000 F (dispo/publie) | alias_nom_exact |  |
+| CDC-1M-S1 | MATHS 1S1 (CRACKS EN MATHS) (Korka Diallo) | #47 MATHS 1S1 (CRACKS EN MATHS) — 15000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-1M-S2 | MATHS 1S2 - LA CLE DES CRACKS (Korka Diallo) | #50 MATHS 1S2 - LA CLE DES CRACKS — 6000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-1PC | PHYSIQUE CHIMIE PREMIERE S (Sidy Mohamed Ndiaye, Collection Atomic) | #51 PHYSIQUE CHIMIE PREMIERE S — 8000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-2M | KAAMILE DE MATHS - SECONDE S (Korka Diallo, Collection Cracks) | #43 KAAMILE DE MATHS - SECONDE S — 10000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-2PC | PHYSIQUE CHIMIE SECONDE S (Korka Diallo, Collection Cracks) | #44 PHYSIQUE CHIMIE SECONDE S — 10000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-2SVT | SVT SECONDE S | #45 SVT SECONDE S — 15000 F (dispo/publie) | nom_exact |  |
+| CDC-3ANG | ANNALE D'ANGLAIS TROISIEME (Korka Diallo, Club de l'Excellence) | #42 ANNALE D'ANGLAIS TROISIEME — 3000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-3M | MATHEMATIQUES TROISIEME (Korka Diallo, Le BFEM en poche) | #39 MATHEMATIQUES TROISIEME — 10000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-3PC | PHYSIQUE CHIMIE TROISIEME (Korka Diallo, Le BFEM en poche) | #40 PHYSIQUE CHIMIE TROISIEME — 5000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-TM-S1 | MATHS TS1 (EPREUVES DU BAC S1, C, E) (Korka Diallo) | #60 MATHS TS1 (EPREUVES DU BAC S1, C, E) — 10000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-TM-S2 | MATHS TS2 - LA CLE DU BAC (Korka Diallo, Collection Cracks) | #63 MATHS TS2 - LA CLE DU BAC — 10000 F (dispo/publie) | titre_avant_parenthese |  |
+| CDC-TPC-S2 | PHYSIQUE CHIMIE TS2 | #64 PHYSIQUE CHIMIE TS2 — 10000 F (dispo/publie) | nom_exact |  |
+| CDC-TPHILO | PHILOSOPHIE TERMINALES L ET S - L'ESSENTIEL (Korka Diallo, Club de l'Excellence) | #71 PHILOSOPHIE TERMINALES L ET S - L'ESSENTIEL — 3000 F (dispo/publie) | titre_avant_parenthese |  |
 | CIS-ardoise | Ardoise quadrillée avec poignée | #1714 Ardoise quadrillée — 2500 F (dispo/publie) | alias_reference_fournisseur |  |
 | DID-6913 | Langue et communication C.I. | #1507 Langue et communication C.I. — 3890 F (dispo/publie) | reference_fournisseur |  |
 | DID-6915 | Langue et communication C.P. | #1510 Langue et communication C.P. — 3890 F (dispo/publie) | reference_fournisseur |  |
@@ -153,4 +151,4 @@ Lancé le 2026-09-26T14:57:07.435Z.
 | SAC-104 | Stylo à bille Schneider Tops 505 M vert | #1674 Stylo à bille tops 505m Schneider (Couleur: Vert) — 100 F (dispo/publie) | reference_fournisseur |  |
 | SAC-112 | Dictionnaire Le Robert de français, 65 000 mots | #1682 Le Robert dictionnaire de français 65 000 mots — 3500 F (dispo/publie) | reference_fournisseur |  |
 
-Total : 148 références — 144 trouvées, 0 ambiguës, 4 introuvables.
+Total : 146 références — 144 trouvées, 0 ambiguës, 2 introuvables.

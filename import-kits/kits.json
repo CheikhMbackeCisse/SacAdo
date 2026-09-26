@@ -1,5 +1,5 @@
 {
- "version": "2026-09-26-v9",
+ "version": "2026-09-26-v10",
  "devise": "XOF",
  "note": "Les prix *_classeur sont indicatifs : ils servent seulement à repérer un mauvais rattachement. Le prix d'un kit se calcule TOUJOURS avec les prix actuels des produits de l'app.",
  "nb_kits": 63,
@@ -86,124 +86,108 @@
    "recherche": "Chercher « copies doubles ». S'il existe : mettre prix_vente 1800 et prix_achat 1300. S'il n'existe pas : le créer masqué dans « Cahiers & papeterie » avec ces prix et le signaler (photo à fournir)."
   },
   "CDC-3M": {
-   "nom": "La Clé des Cracks : Mathématiques 3e",
-   "fournisseur": "Multilivre",
+   "nom": "MATHEMATIQUES TROISIEME (Korka Diallo, Le BFEM en poche)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 10000,
+   "prix_achat_classeur": 8000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-3PC": {
-   "nom": "La Clé des Cracks : Sciences physiques 3e",
-   "fournisseur": "Multilivre",
+   "nom": "PHYSIQUE CHIMIE TROISIEME (Korka Diallo, Le BFEM en poche)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 5000,
+   "prix_achat_classeur": 4000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
+  },
+  "CDC-3ANG": {
+   "nom": "ANNALE D'ANGLAIS TROISIEME (Korka Diallo, Club de l'Excellence)",
+   "fournisseur": "Korka Diallo",
+   "unite": "pièce",
+   "prix_vente_classeur": 3000,
+   "prix_achat_classeur": 2400,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-2M": {
-   "nom": "La Clé des Cracks : Mathématiques Seconde S",
-   "fournisseur": "Multilivre",
+   "nom": "KAAMILE DE MATHS - SECONDE S (Korka Diallo, Collection Cracks)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 10000,
+   "prix_achat_classeur": 8000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-2PC": {
-   "nom": "La Clé des Cracks : Sciences physiques Seconde S",
-   "fournisseur": "Multilivre",
+   "nom": "PHYSIQUE CHIMIE SECONDE S (Korka Diallo, Collection Cracks)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 10000,
+   "prix_achat_classeur": 8000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-2SVT": {
-   "nom": "La Clé des Cracks : SVT Seconde S",
-   "fournisseur": "Multilivre",
+   "nom": "SVT SECONDE S",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 15000,
+   "prix_achat_classeur": 12000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-1M-S1": {
-   "nom": "La Clé des Cracks : Mathématiques Première S1",
-   "fournisseur": "Multilivre",
+   "nom": "MATHS 1S1 (CRACKS EN MATHS) (Korka Diallo)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 15000,
+   "prix_achat_classeur": 12000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-1M-S2": {
-   "nom": "La Clé des Cracks : Mathématiques Première S2",
-   "fournisseur": "Multilivre",
+   "nom": "MATHS 1S2 - LA CLE DES CRACKS (Korka Diallo)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 6000,
+   "prix_achat_classeur": 4800,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
-  "CDC-1PC-S1": {
-   "nom": "La Clé des Cracks : Sciences physiques Première S1",
-   "fournisseur": "Multilivre",
+  "CDC-1PC": {
+   "nom": "PHYSIQUE CHIMIE PREMIERE S (Sidy Mohamed Ndiaye, Collection Atomic)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
-  },
-  "CDC-1PC-S2": {
-   "nom": "La Clé des Cracks : Sciences physiques Première S2",
-   "fournisseur": "Multilivre",
-   "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
-  },
-  "CDC-1SVT-S2": {
-   "nom": "La Clé des Cracks : SVT Première S2",
-   "fournisseur": "Multilivre",
-   "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 8000,
+   "prix_achat_classeur": 6400,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-TM-S1": {
-   "nom": "La Clé des Cracks : Mathématiques Terminale S1",
-   "fournisseur": "Multilivre",
+   "nom": "MATHS TS1 (EPREUVES DU BAC S1, C, E) (Korka Diallo)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 10000,
+   "prix_achat_classeur": 8000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-TM-S2": {
-   "nom": "La Clé des Cracks : Mathématiques Terminale S2",
-   "fournisseur": "Multilivre",
+   "nom": "MATHS TS2 - LA CLE DU BAC (Korka Diallo, Collection Cracks)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
-  },
-  "CDC-TPC-S1": {
-   "nom": "La Clé des Cracks : Sciences physiques Terminale S1",
-   "fournisseur": "Multilivre",
-   "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 10000,
+   "prix_achat_classeur": 8000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "CDC-TPC-S2": {
-   "nom": "La Clé des Cracks : Sciences physiques Terminale S2",
-   "fournisseur": "Multilivre",
+   "nom": "PHYSIQUE CHIMIE TS2",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 10000,
+   "prix_achat_classeur": 8000,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
-  "CDC-TSVT-S2": {
-   "nom": "La Clé des Cracks : SVT Terminale S2",
-   "fournisseur": "Multilivre",
+  "CDC-TPHILO": {
+   "nom": "PHILOSOPHIE TERMINALES L ET S - L'ESSENTIEL (Korka Diallo, Club de l'Excellence)",
+   "fournisseur": "Korka Diallo",
    "unite": "pièce",
-   "prix_vente_classeur": null,
-   "prix_achat_classeur": null,
-   "recherche": "Chercher dans l'app « Clé des Cracks » + niveau + série + matière. En Première et Terminale, les éditions S1 et S2 sont différentes : ne jamais rattacher une édition S2 à une référence S1, ni l'inverse. Si seule une édition commune S1/S2 existe, l'utiliser et le signaler. Introuvable : ligne ignorée, à signaler."
+   "prix_vente_classeur": 3000,
+   "prix_achat_classeur": 2400,
+   "recherche": "Livre du fournisseur Korka Diallo (import « Livres Korka Diallo »). Rattacher par le titre du tableur Korka, qui est le début du nom ci-dessus avant la parenthèse, sans tenir compte de la casse ni des accents. Si l'app a rendu le titre plus lisible, rattacher par niveau + série + matière + auteur. Ne jamais rattacher une édition S2 à une référence S1 ni l'inverse. Jamais une ancienne édition. Produit masqué : rattacher quand même et le signaler."
   },
   "S109": {
    "nom": "Protège-cahier couleur petit format (à l'unité)",
@@ -6538,7 +6522,7 @@
    "serie": null,
    "gamme": "confort",
    "ordre_gamme": 3,
-   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et La Clé des Cracks pour s'entraîner en maths et en sciences.",
+   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et des livres d'entraînement en maths et en sciences, dont ceux de Korka Diallo.",
    "description_si_aucune_cle_des_cracks": "Le kit Complet, plus les manuels, la Casio fx-92 et du parascolaire pour s'entraîner en maths et en sciences.",
    "type_source": "synthese_listes_reelles",
    "source_interne": "Synthèse des listes réelles Cours Sainte-Marie de Hann (2025-2026) et ISJA (2026-2027), tronc commun seulement.",
@@ -6885,7 +6869,7 @@
     {
      "ref": "CDC-3M",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks maths",
+     "libelle_besoin": "Maths 3e (Korka Diallo)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
@@ -6894,11 +6878,20 @@
     {
      "ref": "CDC-3PC",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks sciences physiques",
+     "libelle_besoin": "Physique-chimie 3e (Korka Diallo)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
      "ordre": 39
+    },
+    {
+     "ref": "CDC-3ANG",
+     "quantite": 1,
+     "libelle_besoin": "Annales d'anglais BFEM (Korka Diallo)",
+     "groupe_affichage": "Parascolaire",
+     "section": "principal",
+     "coche_defaut": true,
+     "ordre": 40
     },
     {
      "ref": "NIO-2910",
@@ -6907,7 +6900,7 @@
      "groupe_affichage": "Parascolaire",
      "section": "principal",
      "coche_defaut": true,
-     "ordre": 40
+     "ordre": 41
     },
     {
      "ref": "DID-7427",
@@ -6916,7 +6909,7 @@
      "groupe_affichage": "Parascolaire",
      "section": "principal",
      "coche_defaut": true,
-     "ordre": 41
+     "ordre": 42
     },
     {
      "ref": "DID-7452",
@@ -6925,7 +6918,7 @@
      "groupe_affichage": "Parascolaire",
      "section": "principal",
      "coche_defaut": true,
-     "ordre": 42
+     "ordre": 43
     },
     {
      "ref": "DID-7430",
@@ -6934,7 +6927,7 @@
      "groupe_affichage": "Parascolaire",
      "section": "principal",
      "coche_defaut": true,
-     "ordre": 43
+     "ordre": 44
     },
     {
      "ref": "SAC-112",
@@ -6943,7 +6936,7 @@
      "groupe_affichage": "Parascolaire",
      "section": "principal",
      "coche_defaut": true,
-     "ordre": 44
+     "ordre": 45
     },
     {
      "ref": "S020",
@@ -6952,7 +6945,7 @@
      "groupe_affichage": "Option",
      "section": "option",
      "coche_defaut": false,
-     "ordre": 45
+     "ordre": 46
     }
    ]
   },
@@ -8343,7 +8336,7 @@
    "serie": "S",
    "gamme": "confort",
    "ordre_gamme": 3,
-   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et La Clé des Cracks pour s'entraîner en maths et en sciences.",
+   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et des livres d'entraînement en maths et en sciences, dont ceux de Korka Diallo.",
    "description_si_aucune_cle_des_cracks": "Le kit Complet, plus les manuels, la Casio fx-92 et du parascolaire pour s'entraîner en maths et en sciences.",
    "type_source": "synthese_listes_reelles",
    "source_interne": "Fournitures : liste ISJA 2026-2027. Livres : ISJA, Maristes de Niakhirate, liste d'œuvres du lycée et ta liste.",
@@ -8626,7 +8619,7 @@
     {
      "ref": "CDC-2M",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks maths",
+     "libelle_besoin": "Maths Seconde S (Kaamile, Korka Diallo)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
@@ -8635,7 +8628,7 @@
     {
      "ref": "CDC-2PC",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks sciences physiques",
+     "libelle_besoin": "Physique-chimie Seconde S (Korka Diallo)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
@@ -8644,7 +8637,7 @@
     {
      "ref": "CDC-2SVT",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks SVT",
+     "libelle_besoin": "SVT Seconde S",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
@@ -10164,7 +10157,7 @@
    "serie": "S1",
    "gamme": "confort",
    "ordre_gamme": 3,
-   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et La Clé des Cracks pour s'entraîner en maths et en sciences.",
+   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et des livres d'entraînement en maths et en sciences, dont ceux de Korka Diallo.",
    "description_si_aucune_cle_des_cracks": "Le kit Complet, plus les manuels, la Casio fx-92 et du parascolaire pour s'entraîner en maths et en sciences.",
    "type_source": "synthese_listes_reelles",
    "source_interne": "Fournitures : liste ISJA 2026-2027, identique en S1 et S2. Livres : ISJA, Maristes, liste d'œuvres. S1 et S2 diffèrent par les éditions de La Clé des Cracks.",
@@ -10474,16 +10467,16 @@
     {
      "ref": "CDC-1M-S1",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks maths S1",
+     "libelle_besoin": "Maths Première S1 (Korka Diallo)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
      "ordre": 34
     },
     {
-     "ref": "CDC-1PC-S1",
+     "ref": "CDC-1PC",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks sciences physiques S1",
+     "libelle_besoin": "Physique-chimie Première S (Collection Atomic)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
@@ -11066,7 +11059,7 @@
    "serie": "S2",
    "gamme": "confort",
    "ordre_gamme": 3,
-   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et La Clé des Cracks pour s'entraîner en maths et en sciences.",
+   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et des livres d'entraînement en maths et en sciences, dont ceux de Korka Diallo.",
    "description_si_aucune_cle_des_cracks": "Le kit Complet, plus les manuels, la Casio fx-92 et du parascolaire pour s'entraîner en maths et en sciences.",
    "type_source": "synthese_listes_reelles",
    "source_interne": "Fournitures : liste ISJA 2026-2027, identique en S1 et S2. Livres : ISJA, Maristes, liste d'œuvres. S1 et S2 diffèrent par les éditions de La Clé des Cracks.",
@@ -11376,29 +11369,20 @@
     {
      "ref": "CDC-1M-S2",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks maths S2",
+     "libelle_besoin": "Maths Première S2 (Korka Diallo)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
      "ordre": 34
     },
     {
-     "ref": "CDC-1PC-S2",
+     "ref": "CDC-1PC",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks sciences physiques S2",
+     "libelle_besoin": "Physique-chimie Première S (Collection Atomic)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
      "ordre": 35
-    },
-    {
-     "ref": "CDC-1SVT-S2",
-     "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks SVT S2",
-     "groupe_affichage": "Parascolaire scientifique",
-     "section": "principal",
-     "coche_defaut": true,
-     "ordre": 36
     },
     {
      "ref": "DID-9285",
@@ -11407,7 +11391,7 @@
      "groupe_affichage": "Parascolaire",
      "section": "principal",
      "coche_defaut": true,
-     "ordre": 37
+     "ordre": 36
     },
     {
      "ref": "S020",
@@ -11416,7 +11400,7 @@
      "groupe_affichage": "Option",
      "section": "option",
      "coche_defaut": false,
-     "ordre": 38
+     "ordre": 37
     }
    ]
   },
@@ -12364,13 +12348,22 @@
      "ordre": 37
     },
     {
+     "ref": "CDC-TPHILO",
+     "quantite": 1,
+     "libelle_besoin": "Philosophie (Korka Diallo)",
+     "groupe_affichage": "Parascolaire",
+     "section": "principal",
+     "coche_defaut": true,
+     "ordre": 38
+    },
+    {
      "ref": "S020",
      "quantite": 1,
      "libelle_besoin": "Sac",
      "groupe_affichage": "Option",
      "section": "option",
      "coche_defaut": false,
-     "ordre": 38
+     "ordre": 39
     }
    ]
   },
@@ -12933,7 +12926,7 @@
    "serie": "S1",
    "gamme": "confort",
    "ordre_gamme": 3,
-   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et La Clé des Cracks pour s'entraîner en maths et en sciences.",
+   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et des livres d'entraînement en maths et en sciences, dont ceux de Korka Diallo.",
    "description_si_aucune_cle_des_cracks": "Le kit Complet, plus les manuels, la Casio fx-92 et du parascolaire pour s'entraîner en maths et en sciences.",
    "type_source": "synthese_listes_reelles",
    "source_interne": "Fournitures : liste ISJA 2026-2027, identique en S1 et S2. Livres : ISJA, Maristes, liste d'œuvres. S1 et S2 diffèrent par les éditions de La Clé des Cracks.",
@@ -13246,17 +13239,17 @@
     {
      "ref": "CDC-TM-S1",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks maths S1",
+     "libelle_besoin": "Maths Terminale S1 (Korka Diallo)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
      "ordre": 34
     },
     {
-     "ref": "CDC-TPC-S1",
+     "ref": "CDC-TPHILO",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks sciences physiques S1",
-     "groupe_affichage": "Parascolaire scientifique",
+     "libelle_besoin": "Philosophie (Korka Diallo)",
+     "groupe_affichage": "Parascolaire",
      "section": "principal",
      "coche_defaut": true,
      "ordre": 35
@@ -13840,7 +13833,7 @@
    "serie": "S2",
    "gamme": "confort",
    "ordre_gamme": 3,
-   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et La Clé des Cracks pour s'entraîner en maths et en sciences.",
+   "description": "Le kit Complet, plus les manuels, la Casio fx-92 et des livres d'entraînement en maths et en sciences, dont ceux de Korka Diallo.",
    "description_si_aucune_cle_des_cracks": "Le kit Complet, plus les manuels, la Casio fx-92 et du parascolaire pour s'entraîner en maths et en sciences.",
    "type_source": "synthese_listes_reelles",
    "source_interne": "Fournitures : liste ISJA 2026-2027, identique en S1 et S2. Livres : ISJA, Maristes, liste d'œuvres. S1 et S2 diffèrent par les éditions de La Clé des Cracks.",
@@ -14153,7 +14146,7 @@
     {
      "ref": "CDC-TM-S2",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks maths S2",
+     "libelle_besoin": "Maths Terminale S2 (Korka Diallo)",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
@@ -14162,17 +14155,17 @@
     {
      "ref": "CDC-TPC-S2",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks sciences physiques S2",
+     "libelle_besoin": "Physique-chimie Terminale S2",
      "groupe_affichage": "Parascolaire scientifique",
      "section": "principal",
      "coche_defaut": true,
      "ordre": 35
     },
     {
-     "ref": "CDC-TSVT-S2",
+     "ref": "CDC-TPHILO",
      "quantite": 1,
-     "libelle_besoin": "La Clé des Cracks SVT S2",
-     "groupe_affichage": "Parascolaire scientifique",
+     "libelle_besoin": "Philosophie (Korka Diallo)",
+     "groupe_affichage": "Parascolaire",
      "section": "principal",
      "coche_defaut": true,
      "ordre": 36

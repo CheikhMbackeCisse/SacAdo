@@ -1,12 +1,12 @@
 # Rapport d'import des kits scolaires
 
-Lancé le 2026-09-26T14:57:47.029Z.
+Lancé le 2026-09-26T17:11:10.708Z.
 
 - Kits créés : 0
 - Kits mis à jour (statut conservé) : 63
 - Total kits traités : 63 / 63
-- Lignes insérées : 1576
-- Lignes ignorées (référence introuvable ou ambiguë) : 70
+- Lignes insérées : 1579
+- Lignes ignorées (référence introuvable ou ambiguë) : 68
 
 ## Lignes ignorées
 - kit-6e-complet — A-CREER-04 (Protège-cahiers grand format (1 par cahier)) [introuvable]
@@ -59,8 +59,6 @@ Lancé le 2026-09-26T14:57:47.029Z.
 - kit-terminale-s1-confort — A-CREER-02 (Espagnol (LV2) : 100 p grand format) [introuvable]
 - kit-terminale-s1-confort — A-CREER-02 (Sciences physiques : 100 p grand format) [introuvable]
 - kit-terminale-s1-confort — A-CREER-04 (Protège-cahiers grand format (1 par cahier)) [introuvable]
-- kit-terminale-s1-confort — CDC-TM-S1 (La Clé des Cracks maths S1) [introuvable]
-- kit-terminale-s1-confort — CDC-TPC-S1 (La Clé des Cracks sciences physiques S1) [introuvable]
 - kit-terminale-s2-complet — A-CREER-02 (Espagnol (LV2) : 100 p grand format) [introuvable]
 - kit-terminale-s2-complet — A-CREER-02 (Sciences physiques : 100 p grand format) [introuvable]
 - kit-terminale-s2-complet — A-CREER-04 (Protège-cahiers grand format (1 par cahier)) [introuvable]

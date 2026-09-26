@@ -1,8 +1,8 @@
-# Correction complète des kits scolaires : version 9
+# Correction complète des kits scolaires : version 10
 
 Les kits ont déjà été intégrés avec une version précédente de `import-kits/kits.json`. Ce prompt remplace toutes les corrections précédentes : applique-le en entier, même si une partie a déjà été faite.
 
-Remplace d'abord le contenu du dossier `import-kits/` par celui fourni : `kits.json` (version `2026-09-26-v9`), `SacAdo_kits_v9.xlsx`, `PROMPT-claude-code-kits.md` et ce fichier.
+Remplace d'abord le contenu du dossier `import-kits/` par celui fourni : `kits.json` (version `2026-09-26-v10`), `SacAdo_kits_v10.xlsx`, `PROMPT-claude-code-kits.md` et ce fichier.
 
 Les kits sont composés côté SacAdo. Ne change pas leur composition : pas de ligne ajoutée, retirée ou remplacée par un produit « équivalent ». Une référence introuvable se signale, elle ne se remplace pas.
 
@@ -27,7 +27,7 @@ Le lycée arabe n'a pas de kit : il affiche seulement un message (point 5).
 - La Seconde S reste une seule classe. La séparation commence en Première.
 - Le champ `serie` accepte `L`, `S`, `S1`, `S2` et `STEG`. Le sélecteur de série du lycée affiche : L et S en Seconde ; L, S1, S2 en Première et en Terminale ; STEG aux trois niveaux.
 - S1 et S2 ont les mêmes matières, avec des horaires et des coefficients différents. Leurs fournitures sont donc identiques : ce n'est pas une erreur. La différence est dans les livres.
-- La Clé des Cracks a des éditions différentes en S1 et en S2. Les références sont `CDC-1M-S1`, `CDC-1M-S2`, `CDC-1PC-S1`, `CDC-1PC-S2`, `CDC-TM-S1`, `CDC-TM-S2`, `CDC-TPC-S1`, `CDC-TPC-S2`, plus `CDC-1SVT-S2` et `CDC-TSVT-S2` (SVT en S2 seulement). Rattache chaque référence à l'édition de sa série. Ne rattache jamais une édition S2 à une référence S1, ni l'inverse. Si l'application n'a qu'une édition commune S1/S2, utilise-la et signale-le. Si l'édition est introuvable, la ligne n'est pas créée : signale-la.
+- Les livres de Korka Diallo (références `CDC-...`) sont maintenant les vrais titres de son catalogue, importé avec la tâche « Livres Korka Diallo ». Chaque entrée de `references` donne le titre exact (avant la parenthèse) et une consigne `recherche`. Rattache par ce titre, sans tenir compte de la casse ni des accents ; si l'app a rendu les titres plus lisibles, rattache par niveau + série + matière + auteur. Les éditions S1 et S2 sont différentes (`CDC-1M-S1` : Maths 1S1 Cracks en maths ; `CDC-1M-S2` : Maths 1S2 La Clé des Cracks ; `CDC-TM-S1` : Maths TS1 épreuves du bac ; `CDC-TM-S2` : Maths TS2 La Clé du Bac) : ne rattache jamais l'une à la place de l'autre. `CDC-1PC` (Physique Chimie Première S, Collection Atomic) est commun à S1 et S2. Jamais d'ancienne édition dans un kit. Un livre Korka encore masqué se rattache quand même : signale-le, car la ligne restera cachée tant qu'il n'est pas publié.
 
 ## 2. Publier les kits STEG
 
@@ -77,7 +77,7 @@ Aucune autre série technique n'est affichée (S3, T1, T2, F6...).
 
 1. Après import : 63 kits exactement (21 par gamme). Aucun kit Première S ou Terminale S sans S1 ni S2. Les 9 kits STEG sont présents.
 2. Relance l'import une deuxième fois : toujours 63 kits, aucun doublon, et aucun kit déjà publié n'est repassé en masqué.
-3. Première S1 Confort et Première S2 Confort : les lignes La Clé des Cracks pointent vers des éditions différentes (ou vers la même édition commune, signalée). Seul le S2 a la ligne SVT.
+3. Première S1 Confort et Première S2 Confort : les livres de maths de Korka sont différents (Cracks en maths pour S1, La Clé des Cracks pour S2) et le livre de physique-chimie est le même. Terminale S2 Confort a en plus Physique Chimie TS2. Les Confort de Terminale L, S1 et S2 ont Philosophie L'Essentiel. 
 4. 3e Essentiel : le taille-crayon est le Maped à réservoir, aucune boîte à éponge, aucun protège-cahier. 3e Complet : 8 protège-cahiers petit format et 5 grand format (si le produit existe). 3e Complet : pas de manuel, pas de Casio fx-92, calculatrice générique présente. 3e Confort : manuels et Casio fx-92 présents, calculatrice générique absente.
 5. Terminale STEG Confort : Casio fx-92, stylo 4 couleurs et correcteur présents.
 6. Le mot « ebook » n'apparaît sur aucune page publique.
@@ -92,6 +92,6 @@ Termine par un résumé court :
 
 - les fichiers modifiés et la commande pour relancer l'import ;
 - les kits supprimés, créés et mis à jour ;
-- les lignes La Clé des Cracks rattachées, par série : S1, S2, édition commune, introuvable ;
+- les livres Korka rattachés, introuvables, ou encore masqués ;
 - **la liste des produits masqués utilisés par les kits**, que l'équipe doit publier pour que les kits soient complets ;
 - tout ce que tu as dû deviner ou laisser de côté.
