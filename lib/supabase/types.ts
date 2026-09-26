@@ -406,6 +406,11 @@ export type Commande = {
   wave_session_id: string | null;
   wave_event_id: string | null;
   montant_paye: number | null;
+  // Diagnostic d'un échec de paiement Wave (migration 0087). Code brut Wave,
+  // jamais affiché tel quel au client — voir messageErreurPaiement() dans
+  // lib/wave/webhook-core.ts. Effacés dès que la commande finit par être payée.
+  wave_erreur_code: string | null;
+  wave_erreur_le: string | null;
   // Historique : prénom(s) d'enfant saisis à la commande quand l'ebook offert
   // était personnalisé. L'ebook n'est plus personnalisé (MODULE_EBOOKS.md) ;
   // colonne conservée pour les anciennes commandes, plus alimentée.

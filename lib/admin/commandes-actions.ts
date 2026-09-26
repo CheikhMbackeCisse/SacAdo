@@ -29,6 +29,8 @@ function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecCl
     wave_session_id: row.wave_session_id,
     wave_event_id: row.wave_event_id,
     montant_paye: row.montant_paye,
+    wave_erreur_code: row.wave_erreur_code,
+    wave_erreur_le: row.wave_erreur_le,
     enfants_ebook: row.enfants_ebook,
     lat: row.lat,
     lng: row.lng,

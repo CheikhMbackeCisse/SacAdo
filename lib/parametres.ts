@@ -60,3 +60,34 @@ export async function setSeuilLivraisonGratuite(
   if (error) return { ok: false, error: "Impossible d'enregistrer le réglage." };
   return { ok: true };
 }
+
+const CLE_WAVE_NOM_MARCHAND = "wave_nom_marchand";
+const WAVE_NOM_MARCHAND_DEFAUT = "UniShop Sénégal";
+
+// Nom marchand tel que Wave l'affiche réellement à l'écran de paiement (champ
+// business_name de la session Wave). Le paramètre override_business_name a été
+// retiré de l'API Wave en 2024 : on ne peut plus l'imposer depuis le code,
+// seulement afficher ce que Wave a renvoyé pour éviter que le client hésite en
+// voyant un nom différent de la marque SacAdo (checkout, mention sous "Payer
+// avec Wave"). Repli si aucune session n'a encore été créée.
+export async function getNomMarchandWave(): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("parametres")
+    .select("valeur")
+    .eq("cle", CLE_WAVE_NOM_MARCHAND)
+    .maybeSingle();
+  const nom = data?.valeur?.trim();
+  return nom || WAVE_NOM_MARCHAND_DEFAUT;
+}
+
+// Rafraîchi à chaque session Wave créée avec succès (lib/wave/client.ts) : si
+// Wave change ce nom un jour, l'affichage se met à jour tout seul. Best-effort,
+// ne doit jamais faire échouer une création de session.
+export async function enregistrerNomMarchandWave(nom: string): Promise<void> {
+  const propre = nom.trim();
+  if (!propre) return;
+  const { error } = await supabaseAdmin
+    .from("parametres")
+    .upsert({ cle: CLE_WAVE_NOM_MARCHAND, valeur: propre, maj: new Date().toISOString() });
+  if (error) console.error("Wave: échec enregistrement du nom marchand", error);
+}

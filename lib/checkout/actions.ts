@@ -7,7 +7,7 @@ import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wa
 import { jetonClient, verifierJetonClient } from "@/lib/client-auth";
 import { journaliserCommande } from "@/lib/mesure";
 import { fusionnerSessionCourante } from "@/lib/affinites";
-import { getSeuilLivraisonGratuite } from "@/lib/parametres";
+import { getNomMarchandWave, getSeuilLivraisonGratuite } from "@/lib/parametres";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { origineSite } from "@/lib/site-url";
@@ -382,6 +382,11 @@ export type OptionsPaiementResult =
         localiteNom: string;
         aConfirmer: boolean;
         messageLivraison: string | null;
+        // Nom marchand réellement affiché par Wave à l'écran de paiement
+        // (lib/parametres.ts::getNomMarchandWave) — null si Wave n'est pas une
+        // option pour ce total, pour ne jamais afficher une mention Wave hors
+        // propos.
+        waveNomMarchand: string | null;
       })
   | { ok: false; error: string };
 
@@ -402,15 +407,18 @@ export async function getOptionsPaiement(
   const resolu = await resoudreCommande(lignes, params);
   if (!resolu.ok) return { ok: false, error: resolu.error };
 
+  const options = optionsPaiementPourTotal(resolu.data.total, waveDisponible());
+
   return {
     ok: true,
-    ...optionsPaiementPourTotal(resolu.data.total, waveDisponible()),
+    ...options,
     fraisLivraison: resolu.data.fraisLivraison,
     fraisLivraison24h: resolu.data.fraisLivraison24h,
     fraisLivraison6j: resolu.data.fraisLivraison6j,
     localiteNom: resolu.data.localiteNom,
     aConfirmer: resolu.data.aConfirmer,
     messageLivraison: resolu.data.messageLivraison,
+    waveNomMarchand: options.options.includes("wave") ? await getNomMarchandWave() : null,
   };
 }
 
@@ -823,6 +831,7 @@ export async function simulerPaiementWave(
     p_session_id: commande.wave_session_id,
     p_resultat: issue,
     p_montant: issue === "paye" ? commande.total : null,
+    p_erreur_code: null,
   });
 
   if (error) {

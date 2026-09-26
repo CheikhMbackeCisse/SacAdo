@@ -75,6 +75,9 @@ export type EvenementWave = {
   reference: string;
   sessionId: string | null;
   montant: number | null;
+  // Code d'erreur BRUT Wave (data.last_payment_error.code) — diagnostic
+  // uniquement, jamais affiché tel quel au client. Voir messageErreurPaiement().
+  erreurCode: string | null;
 };
 
 type PayloadWave = {
@@ -86,6 +89,9 @@ type PayloadWave = {
     client_reference?: string;
     checkout_status?: string;
     payment_status?: string;
+    // Présent sur checkout.session.payment_failed (docs.wave.com/webhook) :
+    // code technique stable (insufficient-funds, blocked-account, ...).
+    last_payment_error?: { code?: string; message?: string } | null;
   };
 };
 
@@ -119,5 +125,31 @@ export function parseEvenementWave(corps: string): EvenementWave | null {
     montant: typeof montantBrut === "number" && Number.isFinite(montantBrut)
       ? Math.round(montantBrut)
       : null,
+    erreurCode: data.last_payment_error?.code ?? null,
   };
+}
+
+// --- Message client (français) à partir du code d'erreur Wave --------------
+//
+// Le code BRUT est stocké tel quel en base (commandes.wave_erreur_code, migration
+// 0087) pour le diagnostic ; ce mapping ne vit que dans le code pour pouvoir
+// reformuler un message sans toucher aux données. Codes documentés sur
+// docs.wave.com/webhook (liste non exhaustive, Wave peut en ajouter — d'où le
+// repli par défaut).
+const MESSAGES_ERREUR_PAIEMENT: Record<string, string> = {
+  "insufficient-funds": "Le solde du compte utilisé est insuffisant pour ce paiement.",
+  "blocked-account": "Le compte utilisé pour payer est bloqué. Contacte Wave ou utilise un autre moyen de paiement.",
+  "payer-mobile-mismatch": "Le numéro utilisé pour payer ne correspond pas à celui attendu.",
+  "cross-border-payment-not-allowed": "Ce paiement entre deux pays n'est pas autorisé.",
+  "customer-age-restricted": "Ce paiement n'est pas autorisé sur ce compte.",
+  "kyb-limits-exceeded": "Le plafond de paiement du compte utilisé est atteint.",
+  "payment-failure": "Une erreur technique a empêché le paiement.",
+};
+
+const MESSAGE_ERREUR_PAR_DEFAUT =
+  "Le paiement n'a pas abouti. Réessaie, ou utilise un autre moyen de paiement.";
+
+export function messageErreurPaiement(code: string | null): string {
+  if (!code) return MESSAGE_ERREUR_PAR_DEFAUT;
+  return MESSAGES_ERREUR_PAIEMENT[code] ?? MESSAGE_ERREUR_PAR_DEFAUT;
 }

@@ -138,6 +138,7 @@ export default function CheckoutPage() {
     localiteNom: string;
     aConfirmer: boolean;
     messageLivraison: string | null;
+    waveNomMarchand: string | null;
   } | null>(null);
   const panierSignature = detail
     .map((d) => `${d.produit.id}:${d.variante?.id ?? 0}x${d.quantite}`)
@@ -172,6 +173,7 @@ export default function CheckoutPage() {
         localiteNom: r.localiteNom,
         aConfirmer: r.aConfirmer,
         messageLivraison: r.messageLivraison,
+        waveNomMarchand: r.waveNomMarchand,
       });
     });
     return () => {
@@ -550,6 +552,11 @@ export default function CheckoutPage() {
               ? "Payer avec Wave"
               : "Confirmer la commande"}
         </button>
+        {modePaiementEffectif === "wave" && opts?.waveNomMarchand && (
+          <p className="mt-2 text-center text-[11px] text-ink/50">
+            Votre paiement sera adressé à {opts.waveNomMarchand}, propriétaire de SacAdo.
+          </p>
+        )}
       </div>
     </form>
   );

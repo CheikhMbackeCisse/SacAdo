@@ -4,6 +4,7 @@ import {
   parseEvenementWave,
   signerCorpsWave,
   verifierSignatureHmac,
+  messageErreurPaiement,
   TOLERANCE_SECONDES,
 } from "./webhook-core.ts";
 
@@ -59,6 +60,7 @@ test("parse : évènement de paiement réussi", () => {
     reference: "ref-abc",
     sessionId: "cos_1",
     montant: 12500,
+    erreurCode: null,
   });
 });
 
@@ -67,6 +69,19 @@ test("parse : échec de paiement", () => {
     JSON.stringify({ id: "EV_3", type: "checkout.session.payment_failed", data: { id: "cos_2" } }),
   );
   assert.equal(e?.resultat, "echoue");
+  assert.equal(e?.erreurCode, null);
+});
+
+test("parse : échec de paiement avec code d'erreur Wave", () => {
+  const e = parseEvenementWave(
+    JSON.stringify({
+      id: "EV_3b",
+      type: "checkout.session.payment_failed",
+      data: { id: "cos_2b", client_reference: "ref-xyz", last_payment_error: { code: "insufficient-funds", message: "Insufficient balance" } },
+    }),
+  );
+  assert.equal(e?.resultat, "echoue");
+  assert.equal(e?.erreurCode, "insufficient-funds");
 });
 
 test("parse : évènement non pertinent -> 'autre'", () => {
@@ -77,4 +92,25 @@ test("parse : évènement non pertinent -> 'autre'", () => {
 test("parse : corps illisible -> null", () => {
   assert.equal(parseEvenementWave("pas du json"), null);
   assert.equal(parseEvenementWave(JSON.stringify({ type: "x" })), null); // pas d'id
+});
+
+test("messageErreurPaiement : code connu -> message français dédié", () => {
+  assert.equal(
+    messageErreurPaiement("insufficient-funds"),
+    "Le solde du compte utilisé est insuffisant pour ce paiement.",
+  );
+  assert.equal(
+    messageErreurPaiement("blocked-account"),
+    "Le compte utilisé pour payer est bloqué. Contacte Wave ou utilise un autre moyen de paiement.",
+  );
+  assert.equal(
+    messageErreurPaiement("payer-mobile-mismatch"),
+    "Le numéro utilisé pour payer ne correspond pas à celui attendu.",
+  );
+});
+
+test("messageErreurPaiement : code null ou inconnu -> repli poli", () => {
+  const repli = "Le paiement n'a pas abouti. Réessaie, ou utilise un autre moyen de paiement.";
+  assert.equal(messageErreurPaiement(null), repli);
+  assert.equal(messageErreurPaiement("un-code-que-wave-ajoutera-plus-tard"), repli);
 });

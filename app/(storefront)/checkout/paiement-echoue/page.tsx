@@ -2,6 +2,7 @@ import Link from "next/link";
 import { XCircle } from "lucide-react";
 import { getCommandeParReference } from "@/lib/checkout/actions";
 import { formatPrice } from "@/lib/format";
+import { messageErreurPaiement } from "@/lib/wave/webhook";
 import { BoutonReessayerPaiement } from "@/components/checkout/paiement-retour";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,10 @@ export default async function PaiementEchouePage(props: {
         <XCircle size={44} className="text-ink/40" aria-hidden="true" />
         <h1 className="font-heading text-xl font-bold text-ink">Paiement annulé</h1>
         <p className="max-w-sm text-sm text-ink/65">
-          Le paiement Wave a été annulé ou n&apos;a pas abouti. Aucun montant n&apos;a été
-          confirmé
+          {commande?.wave_erreur_code
+            ? messageErreurPaiement(commande.wave_erreur_code)
+            : "Le paiement Wave a été annulé ou n'a pas abouti."}{" "}
+          Aucun montant n&apos;a été confirmé
           {commande ? ` pour la commande #${commande.id}` : ""}.
         </p>
       </div>

@@ -1,7 +1,7 @@
 import "server-only";
 import { verifierSignatureHmac } from "./webhook-core";
 
-export { EN_TETE_SIGNATURE, parseEvenementWave } from "./webhook-core";
+export { EN_TETE_SIGNATURE, parseEvenementWave, messageErreurPaiement } from "./webhook-core";
 export type { EvenementWave } from "./webhook-core";
 
 // Point d'entrée serveur : lit le secret dans l'environnement. Tant que

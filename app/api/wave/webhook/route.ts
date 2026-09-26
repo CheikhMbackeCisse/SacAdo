@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     p_session_id: evenement.sessionId,
     p_resultat: evenement.resultat,
     p_montant: evenement.montant,
+    p_erreur_code: evenement.erreurCode,
   });
 
   if (error) {
