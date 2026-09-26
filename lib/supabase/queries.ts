@@ -6,6 +6,7 @@ import type {
   DocumentApercu,
   Gamme,
   Kit,
+  KitItem,
   Localite,
   LieuSpecial,
   Produit,
@@ -277,6 +278,34 @@ export async function getVariantesByProduit(
   return versVariantes(brut.data, false);
 }
 
+// Variantes de plusieurs produits en un aller-retour (page kit : plusieurs
+// lignes peuvent porter des variantes — ex. l'ardoise, en 4 couleurs).
+export async function getVariantesByProduitIds(
+  produitIds: number[],
+): Promise<Map<number, VarianteAvecAttributs[]>> {
+  const uniques = [...new Set(produitIds)];
+  if (uniques.length === 0) return new Map();
+
+  const jointure = await supabase
+    .from("produit_variantes")
+    .select(SELECT_VARIANTE)
+    .in("produit_id", uniques)
+    .order("id", { ascending: true });
+  const rows = !jointure.error
+    ? versVariantes(jointure.data, true)
+    : versVariantes(
+        (await supabase.from("produit_variantes").select("*").in("produit_id", uniques).order("id", { ascending: true }))
+          .data,
+        false,
+      );
+
+  const parProduit = new Map<number, VarianteAvecAttributs[]>();
+  rows.forEach((v) => {
+    parProduit.set(v.produit_id, [...(parProduit.get(v.produit_id) ?? []), v]);
+  });
+  return parProduit;
+}
+
 export async function getVariantesByIds(ids: number[]): Promise<VarianteAvecAttributs[]> {
   if (ids.length === 0) return [];
   const jointure = await supabase
@@ -524,15 +553,25 @@ export async function getSousSousCategoriesBySousCategories(
   return data ?? [];
 }
 
-// Les gammes disponibles pour une classe, triées Essentiel -> Confort -> Complet.
+// `source_interne` et `manquants_connus` sont réservés à l'admin : jamais
+// exposés côté client (Étape 4 du prompt), donc jamais dans ce select public.
+const COLONNES_KIT_PUBLIC =
+  "id,cycle,niveau,gamme,nom,created_at,slug,serie,ordre_gamme,description,description_si_aucune_cle_des_cracks,ebook_offert,type_source,statut" as const;
+
+// Les gammes disponibles pour une classe, triées Essentiel -> Complet -> Confort
+// (ordre_gamme). Seuls les kits publiés sont visibles côté storefront —
+// masqué = pas encore vérifié par l'admin après import.
 export async function getKitsByCycleNiveau(cycle: string, niveau: string): Promise<Kit[]> {
   const { data, error } = await supabase
     .from("kits")
-    .select("*")
+    .select(COLONNES_KIT_PUBLIC)
     .eq("cycle", cycle)
-    .eq("niveau", niveau);
+    .eq("niveau", niveau)
+    .eq("statut", "publie");
   if (error) throw error;
-  return (data ?? []).sort((a, b) => GAMME_ORDER[a.gamme as Gamme] - GAMME_ORDER[b.gamme as Gamme]);
+  return (data ?? [])
+    .map((k) => ({ ...k, source_interne: null, manquants_connus: [] }) as Kit)
+    .sort((a, b) => GAMME_ORDER[a.gamme as Gamme] - GAMME_ORDER[b.gamme as Gamme]);
 }
 
 export async function getKitByCycleNiveauGamme(
@@ -542,38 +581,60 @@ export async function getKitByCycleNiveauGamme(
 ): Promise<Kit | null> {
   const { data, error } = await supabase
     .from("kits")
-    .select("*")
+    .select(COLONNES_KIT_PUBLIC)
     .eq("cycle", cycle)
     .eq("niveau", niveau)
     .eq("gamme", gamme)
+    .eq("statut", "publie")
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? ({ ...data, source_interne: null, manquants_connus: [] } as Kit) : null;
+}
+
+// Classes de lycée pour lesquelles au moins un kit publié existe — sert à
+// construire la navigation (Étape 4 : les séries à venir n'ont ni prix, ni
+// bouton, ni lien vers un kit, donc on ne les mélange pas aux vraies données).
+export async function getClassesLyceeAvecKits(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("kits")
+    .select("niveau")
+    .eq("cycle", "lycee")
+    .eq("statut", "publie");
+  if (error) throw error;
+  return [...new Set((data ?? []).map((k) => k.niveau))];
 }
 
 export type KitItemAvecProduit = {
   id: number;
   quantite_defaut: number;
+  libelle_besoin: string | null;
+  groupe_affichage: string | null;
+  section: KitItem["section"];
+  coche_defaut: boolean;
+  ordre: number;
   produit: Produit;
 };
 
 export async function getKitItemsAvecProduits(kitId: number): Promise<KitItemAvecProduit[]> {
   const { data, error } = await supabase
     .from("kit_items")
-    .select("id, quantite_defaut, produit:produits(*)")
-    .eq("kit_id", kitId);
+    .select(
+      `id, quantite_defaut, libelle_besoin, groupe_affichage, section, coche_defaut, ordre, produit:produits(${COLONNES_PRODUIT_PUBLIC})`,
+    )
+    .eq("kit_id", kitId)
+    .order("ordre", { ascending: true });
   if (error) throw error;
 
   // Sans schéma Database généré, supabase-js ne connaît pas la cardinalité de
   // la relation embarquée (produits ↔ kit_items) et type "produit" en any[] :
   // on gère les deux formes possibles au runtime plutôt que de forcer un cast.
-  type RawRow = { id: number; quantite_defaut: number; produit: Produit | Produit[] | null };
+  type RawRow = Omit<KitItemAvecProduit, "produit"> & { produit: Produit | Produit[] | null };
   const rows = (data ?? []) as unknown as RawRow[];
 
   return rows
     .map((row) => {
       const produit = Array.isArray(row.produit) ? row.produit[0] : row.produit;
-      return produit ? { id: row.id, quantite_defaut: row.quantite_defaut, produit } : null;
+      return produit ? { ...row, produit } : null;
     })
     .filter((row): row is KitItemAvecProduit => row !== null);
 }

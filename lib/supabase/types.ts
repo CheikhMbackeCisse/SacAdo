@@ -264,6 +264,9 @@ export type VarianteAvecAttributs = ProduitVariante & {
   attributs: VarianteAttributValeur[];
 };
 
+export type StatutKit = "masque" | "publie";
+export type SectionKitItem = "principal" | "livres_proposes" | "option";
+
 export type Kit = {
   id: number;
   cycle: Cycle;
@@ -271,6 +274,19 @@ export type Kit = {
   gamme: Gamme;
   nom: string;
   created_at: string;
+  // Champs Lot import-kits (import-kits/kits.json) — nullable tant qu'un kit
+  // n'a pas été (ré)importé par scripts/import-kits.mjs.
+  slug: string | null;
+  serie: string | null;
+  ordre_gamme: number | null;
+  description: string | null;
+  description_si_aucune_cle_des_cracks: string | null;
+  ebook_offert: boolean;
+  type_source: string | null;
+  statut: StatutKit;
+  // Réservés à l'admin, jamais exposés côté client (page, API publique, HTML).
+  source_interne: string | null;
+  manquants_connus: string[];
 };
 
 export type KitItem = {
@@ -278,6 +294,11 @@ export type KitItem = {
   kit_id: number;
   produit_id: number;
   quantite_defaut: number;
+  libelle_besoin: string | null;
+  groupe_affichage: string | null;
+  section: SectionKitItem;
+  coche_defaut: boolean;
+  ordre: number;
 };
 
 // Ebook PDF offert à l'achat d'un kit (MODULE_EBOOKS.md). Fichier rangé dans le

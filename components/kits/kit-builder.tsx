@@ -1,124 +1,103 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { ArrowLeft, Minus, Plus } from "lucide-react";
-import { ProductImage } from "@/components/ui/product-image";
+import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { slugAvecId } from "@/lib/slug";
 import { usePanier } from "@/lib/local/panier";
 import { useKitsPanier } from "@/lib/local/kits-panier";
 import { KitBeneficiairePicker } from "@/components/kits/kit-beneficiaire-picker";
-import { getSacsDisponibles } from "@/lib/supabase/queries";
-import type { KitItemAvecProduit } from "@/lib/supabase/queries";
-import type { Produit } from "@/lib/supabase/types";
+import { ligneEstAffichable } from "@/lib/kits";
+import type { Produit, SectionKitItem, VarianteAvecAttributs } from "@/lib/supabase/types";
 
-type ItemState = { checked: boolean; quantite: number };
+export type LigneKitBuilder = {
+  id: number;
+  produit: Produit;
+  quantite: number;
+  libelleBesoin: string | null;
+  groupeAffichage: string | null;
+  section: SectionKitItem;
+  cocheDefaut: boolean;
+  ordre: number;
+  variantes: VarianteAvecAttributs[];
+};
+
+type EtatLigne = { checked: boolean; varianteId: number | null };
 
 type KitBuilderProps = {
   kitNom: string;
-  // Classe du kit — sert à offrir l'ebook de cette classe après l'achat.
   cycle: string;
   niveau: string;
-  items: KitItemAvecProduit[];
-  // Sac par défaut proposé (décoché) : null si le catalogue n'a pas encore
-  // de sac rangé dans "Sacs à dos" / "Sacs à roulettes" (KIT_AMELIORATIONS.md §3).
-  sacParDefaut: Produit | null;
+  lignes: LigneKitBuilder[];
 };
 
-const TAILLE_SELECTION_SACS = 5;
+const GROUPE_CAHIERS = "Cahiers";
 
-export function KitBuilder({ kitNom, cycle, niveau, items, sacParDefaut }: KitBuilderProps) {
+function varianteParDefaut(variantes: VarianteAvecAttributs[]): number | null {
+  const dispo = variantes.find((v) => v.statut !== "epuise");
+  return dispo?.id ?? variantes[0]?.id ?? null;
+}
+
+export function KitBuilder({ kitNom, cycle, niveau, lignes: toutesLesLignes }: KitBuilderProps) {
   const { ajouter } = usePanier();
   const { enregistrer: enregistrerKitClasse } = useKitsPanier();
   const [added, setAdded] = useState(false);
-  // Bénéficiaire auquel rattacher ce kit (null = sans préciser).
   const [beneficiaireId, setBeneficiaireId] = useState<number | null>(null);
-  const [etats, setEtats] = useState<Record<number, ItemState>>(() =>
+  const [cahiersOuverts, setCahiersOuverts] = useState(false);
+
+  const lignes = useMemo(
+    () => toutesLesLignes.filter((l) => ligneEstAffichable(l.produit)).sort((a, b) => a.ordre - b.ordre),
+    [toutesLesLignes],
+  );
+
+  const [etats, setEtats] = useState<Record<number, EtatLigne>>(() =>
     Object.fromEntries(
-      items.map((item) => [
-        item.id,
-        { checked: item.produit.statut !== "epuise", quantite: item.quantite_defaut },
+      lignes.map((l) => [
+        l.id,
+        { checked: l.cocheDefaut, varianteId: varianteParDefaut(l.variantes) },
       ]),
     ),
   );
 
-  // Le sac ne fait jamais partie de la liste pré-cochée : trop d'élèves
-  // réutilisent le leur (KIT_AMELIORATIONS.md §3).
-  const [sacChoisi, setSacChoisi] = useState<Produit | null>(sacParDefaut);
-  const [sacCoche, setSacCoche] = useState(false);
-
-  const [sheetOuvert, setSheetOuvert] = useState(false);
-  const [autresSacs, setAutresSacs] = useState<Produit[]>([]);
-  const [hasMoreSacs, setHasMoreSacs] = useState(false);
-  const [chargementSacs, setChargementSacs] = useState(false);
-
-  const { nbArticles, total } = useMemo(() => {
-    const base = items.reduce(
-      (acc, item) => {
-        const etat = etats[item.id];
-        if (!etat?.checked) return acc;
-        return {
-          nbArticles: acc.nbArticles + etat.quantite,
-          total: acc.total + etat.quantite * item.produit.prix,
-        };
-      },
-      { nbArticles: 0, total: 0 },
-    );
-    if (sacCoche && sacChoisi) {
-      return { nbArticles: base.nbArticles + 1, total: base.total + sacChoisi.prix };
-    }
-    return base;
-  }, [items, etats, sacCoche, sacChoisi]);
-
   const toggle = (id: number) =>
-    setEtats((current) => ({
-      ...current,
-      [id]: { ...current[id], checked: !current[id].checked },
-    }));
+    setEtats((c) => ({ ...c, [id]: { ...c[id], checked: !c[id].checked } }));
 
-  const setQuantite = (id: number, quantite: number) =>
-    setEtats((current) => ({
-      ...current,
-      [id]: { ...current[id], quantite: Math.max(1, quantite) },
-    }));
+  const choisirVariante = (id: number, varianteId: number) =>
+    setEtats((c) => ({ ...c, [id]: { ...c[id], varianteId } }));
 
-  const chargerSacs = async (offset: number, remplacer: boolean) => {
-    setChargementSacs(true);
-    const excludeIds = sacChoisi ? [sacChoisi.id] : [];
-    const { items: page, hasMore } = await getSacsDisponibles({
-      offset,
-      limit: TAILLE_SELECTION_SACS,
-      excludeIds,
-    });
-    setAutresSacs((current) => (remplacer ? page : [...current, ...page]));
-    setHasMoreSacs(hasMore);
-    setChargementSacs(false);
+  const prixLigne = (l: LigneKitBuilder) => {
+    const variante = l.variantes.find((v) => v.id === etats[l.id]?.varianteId);
+    return variante?.prix ?? l.produit.prix;
   };
 
-  const ouvrirSelectionSacs = () => {
-    setSheetOuvert(true);
-    void chargerSacs(0, true);
-  };
+  const { total, nbArticles } = useMemo(() => {
+    return lignes.reduce(
+      (acc, l) => {
+        if (!etats[l.id]?.checked) return acc;
+        return { total: acc.total + l.quantite * prixLigne(l), nbArticles: acc.nbArticles + l.quantite };
+      },
+      { total: 0, nbArticles: 0 },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lignes, etats]);
 
-  const choisirSac = (produit: Produit) => {
-    setSacChoisi(produit);
-    setSacCoche(true);
-    setSheetOuvert(false);
-  };
+  const principales = lignes.filter((l) => l.section === "principal");
+  const livresProposes = lignes.filter((l) => l.section === "livres_proposes");
+  const options = lignes.filter((l) => l.section === "option");
+
+  const cahiers = principales.filter((l) => l.groupeAffichage === GROUPE_CAHIERS);
+  const autresPrincipales = principales.filter((l) => l.groupeAffichage !== GROUPE_CAHIERS);
+  const nbCahiersCoches = cahiers.filter((l) => etats[l.id]?.checked).length;
 
   const handleAjouter = () => {
     const produitIds: number[] = [];
-    items.forEach((item) => {
-      const etat = etats[item.id];
-      if (etat?.checked) {
-        ajouter(item.produit.id, null, etat.quantite);
-        produitIds.push(item.produit.id);
-      }
+    lignes.forEach((l) => {
+      const etat = etats[l.id];
+      if (!etat?.checked) return;
+      ajouter(l.produit.id, etat.varianteId, l.quantite);
+      produitIds.push(l.produit.id);
     });
-    if (sacCoche && sacChoisi) {
-      ajouter(sacChoisi.id, null, 1);
-      produitIds.push(sacChoisi.id);
-    }
     enregistrerKitClasse(cycle, niveau, { beneficiaireId, produitIds });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -134,88 +113,81 @@ export function KitBuilder({ kitNom, cycle, niveau, items, sacParDefaut }: KitBu
       />
 
       <ul className="flex flex-col divide-y divide-ink/10 px-4">
-        {items.map((item) => {
-          const etat = etats[item.id];
-          const epuise = item.produit.statut === "epuise";
-          return (
-            <li key={item.id} className="flex items-center gap-3 py-2.5">
-              <input
-                type="checkbox"
-                checked={etat?.checked ?? false}
-                disabled={epuise}
-                onChange={() => toggle(item.id)}
-                aria-label={`Inclure ${item.produit.nom}`}
-                className="size-5 shrink-0 accent-brand"
+        {cahiers.length > 0 && (
+          <li className="flex flex-col py-2.5">
+            <button
+              type="button"
+              onClick={() => setCahiersOuverts((v) => !v)}
+              className="flex items-center justify-between gap-2"
+            >
+              <span className="text-sm text-ink">
+                {cahiers.length} cahier{cahiers.length > 1 ? "s" : ""}{" "}
+                <span className="text-ink/45">({nbCahiersCoches} sélectionné{nbCahiersCoches > 1 ? "s" : ""})</span>
+              </span>
+              <ChevronDown
+                size={16}
+                aria-hidden="true"
+                className={`shrink-0 text-ink/40 transition-transform ${cahiersOuverts ? "rotate-180" : ""}`}
               />
+            </button>
+            {cahiersOuverts && (
+              <ul className="mt-2 flex flex-col divide-y divide-ink/5 border-t border-ink/5 pt-1">
+                {cahiers.map((l) => (
+                  <LigneKitRow
+                    key={l.id}
+                    ligne={l}
+                    etat={etats[l.id]}
+                    onToggle={() => toggle(l.id)}
+                    onVariante={(vid) => choisirVariante(l.id, vid)}
+                    compact
+                  />
+                ))}
+              </ul>
+            )}
+          </li>
+        )}
 
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm text-ink">{item.produit.nom}</span>
-                <span className="text-xs text-ink/50">{formatPrice(item.produit.prix)}</span>
-                {epuise && (
-                  <span className="text-[11px] text-ink/40">Épuisé — non inclus</span>
-                )}
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2 rounded-full border border-ink/15 px-1.5 py-1">
-                <button
-                  type="button"
-                  aria-label="Diminuer la quantité"
-                  disabled={!etat?.checked}
-                  onClick={() => setQuantite(item.id, (etat?.quantite ?? 1) - 1)}
-                  className="flex size-6 items-center justify-center rounded-full text-ink/70 disabled:opacity-30"
-                >
-                  <Minus size={13} aria-hidden="true" />
-                </button>
-                <span className="w-4 text-center text-sm">{etat?.quantite ?? 0}</span>
-                <button
-                  type="button"
-                  aria-label="Augmenter la quantité"
-                  disabled={!etat?.checked}
-                  onClick={() => setQuantite(item.id, (etat?.quantite ?? 1) + 1)}
-                  className="flex size-6 items-center justify-center rounded-full text-ink/70 disabled:opacity-30"
-                >
-                  <Plus size={13} aria-hidden="true" />
-                </button>
-              </div>
-            </li>
-          );
-        })}
+        {autresPrincipales.map((l) => (
+          <LigneKitRow
+            key={l.id}
+            ligne={l}
+            etat={etats[l.id]}
+            onToggle={() => toggle(l.id)}
+            onVariante={(vid) => choisirVariante(l.id, vid)}
+          />
+        ))}
       </ul>
 
-      {sacChoisi && (
-        <div className="mx-4 mt-2 flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3">
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={sacCoche}
-              onChange={() => setSacCoche((v) => !v)}
-              aria-label={`Ajouter le sac ${sacChoisi.nom}`}
-              className="size-5 shrink-0 accent-brand"
-            />
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-xl">
-              <ProductImage
-                src={sacChoisi.photo}
-                alt={sacChoisi.nom}
-                className="h-full w-full"
-                sizes="48px"
+      {livresProposes.length > 0 && (
+        <div className="mx-4 mt-3 flex flex-col gap-1 rounded-2xl border border-ink/10 bg-elevated p-3">
+          <span className="text-xs font-semibold text-ink/70">Livres au programme, non inclus</span>
+          <ul className="flex flex-col divide-y divide-ink/5">
+            {livresProposes.map((l) => (
+              <LigneKitRow
+                key={l.id}
+                ligne={l}
+                etat={etats[l.id]}
+                onToggle={() => toggle(l.id)}
+                onVariante={(vid) => choisirVariante(l.id, vid)}
+                compact
               />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-sm text-ink">{sacChoisi.nom}</span>
-              <span className="text-xs text-ink/50">{formatPrice(sacChoisi.prix)}</span>
-            </div>
-          </div>
-          <p className="text-xs text-ink/45">
-            Beaucoup d&apos;élèves réutilisent leur sac : cochez pour l&apos;ajouter.
-          </p>
-          <button
-            type="button"
-            onClick={ouvrirSelectionSacs}
-            className="self-start text-xs font-medium text-brand"
-          >
-            Voir d&apos;autres sacs
-          </button>
+            ))}
+          </ul>
         </div>
+      )}
+
+      {options.length > 0 && (
+        <ul className="flex flex-col divide-y divide-ink/10 px-4 pt-2">
+          {options.map((l) => (
+            <LigneKitRow
+              key={l.id}
+              ligne={l}
+              etat={etats[l.id]}
+              onToggle={() => toggle(l.id)}
+              onVariante={(vid) => choisirVariante(l.id, vid)}
+            />
+          ))}
+        </ul>
       )}
 
       <div className="sticky bottom-16 z-30 mt-4 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:bottom-0">
@@ -236,92 +208,80 @@ export function KitBuilder({ kitNom, cycle, niveau, items, sacParDefaut }: KitBu
           </button>
         </div>
       </div>
-
-      {sheetOuvert &&
-        // Portail vers document.body : la page kit anime son conteneur racine
-        // (animate-fade-in-up), qui garde un transform résiduel une fois
-        // l'animation finie (fill-mode both) et devient donc le "containing
-        // block" de tout descendant position:fixed. Sans portail, ce panneau
-        // hériterait du scroll de la page au lieu de couvrir le vrai viewport.
-        createPortal(
-          <div className="fixed inset-0 z-50 flex flex-col bg-surface">
-          <div className="flex items-center gap-2 border-b border-ink/10 px-4 py-3">
-            <button
-              type="button"
-              onClick={() => setSheetOuvert(false)}
-              className="flex items-center gap-1.5 text-sm font-medium text-ink/70"
-            >
-              <ArrowLeft size={16} aria-hidden="true" />
-              Retour à mon kit
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-4 py-3">
-            <h2 className="mb-3 font-heading text-base font-semibold text-ink">
-              Choisir un sac
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {autresSacs.map((produit) => {
-                const epuise = produit.statut === "epuise";
-                return (
-                  <button
-                    key={produit.id}
-                    type="button"
-                    disabled={epuise}
-                    onClick={() => choisirSac(produit)}
-                    className={`flex flex-col overflow-hidden rounded-2xl border border-ink/10 bg-elevated text-left transition-shadow hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60`}
-                  >
-                    <div className="relative aspect-square w-full bg-ink/5">
-                      <ProductImage src={produit.photo} alt={produit.nom} className="h-full w-full" fit="contain" />
-                      {epuise && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-elevated/70">
-                          <span className="rounded-full bg-ink/80 px-3 py-1 text-xs font-semibold text-on-brand">
-                            Épuisé
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1 p-2">
-                      <span className="line-clamp-1 text-sm text-ink">{produit.nom}</span>
-                      <span className="text-xs font-semibold text-ink/70">
-                        {formatPrice(produit.prix)}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {autresSacs.length === 0 && !chargementSacs && (
-              <p className="py-8 text-center text-sm text-ink/50">
-                Aucun autre sac disponible pour le moment.
-              </p>
-            )}
-
-            {hasMoreSacs && (
-              <button
-                type="button"
-                onClick={() => chargerSacs(autresSacs.length, false)}
-                disabled={chargementSacs}
-                className="mt-4 w-full rounded-full border border-ink/15 py-2.5 text-sm font-medium text-ink/70 transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
-              >
-                {chargementSacs ? "Chargement…" : "Voir plus de sacs"}
-              </button>
-            )}
-          </div>
-
-          <div className="sticky bottom-0 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-            <button
-              type="button"
-              onClick={() => setSheetOuvert(false)}
-              className="mx-auto flex h-11 w-full max-w-6xl items-center justify-center rounded-full border border-ink/15 text-sm font-semibold text-ink/70"
-            >
-              Retour à mon kit
-            </button>
-          </div>
-        </div>,
-          document.body,
-        )}
     </div>
+  );
+}
+
+function LigneKitRow({
+  ligne,
+  etat,
+  onToggle,
+  onVariante,
+  compact = false,
+}: {
+  ligne: LigneKitBuilder;
+  etat: EtatLigne | undefined;
+  onToggle: () => void;
+  onVariante: (varianteId: number) => void;
+  compact?: boolean;
+}) {
+  const epuise = ligne.produit.statut === "epuise";
+  const variante = ligne.variantes.find((v) => v.id === etat?.varianteId);
+  const prix = variante?.prix ?? ligne.produit.prix;
+
+  return (
+    <li className={`flex flex-col gap-1.5 ${compact ? "py-2" : "py-2.5"}`}>
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={etat?.checked ?? false}
+          disabled={epuise}
+          onChange={onToggle}
+          aria-label={`Inclure ${ligne.libelleBesoin ?? ligne.produit.nom}`}
+          className="size-5 shrink-0 accent-brand"
+        />
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Link
+            href={`/produits/${slugAvecId(ligne.produit.nom, ligne.produit.id)}`}
+            className="truncate text-sm text-ink hover:underline"
+          >
+            {ligne.libelleBesoin ?? ligne.produit.nom}
+          </Link>
+          <span className="text-xs text-ink/50">
+            {ligne.quantite > 1 ? `${ligne.quantite} × ` : ""}
+            {formatPrice(prix)}
+          </span>
+          {epuise && <span className="text-[11px] text-ink/40">Épuisé — non inclus</span>}
+        </div>
+      </div>
+
+      {ligne.variantes.length > 1 && etat?.checked && (
+        <div className="ml-8 flex flex-wrap gap-1.5">
+          {ligne.variantes.map((v) => {
+            const label = v.attributs.map((a) => a.valeur).join(" / ") || `#${v.id}`;
+            const active = v.id === etat.varianteId;
+            const varianteEpuisee = v.statut === "epuise";
+            return (
+              <button
+                key={v.id}
+                type="button"
+                disabled={varianteEpuisee}
+                onClick={() => onVariante(v.id)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  varianteEpuisee
+                    ? "cursor-not-allowed border-ink/10 text-ink/25 line-through"
+                    : active
+                      ? "border-brand bg-brand text-on-brand"
+                      : "border-ink/15 text-ink/70"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </li>
   );
 }

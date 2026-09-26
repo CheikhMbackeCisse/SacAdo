@@ -7,12 +7,20 @@ import { getGammeDef, isGamme } from "@/lib/gammes";
 import {
   getKitByCycleNiveauGamme,
   getKitItemsAvecProduits,
-  getSacsDisponibles,
+  getVariantesByProduitIds,
 } from "@/lib/supabase/queries";
-import { KitBuilder } from "@/components/kits/kit-builder";
+import { KitBuilder, type LigneKitBuilder } from "@/components/kits/kit-builder";
+import { ProductImage } from "@/components/ui/product-image";
 import { ShareButton } from "@/components/ui/share-button";
 import { origineSite } from "@/lib/site-url";
 import { tronquer } from "@/lib/format";
+import {
+  aUneCleDesCracksAffichable,
+  estClasseKitValide,
+  kitEstAffichable,
+  ligneEstAffichable,
+  type LigneKit,
+} from "@/lib/kits";
 
 export const revalidate = 120;
 
@@ -22,7 +30,7 @@ export async function generateMetadata(
   const { cycle, niveau: niveauParam, gamme } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
   const cycleDef = getCycleByValue(cycle);
-  if (!cycleDef || !cycleDef.classes.includes(niveau) || !isGamme(gamme)) return {};
+  if (!cycleDef || !estClasseKitValide(cycle, niveau) || !isGamme(gamme)) return {};
 
   const gammeDef = getGammeDef(gamme);
   const site = await origineSite();
@@ -46,13 +54,16 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
   const { cycle, niveau: niveauParam, gamme } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
   const cycleDef = getCycleByValue(cycle);
-  if (!cycleDef || !cycleDef.classes.includes(niveau) || !isGamme(gamme)) notFound();
+  if (!cycleDef || !estClasseKitValide(cycle, niveau) || !isGamme(gamme)) notFound();
 
   const gammeDef = getGammeDef(gamme);
   const kit = await getKitByCycleNiveauGamme(cycle, niveau, gamme);
   const retour = `/kits/${cycle}/${encodeURIComponent(niveau)}`;
 
-  if (!kit) {
+  const items = kit ? await getKitItemsAvecProduits(kit.id) : [];
+  const lignesKit: LigneKit[] = items.map((it) => ({ item: it, produit: it.produit }));
+
+  if (!kit || !kitEstAffichable(lignesKit)) {
     return (
       <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24 text-center">
         <span className="flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -68,8 +79,33 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
     );
   }
 
-  const items = await getKitItemsAvecProduits(kit.id);
-  const sacParDefaut = (await getSacsDisponibles({ limit: 1 })).items[0] ?? null;
+  const variantesParProduit = await getVariantesByProduitIds(items.map((it) => it.produit.id));
+  const description =
+    !aUneCleDesCracksAffichable(lignesKit) && kit.description_si_aucune_cle_des_cracks
+      ? kit.description_si_aucune_cle_des_cracks
+      : kit.description;
+
+  const lignes: LigneKitBuilder[] = items
+    .filter((it) => ligneEstAffichable(it.produit))
+    .map((it) => ({
+      id: it.id,
+      produit: it.produit,
+      quantite: it.quantite_defaut,
+      libelleBesoin: it.libelle_besoin,
+      groupeAffichage: it.groupe_affichage,
+      section: it.section,
+      cocheDefaut: it.coche_defaut,
+      ordre: it.ordre,
+      variantes: variantesParProduit.get(it.produit.id) ?? [],
+    }));
+
+  // Visuel du kit : mosaïque d'au plus 4 photos déjà publiées (jamais générée) —
+  // Étape 4 du prompt.
+  const photosMosaique = [
+    ...new Set(lignes.filter((l) => l.section === "principal").map((l) => l.produit.photo)),
+  ]
+    .filter((p): p is string => !!p)
+    .slice(0, 4);
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-1 py-4">
@@ -80,6 +116,21 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
         <ArrowLeft size={14} aria-hidden="true" />
         Gammes du Kit {niveau}
       </Link>
+
+      {photosMosaique.length > 0 ? (
+        <div className="mx-4 mb-1 grid aspect-[2/1] grid-cols-2 gap-1 overflow-hidden rounded-2xl">
+          {photosMosaique.map((photo) => (
+            <div key={photo} className="relative bg-elevated">
+              <ProductImage src={photo} alt="" className="h-full w-full" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mx-4 mb-1 flex aspect-[2/1] flex-col items-center justify-center gap-1 rounded-2xl bg-brand/10">
+          <span className="font-heading text-lg font-bold text-brand">{niveau}</span>
+          <span className="text-sm text-brand/70">{gammeDef?.label}</span>
+        </div>
+      )}
 
       <div className="flex items-start justify-between gap-3 px-4">
         <h1 className="font-heading text-xl font-bold text-ink">
@@ -92,20 +143,20 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
           size={17}
         />
       </div>
-      <p className="mx-4 mb-1 mt-0.5 flex items-center gap-1.5 text-xs text-ink/60">
-        <span
-          className="size-1.5 shrink-0 rounded-full bg-[#DC2626]"
-          aria-hidden="true"
-        />
-        Ebook de la classe offert
-      </p>
+      {description && <p className="mx-4 mb-1 mt-1 text-sm text-ink/70">{description}</p>}
+
+      {kit.ebook_offert && (
+        <p className="mx-4 mb-1 mt-0.5 flex items-center gap-1.5 text-xs text-ink/60">
+          <span className="size-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
+          Ebook de la classe offert
+        </p>
+      )}
 
       <KitBuilder
         kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()}
         cycle={cycle}
         niveau={niveau}
-        items={items}
-        sacParDefaut={sacParDefaut}
+        lignes={lignes}
       />
     </div>
   );

@@ -4,10 +4,30 @@ import { requireAdmin } from "./guard";
 import { texteNonVide } from "./validation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { GAMME_ORDER, isGamme } from "@/lib/gammes";
-import type { Cycle, Gamme, Kit } from "@/lib/supabase/types";
+import { calculerPrixKit, ligneEstAffichable, type LigneKit } from "@/lib/kits";
+import type { Cycle, Gamme, Kit, Produit } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
-export type KitAvecCompte = Kit & { nb_items: number };
+export type MotifLigneCachee = "masque" | "rupture" | "sans_prix";
+
+export type LigneCacheeAdmin = {
+  libelle_besoin: string | null;
+  produit_nom: string;
+  motif: MotifLigneCachee;
+};
+
+export type KitAvecCompte = Kit & {
+  nb_items_total: number;
+  nb_items_affiches: number;
+  prix_calcule: number;
+  lignes_cachees: LigneCacheeAdmin[];
+};
+
+function motifLigneCachee(produit: { statut: string; statut_publication: string; prix: number }): MotifLigneCachee {
+  if (produit.statut_publication !== "publie") return "masque";
+  if (produit.statut === "epuise") return "rupture";
+  return "sans_prix";
+}
 
 export async function getKitsAdmin(): Promise<KitAvecCompte[]> {
   await requireAdmin();
@@ -25,11 +45,70 @@ export async function getKitsAdmin(): Promise<KitAvecCompte[]> {
       GAMME_ORDER[a.gamme as Gamme] - GAMME_ORDER[b.gamme as Gamme],
   );
 
-  const { data: items } = await supabaseAdmin.from("kit_items").select("kit_id");
-  const comptes = new Map<number, number>();
-  (items ?? []).forEach((item) => comptes.set(item.kit_id, (comptes.get(item.kit_id) ?? 0) + 1));
+  const { data: items } = await supabaseAdmin
+    .from("kit_items")
+    .select("kit_id, quantite_defaut, coche_defaut, section, libelle_besoin, produit:produits(nom, prix, statut, statut_publication)");
 
-  return kits.map((kit) => ({ ...kit, nb_items: comptes.get(kit.id) ?? 0 }));
+  type ProduitLite = { nom: string; prix: number; statut: string; statut_publication: string };
+  type Row = {
+    kit_id: number;
+    quantite_defaut: number;
+    coche_defaut: boolean;
+    section: string;
+    libelle_besoin: string | null;
+    produit: ProduitLite;
+  };
+  type RawRow = Omit<Row, "produit"> & { produit: ProduitLite | ProduitLite[] | null };
+  const rows = ((items ?? []) as unknown as RawRow[])
+    .map((row) => {
+      const produit = Array.isArray(row.produit) ? row.produit[0] : row.produit;
+      return produit ? { ...row, produit } : null;
+    })
+    .filter((r): r is Row => r !== null);
+
+  const parKit = new Map<number, Row[]>();
+  rows.forEach((row) => {
+    parKit.set(row.kit_id, [...(parKit.get(row.kit_id) ?? []), row]);
+  });
+
+  return kits.map((kit) => {
+    const lignes = parKit.get(kit.id) ?? [];
+    const ligneKit: LigneKit[] = lignes.map((l) => ({
+      item: {
+        quantite_defaut: l.quantite_defaut,
+        groupe_affichage: null,
+        section: l.section as LigneKit["item"]["section"],
+        coche_defaut: l.coche_defaut,
+        ordre: 0,
+      },
+      produit: l.produit as unknown as Produit,
+    }));
+
+    const { total } = calculerPrixKit(ligneKit);
+    const lignesPrincipales = lignes.filter((l) => l.section === "principal");
+    const lignesCachees = lignesPrincipales.filter(
+      (l) => !ligneEstAffichable(l.produit as unknown as Produit),
+    );
+
+    return {
+      ...kit,
+      nb_items_total: lignesPrincipales.length,
+      nb_items_affiches: lignesPrincipales.length - lignesCachees.length,
+      prix_calcule: total,
+      lignes_cachees: lignesCachees.map((l) => ({
+        libelle_besoin: l.libelle_besoin,
+        produit_nom: l.produit.nom,
+        motif: motifLigneCachee(l.produit),
+      })),
+    };
+  });
+}
+
+export async function togglerStatutKit(id: number, statut: "masque" | "publie"): Promise<ActionResult> {
+  await requireAdmin();
+  const { error } = await supabaseAdmin.from("kits").update({ statut }).eq("id", id);
+  if (error) return { ok: false, error: "Impossible de changer le statut du kit." };
+  return { ok: true };
 }
 
 export async function getKitAdmin(id: number): Promise<Kit | null> {

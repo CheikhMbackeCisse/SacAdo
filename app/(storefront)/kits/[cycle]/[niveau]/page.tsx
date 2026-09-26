@@ -6,6 +6,7 @@ import { GAMMES } from "@/lib/gammes";
 import { getKitsByCycleNiveau, getKitItemsAvecProduits } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import { DeclarerNiveau } from "@/components/kits/declarer-niveau";
+import { calculerPrixKit, estClasseKitValide, kitEstAffichable, lignesAffichables, type LigneKit } from "@/lib/kits";
 
 // ISR : le contenu des kits change rarement.
 export const revalidate = 120;
@@ -14,9 +15,22 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
   const { cycle, niveau: niveauParam } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
   const cycleDef = getCycleByValue(cycle);
-  if (!cycleDef || !cycleDef.classes.includes(niveau)) notFound();
+  if (!cycleDef || !estClasseKitValide(cycle, niveau)) notFound();
 
-  const kits = await getKitsByCycleNiveau(cycle, niveau);
+  const kitsBruts = await getKitsByCycleNiveau(cycle, niveau);
+
+  // Contenu de chaque gamme, pour un comparatif honnête (ce que la gamme
+  // supérieure ajoute réellement). Un kit sans aucune ligne principale
+  // affichable n'est pas proposé (Étape 4 du prompt).
+  const tousLesContenus = await Promise.all(
+    kitsBruts.map(async (kit) => {
+      const items = await getKitItemsAvecProduits(kit.id);
+      const lignes: LigneKit[] = items.map((it) => ({ item: it, produit: it.produit }));
+      return { kit, lignes };
+    }),
+  );
+  const contenusAffichables = tousLesContenus.filter(({ lignes }) => kitEstAffichable(lignes));
+  const kits = contenusAffichables.map((c) => c.kit);
 
   if (kits.length === 0) {
     return (
@@ -32,16 +46,14 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
     );
   }
 
-  // Contenu de chaque gamme, pour un comparatif honnête (ce que la gamme
-  // supérieure ajoute réellement).
-  const contenus = await Promise.all(
-    kits.map(async (kit) => {
-      const items = await getKitItemsAvecProduits(kit.id);
-      const total = items.reduce((sum, it) => sum + it.quantite_defaut * it.produit.prix, 0);
-      const noms = new Set(items.map((it) => it.produit.nom));
-      return { kit, nbArticles: items.length, total, noms };
-    }),
-  );
+  // Comparatif honnête (ce que la gamme supérieure ajoute réellement), à
+  // partir des lignes déjà récupérées et filtrées ci-dessus.
+  const contenus = contenusAffichables.map(({ kit, lignes }) => {
+    const visibles = lignesAffichables(lignes);
+    const { total, nbArticles } = calculerPrixKit(lignes);
+    const noms = new Set(visibles.filter((l) => l.item.coche_defaut).map((l) => l.produit.nom));
+    return { kit, nbArticles, total, noms };
+  });
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">

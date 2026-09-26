@@ -2,16 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, ChevronDown } from "lucide-react";
-import {
-  CYCLES,
-  decouperClasseLycee,
-  getCycleByValue,
-  structurerLycee,
-} from "@/lib/cycles";
+import { getCycleByValue } from "@/lib/cycles";
+import { getClassesLyceeAvecKits } from "@/lib/supabase/queries";
+import { SERIES_LYCEE_A_VENIR } from "@/lib/kits";
 
-export function generateStaticParams() {
-  return CYCLES.map((c) => ({ cycle: c.value }));
-}
+export const revalidate = 120;
 
 export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">) {
   const { cycle } = await props.params;
@@ -19,6 +14,20 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
   if (!cycleDef) notFound();
 
   const estLycee = cycleDef.value === "lycee";
+
+  // Le lycée a des kits seulement pour Seconde/Première/Terminale x L/S (pas
+  // le découpage fin L1/L2/S1/S2/T/G de lib/cycles.ts, utilisé ailleurs pour
+  // d'autres besoins) : on part des classes qui ont réellement un kit publié.
+  const classesLycee = estLycee ? await getClassesLyceeAvecKits() : [];
+  const NIVEAU_ORDRE = ["Seconde", "Première", "Terminale"];
+  const parNiveauLycee = new Map<string, string[]>();
+  for (const classe of classesLycee) {
+    const niveau = classe.split(" ")[0];
+    parNiveauLycee.set(niveau, [...(parNiveauLycee.get(niveau) ?? []), classe]);
+  }
+  const niveauxLycee = [...parNiveauLycee.keys()].sort(
+    (a, b) => NIVEAU_ORDRE.indexOf(a) - NIVEAU_ORDRE.indexOf(b),
+  );
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
@@ -43,10 +52,10 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
 
       {estLycee ? (
         <div className="flex flex-col gap-2.5">
-          {structurerLycee(cycleDef.classes).map((niv) => (
-            <details key={niv.niveau} className="group rounded-2xl border border-ink/10 bg-elevated">
+          {niveauxLycee.map((niveau) => (
+            <details key={niveau} className="group rounded-2xl border border-ink/10 bg-elevated">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
-                <span className="text-sm font-semibold text-ink">{niv.niveau}</span>
+                <span className="text-sm font-semibold text-ink">{niveau}</span>
                 <ChevronDown
                   size={16}
                   aria-hidden="true"
@@ -55,46 +64,26 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
               </summary>
 
               <div className="flex flex-col gap-2 border-t border-ink/10 px-3 py-3">
-                {niv.directes.map((classe) => (
+                {(parNiveauLycee.get(niveau) ?? []).map((classe) => (
                   <ClasseLien
                     key={classe}
                     href={`/kits/${cycleDef.value}/${encodeURIComponent(classe)}`}
-                    label={classe}
+                    label={`Série ${classe.split(" ")[1]}`}
+                    ariaLabel={classe}
                   />
-                ))}
-
-                {niv.groupes.map((groupe) => (
-                  <details
-                    key={groupe.type}
-                    className="group/serie rounded-xl border border-ink/10 bg-surface"
-                  >
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2.5 [&::-webkit-details-marker]:hidden">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-ink/55">
-                        {groupe.label}
-                      </span>
-                      <ChevronDown
-                        size={14}
-                        aria-hidden="true"
-                        className="shrink-0 text-ink/40 transition-transform group-open/serie:rotate-180"
-                      />
-                    </summary>
-                    <div className="flex flex-col gap-2 px-2.5 pb-2.5 pt-1">
-                      {groupe.classes.map((classe) => {
-                        const { serie } = decouperClasseLycee(classe);
-                        return (
-                          <ClasseLien
-                            key={classe}
-                            href={`/kits/${cycleDef.value}/${encodeURIComponent(classe)}`}
-                            label={`Série ${serie}`}
-                            ariaLabel={classe}
-                          />
-                        );
-                      })}
-                    </div>
-                  </details>
                 ))}
               </div>
             </details>
+          ))}
+
+          {SERIES_LYCEE_A_VENIR.map((s) => (
+            <div
+              key={s.serie}
+              className="rounded-2xl border border-dashed border-ink/15 bg-elevated/50 px-4 py-3.5"
+            >
+              <span className="text-sm font-semibold text-ink/50">{s.libelle}</span>
+              <p className="mt-0.5 text-xs text-ink/40">{s.message}</p>
+            </div>
           ))}
         </div>
       ) : (
