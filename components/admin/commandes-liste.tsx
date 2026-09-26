@@ -24,6 +24,26 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+// Signale les commandes express à part (maj-accueil §7) : les autres
+// affichent leur date de livraison prévue, pour préparer la tournée.
+function BadgeLivraison({ commande }: { commande: CommandeAvecClient }) {
+  if (commande.mode_livraison === "24h") {
+    return (
+      <span className="rounded bg-action/10 px-1.5 py-0.5 text-[10px] font-semibold text-action">
+        Express
+      </span>
+    );
+  }
+  if (commande.date_livraison_prevue) {
+    return (
+      <span className="rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium text-ink/60">
+        {formatDate(commande.date_livraison_prevue)}
+      </span>
+    );
+  }
+  return null;
+}
+
 export function CommandesListe({
   commandes,
   nbRecues,
@@ -163,6 +183,9 @@ export function CommandesListe({
               </Link>
               <span className="ml-auto shrink-0 text-xs text-ink/50">{formatDate(commande.date)}</span>
             </div>
+            <ChampCarte label="Livraison">
+              <BadgeLivraison commande={commande} />
+            </ChampCarte>
             <ChampCarte label="Client">
               {commande.client_nom}
               <span className="block text-xs text-ink/40">{commande.client_telephone}</span>
@@ -199,6 +222,7 @@ export function CommandesListe({
               <th className="px-4 py-3 font-medium">#</th>
               <th className="px-4 py-3 font-medium">Client</th>
               <th className="px-4 py-3 font-medium">Date</th>
+              <th className="px-4 py-3 font-medium">Livraison</th>
               <th className="px-4 py-3 font-medium">Total</th>
               <th className="px-4 py-3 font-medium">Statut</th>
             </tr>
@@ -227,6 +251,9 @@ export function CommandesListe({
                   <div className="text-xs text-ink/40">{commande.client_telephone}</div>
                 </td>
                 <td className="px-4 py-3 text-ink/60">{formatDate(commande.date)}</td>
+                <td className="px-4 py-3">
+                  <BadgeLivraison commande={commande} />
+                </td>
                 <td className="px-4 py-3 font-medium text-ink">
                   {formatPrice(commande.total)}
                   {commande.mode_paiement === "wave" && (

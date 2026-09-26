@@ -63,7 +63,7 @@ export function ProductCard({
           // Logo de marque : montre que le prix correspond à la marque
           // (maj-26-09 §4). Décoratif seul (le nom porte déjà la marque en
           // texte) — jamais le logo d'une autre marque.
-          <Image src={logo} alt="" aria-hidden="true" width={48} height={14} className="h-3.5 w-auto object-contain" />
+          <Image src={logo} alt="" aria-hidden="true" width={96} height={24} className="h-6 w-auto object-contain" />
         )}
         <p
           className={`line-clamp-2 text-ink ${

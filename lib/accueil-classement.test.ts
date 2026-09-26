@@ -1,15 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assemblerAccueil, type LigneAccueil } from "./accueil-classement.ts";
-
-// Générateur déterministe pour rendre le mélange reproductible dans les tests.
-function aleaSeed(seed: number): () => number {
-  let s = seed;
-  return () => {
-    s = (s * 1664525 + 1013904223) % 4294967296;
-    return s / 4294967296;
-  };
-}
+import { aleaSeed, assemblerAccueil, type LigneAccueil } from "./accueil-classement.ts";
 
 function ligne(over: Partial<LigneAccueil> & { produit_id: number }): LigneAccueil {
   return {

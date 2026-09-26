@@ -5,6 +5,19 @@
 
 export type OrigineProduit = "score" | "exploration" | "epingle";
 
+// Générateur pseudo-aléatoire déterministe (LCG) : mélange reproductible à
+// partir d'une graine — sert au chargement continu de l'accueil (maj-accueil
+// §6), pour qu'une page suivante, recalculée avec une limite plus grande,
+// reproduise le même préfixe plutôt que de re-mélanger les places
+// d'exploration à chaque appel.
+export function aleaSeed(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) % 4294967296;
+    return s / 4294967296;
+  };
+}
+
 export type LigneAccueil = {
   produit_id: number;
   sous_categorie_id: number | null;

@@ -3,7 +3,14 @@
 import { requireAdmin } from "./guard";
 import { estNombrePositifValide, texteNonVide } from "./validation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getSeuilLivraisonGratuite, setSeuilLivraisonGratuite } from "@/lib/parametres";
+import {
+  ajouterDateFermee,
+  getHeureLimiteSamedi,
+  getSeuilLivraisonGratuite,
+  retirerDateFermee,
+  setHeureLimiteSamedi,
+  setSeuilLivraisonGratuite,
+} from "@/lib/parametres";
 import type { Zone } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
@@ -75,4 +82,31 @@ export async function getSeuilLivraisonGratuiteActuel(): Promise<number> {
 export async function reglerSeuilLivraisonGratuite(valeur: number): Promise<ActionResult> {
   await requireAdmin();
   return setSeuilLivraisonGratuite(valeur);
+}
+
+// Livraison "à date donnée" (maj-accueil §7).
+export async function getHeureLimiteSamediActuelle(): Promise<string | null> {
+  await requireAdmin();
+  return getHeureLimiteSamedi();
+}
+
+export async function reglerHeureLimiteSamedi(valeur: string | null): Promise<ActionResult> {
+  await requireAdmin();
+  return setHeureLimiteSamedi(valeur);
+}
+
+export async function getDatesFermeesAdmin(): Promise<{ date: string; motif: string | null }[]> {
+  await requireAdmin();
+  const { data } = await supabaseAdmin.from("dates_fermees").select("date, motif").order("date");
+  return data ?? [];
+}
+
+export async function ajouterDateFermeeAdmin(date: string, motif: string | null): Promise<ActionResult> {
+  await requireAdmin();
+  return ajouterDateFermee(date, motif);
+}
+
+export async function retirerDateFermeeAdmin(date: string): Promise<ActionResult> {
+  await requireAdmin();
+  return retirerDateFermee(date);
 }

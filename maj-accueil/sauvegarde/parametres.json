@@ -1,0 +1,20 @@
+[
+  {
+    "cle": "negociation_tours_max",
+    "valeur": "4",
+    "description": "Nombre maximum de propositions dans un fil de négociation de prix avant de devoir conclure (accepter ou abandonner).",
+    "maj": "2026-09-01T06:56:42.097+00:00"
+  },
+  {
+    "cle": "seuil_livraison_gratuite",
+    "valeur": "75000",
+    "description": "Sous-total (FCFA) à partir duquel la livraison est offerte, quelle que soit la localité.",
+    "maj": "2026-09-06T12:31:31.825223+00:00"
+  },
+  {
+    "cle": "wave_nom_marchand",
+    "valeur": "Unishop Senegal",
+    "description": null,
+    "maj": "2026-09-26T13:05:16.216+00:00"
+  }
+]

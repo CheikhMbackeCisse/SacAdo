@@ -435,6 +435,9 @@ export type Commande = {
   // Numéro de livraison normalisé, figé à la commande (migration 0056) : recopié
   // du client au moment de la commande, inchangé s'il corrige son profil ensuite.
   telephone_normalise: string | null;
+  // Livraison "à date donnée" (maj-accueil §7, migration 0089) : date calculée
+  // à la commande pour mode_livraison = '6j'. Null en livraison express (24h).
+  date_livraison_prevue: string | null;
 };
 
 export type CommandeItem = {

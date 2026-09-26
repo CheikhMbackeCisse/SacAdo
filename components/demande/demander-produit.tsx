@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, Check, ImagePlus, Loader2, PackageSearch, X } from "lucide-react";
+import { Check, ImagePlus, Loader2, PackageSearch, X } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import {
   creerDemandeProduit,
+  televerserFichierDemande,
   televerserPhotoDemande,
   type OrigineDemande,
 } from "@/lib/demandes/actions";
@@ -17,12 +18,10 @@ type Variante = "primaire" | "carte" | "discret";
 // Copie par origine (maj-26-09 §8) : même formulaire générique, intitulé
 // adapté selon d'où on l'ouvre.
 const TITRES: Partial<Record<OrigineDemande, string>> = {
-  photo_produit: "Trouver un produit avec une photo",
   liste_fournitures: "Envoyer ma liste de fournitures",
   fin_de_liste: "Demandez-le-nous",
 };
 const SOUS_TITRES: Partial<Record<OrigineDemande, string>> = {
-  photo_produit: "Une photo suffit, on s'occupe du reste.",
   liste_fournitures: "Envoie la liste, on compose le kit pour toi.",
 };
 
@@ -30,10 +29,15 @@ export function DemanderProduit({
   origine,
   termeRecherche,
   variante = "primaire",
+  texteAmorce,
 }: {
   origine: OrigineDemande;
   termeRecherche?: string;
   variante?: Variante;
+  // Remplace le texte par défaut de la variante "discret" (AMORCES[origine]) :
+  // un même origine peut s'ouvrir depuis deux endroits avec une phrase
+  // d'accroche différente (ex. liste_fournitures sur /kits vs /moi).
+  texteAmorce?: string;
 }) {
   const [ouvert, setOuvert] = useState(false);
 
@@ -54,7 +58,12 @@ export function DemanderProduit({
 
   return (
     <>
-      <Declencheur variante={variante} origine={origine} onClick={() => setOuvert(true)} />
+      <Declencheur
+        variante={variante}
+        origine={origine}
+        onClick={() => setOuvert(true)}
+        texteAmorce={texteAmorce}
+      />
       {ouvert && (
         <Panneau
           origine={origine}
@@ -70,13 +79,14 @@ function Declencheur({
   variante,
   origine,
   onClick,
+  texteAmorce,
 }: {
   variante: Variante;
   origine: OrigineDemande;
   onClick: () => void;
+  texteAmorce?: string;
 }) {
   if (variante === "carte") {
-    const Icone = origine === "photo_produit" ? Camera : PackageSearch;
     return (
       <button
         type="button"
@@ -84,7 +94,7 @@ function Declencheur({
         className="flex w-full items-center gap-3 rounded-2xl border border-ink/10 bg-elevated p-4 text-left transition-colors active:scale-[0.99]"
       >
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
-          <Icone size={18} aria-hidden="true" />
+          <PackageSearch size={18} aria-hidden="true" />
         </span>
         <span className="flex flex-col">
           <span className="text-sm font-semibold text-ink">
@@ -106,7 +116,7 @@ function Declencheur({
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
         <p className="text-sm text-ink/55">
-          {AMORCES[origine] ?? "Tu ne trouves pas ce que tu cherches dans ce rayon ?"}
+          {texteAmorce ?? AMORCES[origine] ?? "Tu ne trouves pas ce que tu cherches dans ce rayon ?"}
         </p>
         <button
           type="button"
@@ -143,8 +153,8 @@ function Panneau({
 }) {
   const { identite } = useIdentite();
   const connecte = Boolean(identite?.telephone && identite?.jeton);
-  const photoObligatoire = origine === "photo_produit" || origine === "liste_fournitures";
   const estListeFournitures = origine === "liste_fournitures";
+  const photoObligatoire = estListeFournitures;
 
   const [description, setDescription] = useState(() => {
     if (origine === "recherche_vide" && termeRecherche) return termeRecherche;
@@ -169,7 +179,9 @@ function Panneau({
     setErreur(null);
     const fd = new FormData();
     fd.set("file", file);
-    const r = await televerserPhotoDemande(fd);
+    // "liste_fournitures" (maj-accueil §2) : photo OU document (PDF/Word/
+    // Excel), 10 Mo. Les autres origines restent photo seule, 3 Mo.
+    const r = estListeFournitures ? await televerserFichierDemande(fd) : await televerserPhotoDemande(fd);
     setPhotoEnCours(false);
     if (r.ok) setPhotoUrl(r.url);
     else setErreur(r.error);
@@ -290,7 +302,7 @@ function Panneau({
 
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-ink/60">
-                {estListeFournitures ? "Photo de la liste" : "Une photo ou capture d'écran"}{" "}
+                {estListeFournitures ? "Photo ou fichier de la liste" : "Une photo ou capture d'écran"}{" "}
                 {photoObligatoire ? (
                   <span className="text-action">(obligatoire)</span>
                 ) : (
@@ -299,12 +311,18 @@ function Panneau({
               </span>
               {photoUrl ? (
                 <div className="flex items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photoUrl}
-                    alt=""
-                    className="size-16 rounded-xl border border-ink/10 object-cover"
-                  />
+                  {/\.(jpe?g|png|webp|heic|heif)$/i.test(photoUrl) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={photoUrl}
+                      alt=""
+                      className="size-16 rounded-xl border border-ink/10 object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-16 items-center rounded-xl border border-ink/10 px-3 text-xs font-medium text-ink/60">
+                      Fichier ajouté
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => setPhotoUrl(null)}
@@ -325,13 +343,17 @@ function Panneau({
                   ) : (
                     <ImagePlus size={15} aria-hidden="true" />
                   )}
-                  Ajouter une image
+                  {estListeFournitures ? "Ajouter une photo ou un fichier" : "Ajouter une image"}
                 </button>
               )}
               <input
                 ref={fichierRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept={
+                  estListeFournitures
+                    ? "image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    : "image/jpeg,image/png,image/webp"
+                }
                 onChange={choisirPhoto}
                 className="hidden"
               />

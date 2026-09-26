@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifierJetonClient } from "@/lib/client-auth";
-import { formatPrice } from "@/lib/format";
+import { formatDateLivraison, formatPrice } from "@/lib/format";
 import { FileText, MessageCircle } from "lucide-react";
 import { lienAssistanceCommande } from "@/lib/whatsapp";
 import { MENTION_BENEFICIAIRE_WAVE } from "@/lib/legal";
@@ -105,7 +105,16 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
           <span>{formatPrice(commande.sous_total)}</span>
         </div>
         <div className="flex justify-between text-ink/70">
-          <span>Livraison{commande.message_livraison ? "" : ` (${commande.mode_livraison})`}</span>
+          <span>
+            Livraison
+            {commande.message_livraison
+              ? ""
+              : commande.mode_livraison === "24h"
+                ? " (express)"
+                : commande.date_livraison_prevue
+                  ? ` (le ${formatDateLivraison(commande.date_livraison_prevue)})`
+                  : ""}
+          </span>
           <span>
             {commande.frais_livraison_a_confirmer
               ? "À confirmer"

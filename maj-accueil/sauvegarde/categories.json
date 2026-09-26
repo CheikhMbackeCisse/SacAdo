@@ -1,0 +1,137 @@
+[
+  {
+    "id": 1,
+    "nom": "Kits scolaires",
+    "slug": "kits",
+    "ordre": 1,
+    "image": "/images/cat-kits.png",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 2,
+    "nom": "Cahiers & papeterie",
+    "slug": "cahiers-papeterie",
+    "ordre": 2,
+    "image": "/images/cat-cahiers-papeterie.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 3,
+    "nom": "Écriture",
+    "slug": "ecriture",
+    "ordre": 14,
+    "image": "/images/cat-ecriture.webp",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 4,
+    "nom": "Matériel géométrique",
+    "slug": "geometrie",
+    "ordre": 7,
+    "image": "/images/cat-geometrie.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 5,
+    "nom": "Cartables & sacs",
+    "slug": "cartables-sacs",
+    "ordre": 12,
+    "image": "/images/cat-cartables-sacs.webp",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 6,
+    "nom": "Livres et annales",
+    "slug": "livres-manuels",
+    "ordre": 4,
+    "image": "/images/cat-livres-manuels.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 7,
+    "nom": "Informatique",
+    "slug": "ordinateurs",
+    "ordre": 5,
+    "image": "/images/cat-ordinateurs.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 8,
+    "nom": "Électronique",
+    "slug": "electronique-arduino",
+    "ordre": 6,
+    "image": "/images/cat-electronique-arduino.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 9,
+    "nom": "Art & dessin",
+    "slug": "art-dessin",
+    "ordre": 11,
+    "image": "/images/cat-art-dessin.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 10,
+    "nom": "Mobilier",
+    "slug": "mobilier",
+    "ordre": 8,
+    "image": "/images/hero-coin-etude.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 11,
+    "nom": "Fournitures d'école",
+    "slug": "fournitures-ecole",
+    "ordre": 7,
+    "image": "/images/cat-fournitures-ecole.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 12,
+    "nom": "Sport & EPS",
+    "slug": "sport-eps",
+    "ordre": 10,
+    "image": "/images/cat-sport-eps.jpg",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 13,
+    "nom": "Hygiène & cantine",
+    "slug": "hygiene-cantine",
+    "ordre": 9,
+    "image": "/images/cat-hygiene-cantine.png",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 14,
+    "nom": "Ebooks",
+    "slug": "ebooks",
+    "ordre": 13,
+    "image": "/images/cat-ebooks.webp",
+    "actif": true,
+    "created_at": "2026-08-31T07:19:40.86797+00:00"
+  },
+  {
+    "id": 15,
+    "nom": "Imprimerie",
+    "slug": "impression-consommables",
+    "ordre": 3,
+    "image": "/images/cat-impression-consommables.jpg",
+    "actif": true,
+    "created_at": "2026-09-14T19:10:14.260579+00:00"
+  }
+]

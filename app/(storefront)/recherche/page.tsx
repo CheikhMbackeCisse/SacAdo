@@ -4,8 +4,8 @@ import { journaliserEvenement } from "@/lib/mesure";
 import { ResultatsRecherche } from "@/components/search/resultats-recherche";
 
 // Page dynamique par nature (dépend de searchParams). La recherche v2 est
-// précise (ET obligatoire) : on affiche tous les résultats retenus, sans
-// pagination « charger plus ».
+// précise (ET obligatoire). Premier lot ici ; chargement continu ensuite
+// (maj-accueil §6) géré par ResultatsRecherche (client).
 export default async function RecherchePage(props: PageProps<"/recherche">) {
   const { q } = await props.searchParams;
   const query = typeof q === "string" ? q.trim() : "";

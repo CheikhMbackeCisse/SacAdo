@@ -1,0 +1,242 @@
+[
+  {
+    "id": "25e58262-a0dc-4f4e-a2df-7409d2353db4",
+    "nom_boutique": "Librairie Test",
+    "contact_nom": "Cheikh Mbacke Cisse",
+    "contact_telephone": "777793522",
+    "infos_reversement": null,
+    "date_creation": "2026-08-31T13:13:06.473874+00:00",
+    "user_id": "25e58262-a0dc-4f4e-a2df-7409d2353db4",
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  },
+  {
+    "id": "b510b46e-f62a-46df-a4d0-f366e9bc4aac",
+    "nom_boutique": "Librairie Test1",
+    "contact_nom": "Cheikh Mbacke Cisse",
+    "contact_telephone": "777793522",
+    "infos_reversement": null,
+    "date_creation": "2026-09-02T00:59:27.32378+00:00",
+    "user_id": "b510b46e-f62a-46df-a4d0-f366e9bc4aac",
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  },
+  {
+    "id": "e23c1176-a3bc-4630-bfba-b51953fb94bf",
+    "nom_boutique": "THIOUNE TERANGA SERVICES",
+    "contact_nom": "Cheikh Thioune",
+    "contact_telephone": "778710069",
+    "infos_reversement": null,
+    "date_creation": "2026-09-02T13:09:07.273073+00:00",
+    "user_id": "e23c1176-a3bc-4630-bfba-b51953fb94bf",
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  },
+  {
+    "id": "4250664b-37bc-4b62-8eb4-91b654907a0e",
+    "nom_boutique": "Yuupee General Services",
+    "contact_nom": "Mor Mbaye",
+    "contact_telephone": "77 874 49 49",
+    "infos_reversement": null,
+    "date_creation": "2026-09-02T15:51:30.745407+00:00",
+    "user_id": "4250664b-37bc-4b62-8eb4-91b654907a0e",
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  },
+  {
+    "id": "06560537-30c8-4231-bfad-ec25c6091bcc",
+    "nom_boutique": "Shop",
+    "contact_nom": null,
+    "contact_telephone": null,
+    "infos_reversement": null,
+    "date_creation": "2026-09-05T11:34:03.592103+00:00",
+    "user_id": "06560537-30c8-4231-bfad-ec25c6091bcc",
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "nom_boutique": "SacAdo",
+    "contact_nom": null,
+    "contact_telephone": null,
+    "infos_reversement": null,
+    "date_creation": "2026-09-06T17:34:44.146585+00:00",
+    "user_id": null,
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  },
+  {
+    "id": "2299437e-5269-4b43-ac19-118e8041dfd6",
+    "nom_boutique": "Seye Dynamique Technologie",
+    "contact_nom": null,
+    "contact_telephone": "78 590 68 40",
+    "infos_reversement": null,
+    "date_creation": "2026-09-14T09:27:00.036522+00:00",
+    "user_id": null,
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": [
+      {
+        "seuil": 150000,
+        "valeur": 10000
+      },
+      {
+        "seuil": 200000,
+        "valeur": 15000
+      },
+      {
+        "seuil": 300000,
+        "valeur": 20000
+      },
+      {
+        "seuil": null,
+        "valeur": 25000
+      }
+    ],
+    "grille_majoration": [
+      {
+        "seuil": 150000,
+        "valeur": 5000
+      },
+      {
+        "seuil": 250000,
+        "valeur": 10000
+      },
+      {
+        "seuil": null,
+        "valeur": 15000
+      }
+    ]
+  },
+  {
+    "id": "7493746c-0306-4d7d-b89b-8eb2690b797a",
+    "nom_boutique": "Yuupee",
+    "contact_nom": null,
+    "contact_telephone": null,
+    "infos_reversement": null,
+    "date_creation": "2026-09-14T19:00:48.452553+00:00",
+    "user_id": null,
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": [
+      {
+        "seuil": 5000,
+        "valeur": 500
+      },
+      {
+        "seuil": 20000,
+        "valeur": 1000
+      },
+      {
+        "seuil": 50000,
+        "valeur": 2500
+      },
+      {
+        "seuil": 150000,
+        "valeur": 5000
+      },
+      {
+        "seuil": 400000,
+        "valeur": 10000
+      },
+      {
+        "seuil": null,
+        "valeur": 20000
+      }
+    ]
+  },
+  {
+    "id": "9eec59e4-0ce1-418b-ac47-6284109f70ff",
+    "nom_boutique": "Thioune Teranga",
+    "contact_nom": null,
+    "contact_telephone": null,
+    "infos_reversement": null,
+    "date_creation": "2026-09-15T07:48:22.964529+00:00",
+    "user_id": null,
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": {
+      "Tablettes": 0.15,
+      "Accessoires": 0.3,
+      "MacBook et iMac": 0.2,
+      "PC portables et PC de bureau": 0.15
+    },
+    "grille_majoration": null
+  },
+  {
+    "id": "bcb4028f-ddf4-4ac2-990a-e399bb7086db",
+    "nom_boutique": "LPD",
+    "contact_nom": null,
+    "contact_telephone": null,
+    "infos_reversement": null,
+    "date_creation": "2026-09-20T09:38:56.245218+00:00",
+    "user_id": null,
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  },
+  {
+    "id": "ab82c306-5519-4664-b66b-c9e6cdbffb8d",
+    "nom_boutique": "Papex",
+    "contact_nom": null,
+    "contact_telephone": null,
+    "infos_reversement": null,
+    "date_creation": "2026-09-25T00:51:46.430434+00:00",
+    "user_id": null,
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  },
+  {
+    "id": "c57af6ff-4007-4dc1-b430-80176218de16",
+    "nom_boutique": "Cissé & Frères",
+    "contact_nom": null,
+    "contact_telephone": null,
+    "infos_reversement": null,
+    "date_creation": "2026-09-25T12:35:32.027298+00:00",
+    "user_id": null,
+    "adresse": null,
+    "lat": null,
+    "lng": null,
+    "actif": true,
+    "grille_remise": null,
+    "grille_majoration": null
+  }
+]

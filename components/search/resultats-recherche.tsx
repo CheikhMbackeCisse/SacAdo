@@ -1,17 +1,49 @@
+"use client";
+
+import { useCallback, useState } from "react";
 import { PackageSearch } from "lucide-react";
 import { ProductGrid } from "@/components/product/product-grid";
 import { DemanderProduit } from "@/components/demande/demander-produit";
+import { chargerRecherchePage } from "@/lib/recherche/actions";
+import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
 import type { ProduitTrouve } from "@/lib/supabase/queries";
 
 const MAX_CATEGORIE = 12;
+const TAILLE_INITIALE = 48;
+const PAGE = 24;
 
 export function ResultatsRecherche({
   query,
-  resultats,
+  resultats: resultatsInitiaux,
 }: {
   query: string;
   resultats: ProduitTrouve[];
 }) {
+  const [resultats, setResultats] = useState(resultatsInitiaux);
+  const [taille, setTaille] = useState(TAILLE_INITIALE);
+  const [chargement, setChargement] = useState(false);
+  const [hasMore, setHasMore] = useState(resultatsInitiaux.length >= TAILLE_INITIALE);
+  const [enErreur, setEnErreur] = useState(false);
+
+  const chargerSuite = useCallback(() => {
+    setChargement(true);
+    setEnErreur(false);
+    const nouvelleTaille = taille + PAGE;
+    chargerRecherchePage(query, nouvelleTaille)
+      .then((suite) => {
+        setResultats(suite);
+        setTaille(nouvelleTaille);
+        setHasMore(suite.length > resultats.length && suite.length >= nouvelleTaille);
+        setChargement(false);
+      })
+      .catch(() => {
+        setChargement(false);
+        setEnErreur(true);
+      });
+  }, [query, taille, resultats.length]);
+
+  const sentinelleRef = useChargementAuto(hasMore && !chargement && !enErreur, chargerSuite);
+
   if (!query) {
     return (
       <p className="px-4 text-sm text-ink/60">
@@ -58,6 +90,19 @@ export function ResultatsRecherche({
           <ProductGrid produits={parCategorie} />
         </section>
       )}
+
+      <div ref={sentinelleRef} aria-hidden="true" />
+      {chargement && <p className="pb-2 text-center text-xs text-ink/40">Chargement…</p>}
+      {enErreur && !chargement && (
+        <button
+          type="button"
+          onClick={chargerSuite}
+          className="mx-auto mb-2 flex h-9 items-center justify-center rounded-full border border-ink/15 px-4 text-xs font-medium text-ink/70"
+        >
+          Charger plus
+        </button>
+      )}
+      {!hasMore && !chargement && <DemanderProduit origine="fin_de_liste" variante="discret" />}
     </div>
   );
 }

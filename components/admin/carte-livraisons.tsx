@@ -209,7 +209,7 @@ export function CarteLivraisons({
               filtreMode === m ? "border-brand bg-brand text-surface" : "border-ink/15 text-ink/70"
             }`}
           >
-            {m === "24h" ? "24h" : "6 jours"}
+            {m === "24h" ? "24h" : "Datée"}
           </button>
         ))}
         <span className="text-xs text-ink/50">

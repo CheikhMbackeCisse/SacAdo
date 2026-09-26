@@ -1,0 +1,135 @@
+[
+  {
+    "id": 1,
+    "nom": "Dakar",
+    "tarif_6j": 500,
+    "tarif_24h": 1500,
+    "message_special": null
+  },
+  {
+    "id": 2,
+    "nom": "Thiès",
+    "tarif_6j": 1500,
+    "tarif_24h": 3000,
+    "message_special": null
+  },
+  {
+    "id": 4,
+    "nom": "Diourbel",
+    "tarif_6j": 2500,
+    "tarif_24h": 4500,
+    "message_special": null
+  },
+  {
+    "id": 5,
+    "nom": "Fatick",
+    "tarif_6j": 2500,
+    "tarif_24h": 4500,
+    "message_special": null
+  },
+  {
+    "id": 6,
+    "nom": "Kaolack",
+    "tarif_6j": 2500,
+    "tarif_24h": 4500,
+    "message_special": null
+  },
+  {
+    "id": 7,
+    "nom": "Louga",
+    "tarif_6j": 2500,
+    "tarif_24h": 4500,
+    "message_special": null
+  },
+  {
+    "id": 8,
+    "nom": "Saint-Louis",
+    "tarif_6j": 2500,
+    "tarif_24h": 4500,
+    "message_special": null
+  },
+  {
+    "id": 9,
+    "nom": "Kaffrine",
+    "tarif_6j": 3500,
+    "tarif_24h": 6000,
+    "message_special": null
+  },
+  {
+    "id": 10,
+    "nom": "Kolda",
+    "tarif_6j": 3500,
+    "tarif_24h": 6000,
+    "message_special": null
+  },
+  {
+    "id": 11,
+    "nom": "Sédhiou",
+    "tarif_6j": 3500,
+    "tarif_24h": 6000,
+    "message_special": null
+  },
+  {
+    "id": 12,
+    "nom": "Tambacounda",
+    "tarif_6j": 3500,
+    "tarif_24h": 6000,
+    "message_special": null
+  },
+  {
+    "id": 13,
+    "nom": "Matam",
+    "tarif_6j": 3500,
+    "tarif_24h": 6000,
+    "message_special": null
+  },
+  {
+    "id": 14,
+    "nom": "Ziguinchor",
+    "tarif_6j": 3500,
+    "tarif_24h": 6000,
+    "message_special": null
+  },
+  {
+    "id": 15,
+    "nom": "Kédougou",
+    "tarif_6j": 3500,
+    "tarif_24h": 6000,
+    "message_special": null
+  },
+  {
+    "id": 16,
+    "nom": "Notre zone",
+    "tarif_6j": 1500,
+    "tarif_24h": 2500,
+    "message_special": null
+  },
+  {
+    "id": 17,
+    "nom": "Banlieue proche",
+    "tarif_6j": 1750,
+    "tarif_24h": 2750,
+    "message_special": null
+  },
+  {
+    "id": 18,
+    "nom": "Dakar intermédiaire",
+    "tarif_6j": 2000,
+    "tarif_24h": 3000,
+    "message_special": null
+  },
+  {
+    "id": 19,
+    "nom": "Centre / résidentiel",
+    "tarif_6j": 2500,
+    "tarif_24h": 3500,
+    "message_special": null
+  },
+  {
+    "id": 20,
+    "nom": "Périphérie lointaine",
+    "tarif_6j": 2500,
+    "tarif_24h": 3500,
+    "message_special": null
+  }
+]

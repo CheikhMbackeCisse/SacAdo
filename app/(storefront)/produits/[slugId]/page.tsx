@@ -44,7 +44,7 @@ function descriptionProduit(produit: Awaited<ReturnType<typeof getProduitById>>,
   if (!produit) return "";
   const base = produit.description?.trim();
   if (base && base.length >= 40) return tronquer(base, 155);
-  const delai = produit.delai === "24h" ? "Livraison en 24h" : "Livraison en 6 jours";
+  const delai = produit.delai === "24h" ? "Livraison en 24h" : "Livraison à date donnée";
   const gabarit = `${produit.nom}${categorieNom ? ` (${categorieNom})` : ""} — ${formatPrice(produit.prix)}. ${delai}, partout au Sénégal.`;
   return tronquer(gabarit, 155);
 }

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCommandeAdmin, getCommandeItemsAdmin } from "@/lib/admin/commandes-actions";
 import { getBlocWhatsApp } from "@/lib/admin/whatsapp-actions";
-import { formatPrice } from "@/lib/format";
+import { formatDateLivraison, formatPrice } from "@/lib/format";
 import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
 import { StatutSelect } from "@/components/admin/statut-select";
 import { BlocWhatsAppFiche } from "@/components/admin/bloc-whatsapp";
@@ -46,7 +46,14 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
           <p className="text-ink/50">{commande.client_telephone}</p>
           {commande.adresse && <p className="mt-2 text-ink/70">{commande.adresse}</p>}
           <p className="text-ink/50">
-            Livraison {commande.message_livraison ? "spéciale" : commande.mode_livraison}
+            Livraison{" "}
+            {commande.message_livraison
+              ? "spéciale"
+              : commande.mode_livraison === "24h"
+                ? "express (24h)"
+                : commande.date_livraison_prevue
+                  ? `datée — ${formatDateLivraison(commande.date_livraison_prevue)}`
+                  : "datée"}
             {commande.localite_nom && ` — ${commande.localite_nom}`}
           </p>
           {commande.message_livraison && (

@@ -105,9 +105,25 @@ export default function MoiPage() {
         ))}
       </div>
 
-      {/* maj-26-09 §8 : remplace le badge générique "Demander un produit" par
-          l'entrée dédiée "Trouver un produit avec une photo" (photo obligatoire). */}
-      <DemanderProduit origine="photo_produit" variante="carte" />
+      {/* maj-accueil §2 : remplace "Trouver un produit avec une photo" par une
+          recherche texte (même moteur/synonymes que la barre principale, dans
+          un cadre) puis, hors cadre, l'envoi de la liste de fournitures. */}
+      <form action="/recherche" method="get" className="rounded-2xl border border-ink/10 bg-elevated p-3">
+        <label className="flex items-center gap-2 rounded-xl border border-ink/15 bg-surface px-3 py-2.5">
+          <Search size={16} className="text-ink/40" aria-hidden="true" />
+          <input
+            type="text"
+            name="q"
+            placeholder="Rechercher un produit"
+            className="w-full bg-transparent text-sm text-ink placeholder:text-ink/40 focus:outline-none"
+          />
+        </label>
+      </form>
+      <DemanderProduit
+        origine="liste_fournitures"
+        variante="discret"
+        texteAmorce="Donnez-nous votre liste de fournitures et on s'occupe du reste"
+      />
 
       {favorisProduits.length > 0 && (
         <section className="flex flex-col gap-2">

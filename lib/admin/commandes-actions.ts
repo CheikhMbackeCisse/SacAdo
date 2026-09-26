@@ -41,6 +41,7 @@ function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecCl
     frais_livraison_a_confirmer: row.frais_livraison_a_confirmer,
     message_livraison: row.message_livraison,
     telephone_normalise: row.telephone_normalise,
+    date_livraison_prevue: row.date_livraison_prevue,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
   };
@@ -52,7 +53,11 @@ const TAILLE_PAGE_COMMANDES = 50;
 // l'historique d'un coup quand le volume de commandes grossit.
 export async function getCommandesAdmin(
   statut?: StatutCommande,
-  { offset = 0, limit = TAILLE_PAGE_COMMANDES }: { offset?: number; limit?: number } = {},
+  {
+    offset = 0,
+    limit = TAILLE_PAGE_COMMANDES,
+    dateLivraison,
+  }: { offset?: number; limit?: number; dateLivraison?: string } = {},
 ): Promise<{ items: CommandeAvecClient[]; hasMore: boolean }> {
   await requireAdmin();
 
@@ -62,6 +67,9 @@ export async function getCommandesAdmin(
     .order("date", { ascending: false })
     .range(offset, offset + limit);
   if (statut) query = query.eq("statut", statut);
+  // Filtre "préparer la tournée" (maj-accueil §7) : une date précise pour les
+  // commandes à date donnée.
+  if (dateLivraison) query = query.eq("date_livraison_prevue", dateLivraison);
 
   const { data, error } = await query;
   if (error) return { items: [], hasMore: false };

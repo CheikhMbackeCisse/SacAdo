@@ -54,3 +54,19 @@ test("ordonnerAccueil : kits/fournitures/cahiers/livres avant informatique", () 
   // Kits en tête.
   assert.equal(r[0].id, 3);
 });
+
+test("ordonnerAccueil : la tech reste rare (au plus 1 sur 8) sur un lot de taille réaliste", () => {
+  // 16 produits, dont 4 en informatique -> plafond = floor(16/8) = 2.
+  const produits = [
+    ...Array.from({ length: 4 }, (_, i) => p(100 + i, { categorie_id: 7, prix: 50000 + i })),
+    ...Array.from({ length: 12 }, (_, i) => p(i, { categorie_id: 11 })),
+  ];
+  const r = ordonnerAccueil(produits);
+  const compteTech = r.filter((x) => x.categorie_id === 7).length;
+  assert.equal(compteTech, 2);
+  // Les moins chers d'abord parmi ceux gardés.
+  assert.deepEqual(
+    r.filter((x) => x.categorie_id === 7).map((x) => x.id),
+    [100, 101],
+  );
+});

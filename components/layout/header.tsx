@@ -228,7 +228,7 @@ export function Header() {
           className="flex shrink-0 items-center gap-2 rounded-full transition-opacity duration-150 hover:opacity-80 active:scale-95"
         >
           <Image
-            src="/images/logo.jpg"
+            src="/images/logo-entete-96.webp"
             alt="SacAdo"
             width={36}
             height={36}

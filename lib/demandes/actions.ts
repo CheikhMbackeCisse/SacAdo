@@ -17,18 +17,19 @@ const PRECISION_MAX = 300;
 const TEL_MAX = 30;
 const TEL_CHIFFRES_MIN = 6;
 
-// "photo_produit" (Paramètres, ex-badge "recherche par photo") et
-// "liste_fournitures" (page Kits, "Envoyer ma liste") : maj-26-09 §8, même
-// formulaire/table, photo obligatoire pour ces deux origines-là.
+// "liste_fournitures" (page Kits + écran Moi, "Envoyer ma liste") : maj-26-09
+// §8 puis maj-accueil §2, photo OU fichier obligatoire.
 export type OrigineDemande =
   | "moi"
   | "recherche_vide"
   | "categorie"
   | "fin_de_liste"
-  | "photo_produit"
   | "liste_fournitures";
 
-const ORIGINES_PHOTO_OBLIGATOIRE: readonly OrigineDemande[] = ["photo_produit", "liste_fournitures"];
+const ORIGINES_PHOTO_OBLIGATOIRE: readonly OrigineDemande[] = ["liste_fournitures"];
+// Téléphone facultatif pour cette origine (maj-accueil §2) : on cherche le
+// produit/la liste sans exiger de contact immédiat.
+const ORIGINES_TELEPHONE_FACULTATIF: readonly OrigineDemande[] = ["liste_fournitures"];
 
 export type DemandeResult = { ok: true } | { ok: false; error: string };
 
@@ -60,7 +61,6 @@ export async function creerDemandeProduit(entree: Entree): Promise<DemandeResult
     "recherche_vide",
     "categorie",
     "fin_de_liste",
-    "photo_produit",
     "liste_fournitures",
   ];
   const origine: OrigineDemande = ORIGINES_VALIDES.includes(entree.origine as OrigineDemande)
@@ -77,7 +77,11 @@ export async function creerDemandeProduit(entree: Entree): Promise<DemandeResult
   if (telephone && entree.jeton) {
     clientId = await clientIdAutorise(telephone, entree.jeton);
   }
-  if (!clientId && telephone.replace(/\D/g, "").length < TEL_CHIFFRES_MIN) {
+  if (
+    !clientId &&
+    !ORIGINES_TELEPHONE_FACULTATIF.includes(origine) &&
+    telephone.replace(/\D/g, "").length < TEL_CHIFFRES_MIN
+  ) {
     return { ok: false, error: "Indique un numéro WhatsApp valide." };
   }
 
@@ -122,6 +126,86 @@ export async function televerserPhotoDemande(
   const typeReel = snifferImage(new Uint8Array(buffer.slice(0, 12)));
   if (!typeReel || typeReel !== ext) {
     return { ok: false, error: "Ce fichier n'est pas une image valide." };
+  }
+
+  const chemin = `demandes/${randomUUID()}.${ext}`;
+  const { error } = await supabaseAdmin.storage
+    .from("produits")
+    .upload(chemin, buffer, { contentType: file.type, upsert: false });
+  if (error) return { ok: false, error: "Le téléversement a échoué." };
+
+  const { data } = supabaseAdmin.storage.from("produits").getPublicUrl(chemin);
+  return { ok: true, url: data.publicUrl };
+}
+
+// "liste_fournitures" (maj-accueil §2) : contrairement à televerserPhotoDemande
+// ci-dessus, le client peut envoyer une photo OU un document (PDF, Word,
+// Excel), jusqu'à 10 Mo. Le fichier est stocké dans la même colonne
+// `photo_url` (elle porte mal son nom pour un PDF, mais ce n'est qu'une URL) ;
+// l'admin (components/admin/demandes-liste.tsx) affiche un lien au lieu d'un
+// aperçu image quand l'extension n'est pas une image.
+const TAILLE_MAX_FICHIER_DEMANDE = 10 * 1024 * 1024; // 10 Mo
+const EXT_PAR_MIME_FICHIER: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heic",
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.ms-excel": "xls",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+};
+
+// Signature réelle du fichier (magic bytes), par grande famille — on ne
+// distingue pas doc/docx ou xls/xlsx entre eux (tous deux des conteneurs zip
+// OOXML ou OLE), l'objectif est d'écarter un exécutable déguisé, pas de
+// valider un format bureautique précis.
+function signatureFichierValide(octets: Uint8Array): boolean {
+  if (snifferImage(octets)) return true;
+  // HEIC/HEIF : boîte ISO-BMFF "ftyp" à l'offset 4.
+  if (octets.length >= 8 && octets[4] === 0x66 && octets[5] === 0x74 && octets[6] === 0x79 && octets[7] === 0x70) {
+    return true;
+  }
+  // PDF : "%PDF"
+  if (octets.length >= 4 && octets[0] === 0x25 && octets[1] === 0x50 && octets[2] === 0x44 && octets[3] === 0x46) {
+    return true;
+  }
+  // docx/xlsx : conteneur zip (PK\x03\x04)
+  if (octets.length >= 4 && octets[0] === 0x50 && octets[1] === 0x4b && octets[2] === 0x03 && octets[3] === 0x04) {
+    return true;
+  }
+  // doc/xls legacy : fichier composé OLE
+  if (
+    octets.length >= 4 &&
+    octets[0] === 0xd0 && octets[1] === 0xcf && octets[2] === 0x11 && octets[3] === 0xe0
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export async function televerserFichierDemande(
+  formData: FormData,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const ip = await getClientIp();
+  if (!(await verifierLimite(`demande-fichier:${ip}`, 12, 3600))) {
+    return { ok: false, error: "Trop d'envois. Réessaie plus tard." };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Aucun fichier reçu." };
+  if (file.size > TAILLE_MAX_FICHIER_DEMANDE) {
+    return { ok: false, error: "Fichier trop lourd (10 Mo maximum)." };
+  }
+
+  const ext = EXT_PAR_MIME_FICHIER[file.type];
+  if (!ext) return { ok: false, error: "Format accepté : photo, PDF, Word ou Excel." };
+
+  const buffer = await file.arrayBuffer();
+  if (!signatureFichierValide(new Uint8Array(buffer.slice(0, 12)))) {
+    return { ok: false, error: "Ce fichier n'est pas valide." };
   }
 
   const chemin = `demandes/${randomUUID()}.${ext}`;

@@ -1,15 +1,48 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ProductGrid } from "@/components/product/product-grid";
+import { DemanderProduit } from "@/components/demande/demander-produit";
 import { entrelacerAccueil } from "@/lib/accueil-multi";
+import { chargerPageAccueil } from "@/lib/accueil-suite";
+import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
 import type { AccueilFeed } from "@/lib/accueil";
 import type { Produit } from "@/lib/supabase/types";
 
 const LIMITE = 20;
+const PAGE = 20;
 
-export function Feed({ feed }: { feed: AccueilFeed }) {
+export function Feed({ feed: feedInitial }: { feed: AccueilFeed }) {
+  const [feed, setFeed] = useState(feedInitial);
+  const [taille, setTaille] = useState(LIMITE);
+  const [chargement, setChargement] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [enErreur, setEnErreur] = useState(false);
   const [selection, setSelection] = useState<"tous" | number>("tous");
+
+  // Chargement continu (maj-accueil §6) : descendre en bas de l'accueil
+  // recalcule le flux avec une limite plus grande (même graine de session,
+  // donc même début) et n'en garde que la queue nouvellement révélée.
+  const chargerSuite = useCallback(() => {
+    setChargement(true);
+    setEnErreur(false);
+    const nouvelleTaille = taille + PAGE;
+    chargerPageAccueil(nouvelleTaille, taille)
+      .then((suite) => {
+        const compteAvant = feed.profils[0]?.produits.length ?? 0;
+        const compteApres = suite.profils[0]?.produits.length ?? 0;
+        setFeed(suite);
+        setTaille(nouvelleTaille);
+        setHasMore(compteApres > compteAvant);
+        setChargement(false);
+      })
+      .catch(() => {
+        setChargement(false);
+        setEnErreur(true);
+      });
+  }, [taille, feed]);
+
+  const sentinelleRef = useChargementAuto(hasMore && !chargement && !enErreur, chargerSuite);
 
   const beneficiaires = feed.profils.filter((p) => p.source === "beneficiaire");
 
@@ -33,15 +66,39 @@ export function Feed({ feed }: { feed: AccueilFeed }) {
         prenom: p.prenom,
         cartes: p.produits.map((prod) => ({ produit: prod, origine: prod.origine })),
       })),
-      LIMITE,
+      taille,
     );
     const etq: Record<number, string | null> = {};
     for (const c of cartes) etq[c.produit.id] = c.prenom;
     return { produits: cartes.map((c) => c.produit), etiquettes: etq };
-  }, [selection, feed]);
+  }, [selection, feed, taille]);
+
+  const piedDeListe = (
+    <>
+      <div ref={sentinelleRef} aria-hidden="true" />
+      {chargement && <p className="pb-2 text-center text-xs text-ink/40">Chargement…</p>}
+      {enErreur && !chargement && (
+        <button
+          type="button"
+          onClick={chargerSuite}
+          className="mx-auto mb-2 flex h-9 items-center justify-center rounded-full border border-ink/15 px-4 text-xs font-medium text-ink/70"
+        >
+          Charger plus
+        </button>
+      )}
+      {!hasMore && !chargement && (produits.length > 0 || feed.profils[0]?.produits.length) && (
+        <DemanderProduit origine="fin_de_liste" variante="discret" />
+      )}
+    </>
+  );
 
   if (!feed.multi) {
-    return <ProductGrid produits={feed.profils[0]?.produits ?? []} />;
+    return (
+      <>
+        <ProductGrid produits={feed.profils[0]?.produits ?? []} />
+        {piedDeListe}
+      </>
+    );
   }
 
   return (
@@ -61,6 +118,7 @@ export function Feed({ feed }: { feed: AccueilFeed }) {
         ))}
       </div>
       <ProductGrid produits={produits} etiquettes={etiquettes} />
+      {piedDeListe}
     </div>
   );
 }

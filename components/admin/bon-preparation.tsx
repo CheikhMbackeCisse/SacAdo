@@ -2,7 +2,7 @@ import Image from "next/image";
 import { Package } from "lucide-react";
 import type { GroupeClient, LigneTotal } from "@/lib/preparations";
 
-const MODE_LABEL: Record<string, string> = { "24h": "Livraison 24h", "6j": "Livraison 6 jours", "5j": "Livraison 5 jours" };
+const MODE_LABEL: Record<string, string> = { "24h": "Livraison 24h", "6j": "Livraison datée" };
 
 // Corps du bon de préparation : articles regroupés par client + total en bas.
 // Partagé entre l'aperçu (avant création) et la fiche d'une demande existante.

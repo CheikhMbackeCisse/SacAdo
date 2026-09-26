@@ -7,7 +7,13 @@ import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wa
 import { jetonClient, verifierJetonClient } from "@/lib/client-auth";
 import { journaliserCommande } from "@/lib/mesure";
 import { fusionnerSessionCourante } from "@/lib/affinites";
-import { getNomMarchandWave, getSeuilLivraisonGratuite } from "@/lib/parametres";
+import {
+  getDatesFermees,
+  getHeureLimiteSamedi,
+  getNomMarchandWave,
+  getSeuilLivraisonGratuite,
+} from "@/lib/parametres";
+import { calculerDateLivraison } from "@/lib/checkout/date-livraison";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { origineSite } from "@/lib/site-url";
@@ -382,6 +388,9 @@ export type OptionsPaiementResult =
         localiteNom: string;
         aConfirmer: boolean;
         messageLivraison: string | null;
+        // Date de livraison "à date donnée" (maj-accueil §7), affichée à la
+        // place de « 6 jours » — "YYYY-MM-DD".
+        dateLivraisonPrevue: string;
         // Nom marchand réellement affiché par Wave à l'écran de paiement
         // (lib/parametres.ts::getNomMarchandWave) — null si Wave n'est pas une
         // option pour ce total, pour ne jamais afficher une mention Wave hors
@@ -389,6 +398,21 @@ export type OptionsPaiementResult =
         waveNomMarchand: string | null;
       })
   | { ok: false; error: string };
+
+// Calcule la date de livraison "à date donnée" (maj-accueil §7) à partir de
+// l'heure limite du samedi et des dates fermées réglées dans l'admin.
+async function dateLivraisonPrevue(): Promise<string> {
+  const [heureLimiteSamedi, datesFermees] = await Promise.all([getHeureLimiteSamedi(), getDatesFermees()]);
+  return calculerDateLivraison(new Date(), heureLimiteSamedi, datesFermees);
+}
+
+// Fige la date sur la commande juste après sa création (creer_commande() ne
+// la connaît pas), seulement pour le mode "à date donnée". Idempotent.
+async function figerDateLivraison(commandeId: number, modeLivraison: ModeLivraison): Promise<void> {
+  if (modeLivraison !== "6j") return;
+  const date = await dateLivraisonPrevue();
+  await supabaseAdmin.from("commandes").update({ date_livraison_prevue: date }).eq("id", commandeId);
+}
 
 // Règle du seuil de paiement (INTEGRATION_WAVE.md, lot W2) : le checkout appelle
 // cette action pour savoir quels modes de paiement proposer ET le tarif de
@@ -418,6 +442,7 @@ export async function getOptionsPaiement(
     localiteNom: resolu.data.localiteNom,
     aConfirmer: resolu.data.aConfirmer,
     messageLivraison: resolu.data.messageLivraison,
+    dateLivraisonPrevue: await dateLivraisonPrevue(),
     waveNomMarchand: options.options.includes("wave") ? await getNomMarchandWave() : null,
   };
 }
@@ -604,6 +629,7 @@ export async function passerCommande(
   }
 
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
+  await figerDateLivraison(commandeId as number, input.modeLivraison);
   await figerPrixAchat(commandeId as number, lignesResolues);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
 
@@ -741,6 +767,7 @@ export async function demarrerPaiementWave(
   }
 
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
+  await figerDateLivraison(commandeId as number, input.modeLivraison);
   await figerPrixAchat(commandeId as number, lignesResolues);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
 

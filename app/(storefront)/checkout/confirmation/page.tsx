@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { getCommandeParReference } from "@/lib/checkout/actions";
 import { jetonClient } from "@/lib/client-auth";
-import { formatPrice } from "@/lib/format";
+import { formatDateLivraison, formatPrice } from "@/lib/format";
 import { ViderPanierAuMontage } from "@/components/checkout/paiement-retour";
 import { PushInvite } from "@/components/moi/push-invite";
 
@@ -73,7 +73,16 @@ export default async function ConfirmationPaiementPage(props: {
           <span>{formatPrice(commande.sous_total)}</span>
         </div>
         <div className="flex justify-between text-ink/70">
-          <span>Livraison{commande.message_livraison ? "" : ` (${commande.mode_livraison})`}</span>
+          <span>
+            Livraison
+            {commande.message_livraison
+              ? ""
+              : commande.mode_livraison === "24h"
+                ? " (express)"
+                : commande.date_livraison_prevue
+                  ? ` (le ${formatDateLivraison(commande.date_livraison_prevue)})`
+                  : ""}
+          </span>
           <span>
             {commande.frais_livraison_a_confirmer
               ? "À confirmer"

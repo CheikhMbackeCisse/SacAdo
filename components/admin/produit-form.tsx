@@ -255,7 +255,7 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
             onChange={(v) => setDelai(v as ProduitInput["delai"] | "")}
             options={[
               { value: "24h", label: "24h" },
-              { value: "6j", label: "6 jours" },
+              { value: "6j", label: "À date donnée" },
             ]}
           />
         </label>

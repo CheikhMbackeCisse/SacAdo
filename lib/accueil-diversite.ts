@@ -2,10 +2,10 @@
 // la liste déjà classée par `accueil_classement` + `assemblerAccueil` : ne
 // remplace pas ce classement, le réordonne par petits groupes.
 //
-// Effet de bord assumé : un produit épinglé par l'admin (epingle_position)
-// peut glisser de sa case exacte si la priorité rentrée ou la règle de
-// variété le déplace — l'algorithme ne connaît plus l'origine ("epingle" vs
-// "score") à ce stade. Compromis documenté dans le rapport du chantier.
+// Depuis maj-accueil §5, l'appelant (lib/accueil.ts) retire les produits
+// épinglés (origine "epingle") avant d'appeler cette fonction et les remet en
+// tête, dans l'ordre de leur position : ils ouvrent toujours le flux, sans
+// pouvoir glisser sous l'effet de la règle de variété ci-dessous.
 
 export type ProduitDiversite = {
   id: number;
@@ -112,7 +112,17 @@ export function ordonnerAccueil<T extends ProduitDiversite>(produits: T[]): T[] 
   }
 
   const informatique = groupes.get(5);
-  if (informatique) informatique.sort((a, b) => a.prix - b.prix);
+  if (informatique) {
+    informatique.sort((a, b) => a.prix - b.prix);
+    // maj-accueil §5 : la tech (tablettes, informatique...) reste rare dans le
+    // flux, au plus 1 produit sur 8. Les moins chers d'abord, l'excédent est
+    // simplement retiré de cette page (il reste disponible dans sa catégorie).
+    // Ratio non appliqué sur un lot trop petit pour qu'il ait un sens (< 8).
+    if (produits.length >= 8) {
+      const plafondTech = Math.floor(produits.length / 8);
+      if (informatique.length > plafondTech) informatique.length = plafondTech;
+    }
+  }
 
   return [...groupes.keys()]
     .sort((a, b) => a - b)

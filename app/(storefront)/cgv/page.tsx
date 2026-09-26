@@ -60,7 +60,8 @@ export default function CgvPage() {
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">6. Livraison</h2>
         <p className="text-sm text-ink/70">
-          La livraison se fait partout au Sénégal, en moins de 6 jours selon le mode choisi.
+          La livraison se fait partout au Sénégal : en moins de 24h (livraison express) ou à une
+          date de livraison indiquée à la commande, selon le mode choisi.
         </p>
       </section>
 

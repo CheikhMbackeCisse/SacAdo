@@ -36,6 +36,14 @@ const ONGLETS: (StatutDemande | "toutes")[] = [
   "toutes",
 ];
 
+function estImageUrl(url: string): boolean {
+  try {
+    return /\.(jpe?g|png|webp|heic|heif)$/i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", {
     timeZone: "Africa/Dakar",
@@ -162,12 +170,24 @@ function LigneDemande({ demande }: { demande: Demande }) {
       </div>
 
       {demande.photo_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={demande.photo_url}
-          alt=""
-          className="size-24 rounded-xl border border-ink/10 object-cover"
-        />
+        estImageUrl(demande.photo_url) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={demande.photo_url}
+            alt=""
+            className="size-24 rounded-xl border border-ink/10 object-cover"
+          />
+        ) : (
+          <a
+            href={demande.photo_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-ink/10 px-3 py-2 text-xs font-medium text-brand underline"
+          >
+            <ExternalLink size={13} aria-hidden="true" />
+            Voir le fichier joint
+          </a>
+        )
       )}
 
       <div className="flex flex-wrap gap-2">

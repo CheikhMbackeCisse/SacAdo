@@ -50,9 +50,9 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
   return (
     <div className="flex max-w-2xl flex-col gap-4">
       <p className="text-sm text-ink/55">
-        Le message spécial, s&apos;il est renseigné, remplace le délai « 24h / 6j » partout où
-        il s&apos;affiche pour ce groupe (le prix reste affiché). Laisse-le vide pour un délai
-        normal.
+        Le message spécial, s&apos;il est renseigné, remplace le délai « 24h / date donnée »
+        partout où il s&apos;affiche pour ce groupe (le prix reste affiché). Laisse-le vide pour
+        un délai normal.
       </p>
 
       <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white">
@@ -60,7 +60,7 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
           <thead>
             <tr className="border-b border-ink/10 text-left text-xs text-ink/50">
               <th className="px-4 py-3 font-medium">Zone</th>
-              <th className="px-4 py-3 font-medium">Tarif 6j</th>
+              <th className="px-4 py-3 font-medium">Tarif datée</th>
               <th className="px-4 py-3 font-medium">Tarif 24h</th>
               <th className="px-4 py-3 font-medium">Message spécial (remplace le délai)</th>
             </tr>
@@ -116,7 +116,7 @@ export function ZonesEditor({ zones }: { zones: Zone[] }) {
         </label>
         <div className="flex gap-2">
           <label className="flex flex-col gap-1 text-xs">
-            <span className="text-ink/60">Tarif 6j</span>
+            <span className="text-ink/60">Tarif datée</span>
             <input
               type="number"
               min={0}

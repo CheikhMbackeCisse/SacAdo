@@ -10,7 +10,7 @@ import { useIdentite } from "@/lib/local/identite";
 import { marquerCommandeFraiche } from "@/lib/local/push-invite";
 import { useKitsPanier } from "@/lib/local/kits-panier";
 import { getLieuxSpeciaux, getLocalites } from "@/lib/supabase/queries";
-import { formatPrice } from "@/lib/format";
+import { formatDateLivraison, formatPrice } from "@/lib/format";
 import {
   demarrerPaiementWave,
   getDernierePosition,
@@ -138,6 +138,7 @@ export default function CheckoutPage() {
     localiteNom: string;
     aConfirmer: boolean;
     messageLivraison: string | null;
+    dateLivraisonPrevue: string;
     waveNomMarchand: string | null;
   } | null>(null);
   const panierSignature = detail
@@ -173,6 +174,7 @@ export default function CheckoutPage() {
         localiteNom: r.localiteNom,
         aConfirmer: r.aConfirmer,
         messageLivraison: r.messageLivraison,
+        dateLivraisonPrevue: r.dateLivraisonPrevue,
         waveNomMarchand: r.waveNomMarchand,
       });
     });
@@ -416,7 +418,11 @@ export default function CheckoutPage() {
                 }`}
               >
                 <span className="text-sm font-semibold text-ink">
-                  {mode === "24h" ? "Livraison 24h" : "Livraison 6 jours"}
+                  {mode === "24h"
+                    ? "Livraison express (moins de 24h)"
+                    : opts
+                      ? `Livraison le ${formatDateLivraison(opts.dateLivraisonPrevue)}`
+                      : "Livraison à une date donnée"}
                 </span>
                 <span className="text-xs text-ink/50">
                   {prix === null ? "—" : prix === 0 ? "Gratuite" : formatPrice(prix)}

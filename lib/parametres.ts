@@ -61,6 +61,59 @@ export async function setSeuilLivraisonGratuite(
   return { ok: true };
 }
 
+const CLE_HEURE_LIMITE_SAMEDI = "heure_limite_samedi";
+
+// "HH:MM" ou null (aucune heure limite -> toute commande du samedi est
+// livrée le dimanche). maj-accueil §7.
+export async function getHeureLimiteSamedi(): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from("parametres")
+    .select("valeur")
+    .eq("cle", CLE_HEURE_LIMITE_SAMEDI)
+    .maybeSingle();
+  const v = data?.valeur?.trim();
+  return v && /^\d{1,2}:\d{2}$/.test(v) ? v : null;
+}
+
+export async function setHeureLimiteSamedi(
+  valeur: string | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const v = valeur?.trim() || "";
+  if (v && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) {
+    return { ok: false, error: "Heure invalide (format HH:MM)." };
+  }
+  const { error } = await supabaseAdmin
+    .from("parametres")
+    .upsert({ cle: CLE_HEURE_LIMITE_SAMEDI, valeur: v, maj: new Date().toISOString() });
+  if (error) return { ok: false, error: "Impossible d'enregistrer le réglage." };
+  return { ok: true };
+}
+
+// Jours fériés / fermés (Magal, Tabaski...) : la livraison datée saute à la
+// prochaine date ouverte (samedi ou dimanche). maj-accueil §7.
+export async function getDatesFermees(): Promise<string[]> {
+  const { data } = await supabaseAdmin.from("dates_fermees").select("date").order("date");
+  return (data ?? []).map((d) => d.date as string);
+}
+
+export async function ajouterDateFermee(
+  date: string,
+  motif: string | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Date invalide." };
+  const { error } = await supabaseAdmin
+    .from("dates_fermees")
+    .upsert({ date, motif: motif?.trim() || null });
+  if (error) return { ok: false, error: "Impossible d'enregistrer cette date." };
+  return { ok: true };
+}
+
+export async function retirerDateFermee(date: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabaseAdmin.from("dates_fermees").delete().eq("date", date);
+  if (error) return { ok: false, error: "Impossible de retirer cette date." };
+  return { ok: true };
+}
+
 const CLE_WAVE_NOM_MARCHAND = "wave_nom_marchand";
 const WAVE_NOM_MARCHAND_DEFAUT = "UniShop Sénégal";
 

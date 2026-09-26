@@ -243,9 +243,9 @@ export function ProductDetail({
                     src={logoMarque(produit.marque)!}
                     alt=""
                     aria-hidden="true"
-                    width={56}
-                    height={16}
-                    className="h-4 w-auto object-contain"
+                    width={140}
+                    height={36}
+                    className="h-9 w-auto object-contain"
                   />
                 )}
                 {produit.marque}
