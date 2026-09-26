@@ -1,6 +1,6 @@
 # Modifications — chantier maj-26-09
 
-Généré le 2026-09-26T15:35:52.861Z.
+Généré le 2026-09-26T16:22:00.301Z.
 
 ## En attente (bloqué techniquement, pas de choix éditorial)
 
@@ -113,6 +113,7 @@ Généré le 2026-09-26T15:35:52.861Z.
 ## Section 4 — Marques et collections
 
 - **Champ marque** (remplissage) → `fait` — 14 produits mis à jour (hors Livres/Ebooks, jamais d'écrasement d'une marque déjà renseignée).
+- **Champ collection (livres)** (remplissage) → `fait` — 20 livres tagués sur 5 collections identifiées avec confiance (nom exact ou alias confirmé des kits). Le reste du catalogue Livres (au-delà de ces éditions nommément identifiées) n'a pas été passé en revue individuellement : à compléter au fil de l'eau.
 
 ### Livres « La Clé des Cracks » (Korka Diallo) masqués
 
