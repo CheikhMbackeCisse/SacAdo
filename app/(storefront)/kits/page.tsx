@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { CYCLES } from "@/lib/cycles";
+import { DemanderProduit } from "@/components/demande/demander-produit";
 
 export default function KitsPage() {
   return (
@@ -40,6 +41,9 @@ export default function KitsPage() {
           </Link>
         ))}
       </div>
+
+      {/* maj-26-09 §8 : photo de la liste obligatoire, classe facultative. */}
+      <DemanderProduit origine="liste_fournitures" variante="discret" />
     </div>
   );
 }

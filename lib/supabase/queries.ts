@@ -1,4 +1,5 @@
 import { supabase } from "./client";
+import { slugify } from "@/lib/slug";
 import { GAMME_ORDER } from "@/lib/gammes";
 import { aplatirAttributs } from "@/lib/variantes";
 import type {
@@ -34,6 +35,52 @@ function versVariantes(
     ...(row as VarianteAvecAttributs),
     attributs: avecJointure ? aplatirAttributs(row as never) : [],
   }));
+}
+
+// Marques (maj-26-09 §4) : pas de table dédiée, `produits.marque` fait foi.
+// Le slug est recalculé à la volée (comme les produits, lib/slug.ts), jamais
+// stocké : une marque n'existe qu'à travers les produits qui la portent.
+export type MarqueAvecCompte = { marque: string; count: number };
+
+export async function getMarques(): Promise<MarqueAvecCompte[]> {
+  const { data, error } = await supabase
+    .from("produits")
+    .select("marque")
+    .eq("statut_publication", "publie")
+    .not("marque", "is", null);
+  if (error) throw error;
+  const compte = new Map<string, number>();
+  for (const row of data ?? []) {
+    const m = row.marque as string;
+    compte.set(m, (compte.get(m) ?? 0) + 1);
+  }
+  return [...compte.entries()]
+    .map(([marque, count]) => ({ marque, count }))
+    .sort((a, b) => a.marque.localeCompare(b.marque, "fr"));
+}
+
+// Résout un slug d'URL (/marques/[slug]) vers le nom exact de la marque —
+// nécessite de reparcourir la liste (pas d'index sur un slug calculé).
+export async function getMarqueBySlug(slug: string): Promise<string | null> {
+  const marques = await getMarques();
+  return marques.find((m) => slugify(m.marque) === slug)?.marque ?? null;
+}
+
+export async function getProduitsByMarque(
+  marque: string,
+  { offset = 0, limit = TAILLE_PAGE_CATEGORIE }: { offset?: number; limit?: number } = {},
+): Promise<PageResultat<Produit>> {
+  const { data, error, count } = await supabase
+    .from("produits")
+    .select(COLONNES_PRODUIT_PUBLIC, { count: "exact" })
+    .eq("marque", marque)
+    .or(FILTRE_EDITION_AFFICHABLE)
+    .order("nom", { ascending: true })
+    .range(offset, offset + limit);
+  if (error) throw error;
+  const rows = data ?? [];
+  const hasMore = rows.length > limit;
+  return { items: hasMore ? rows.slice(0, limit) : rows, hasMore, total: count ?? undefined };
 }
 
 export async function getCategories(): Promise<Categorie[]> {
@@ -84,50 +131,142 @@ export async function getPopulaires(limit = 8, categorieId?: number): Promise<Pr
 // l'affinité de la personne via le service_role, ce que ce fichier — importé
 // par des composants client — ne peut pas faire.
 
-export type PageResultat<T> = { items: T[]; hasMore: boolean };
+export type PageResultat<T> = { items: T[]; hasMore: boolean; total?: number };
 
-// Assez grand pour charger une catégorie entière en un seul appel (le
-// catalogue actuel plafonne autour de 80 articles, tous rayons confondus) :
-// les filtres côté client (niveau/série/matière/type des livres) portent sur
-// le lot chargé, un chargement par pages les faisait paraître "cachés" tant
-// que la bonne page n'était pas atteinte (retour testeur). Reste un filet de
-// sécurité (pas un vrai "tout charger sans limite") si le catalogue grossit
-// beaucoup : au-delà, "Charger plus" réapparaît normalement.
 export const TAILLE_PAGE_CATALOGUE = 200;
+
+// Page d'une liste catégorie (maj-26-09 §6) : plus petite que
+// TAILLE_PAGE_CATALOGUE (utilisée par la recherche) car les facettes sont
+// maintenant appliquées ICI, côté requête, jamais en filtrant après coup le
+// lot déjà chargé — une catégorie dépasse vite 200 articles (Livres : 316),
+// et un filtre posé sur le seul lot chargé faisait "disparaître" des
+// résultats tant que "Charger plus" n'avait pas atteint la bonne page (ex.
+// filtres "3e"+"SVT" sur les livres).
+export const TAILLE_PAGE_CATEGORIE = 60;
+export type FiltresProduitsCategorie = {
+  sousCategorieId?: number | null;
+  sousSousCategorieId?: number | null;
+  // Livres
+  niveau?: string | null;
+  serie?: string | null;
+  matiere?: string | null;
+  typeOuvrage?: string | null;
+  // Ordinateurs / prix générique
+  prixMin?: number | null;
+  prixMax?: number | null;
+  ramGo?: number | null;
+  stockageGo?: number | null;
+  tailleEcran?: number | null;
+  ecranTactile?: boolean | null;
+  marque?: string | null;
+  // 'nom' (défaut, catalogue général) ; 'prix_asc'/'score_desc' (ordinateurs :
+  // "Prix croissant" / "Pertinence") — doit être un tri serveur, pas un tri du
+  // seul lot chargé, sinon incohérent d'une page "Charger plus" à l'autre.
+  ordre?: "nom" | "prix_asc" | "score_desc";
+};
 
 export async function getProduitsByCategorie(
   categorieId: number,
   {
     offset = 0,
-    limit = TAILLE_PAGE_CATALOGUE,
+    limit = TAILLE_PAGE_CATEGORIE,
     sousCategorieId,
     sousSousCategorieId,
-  }: {
-    offset?: number;
-    limit?: number;
-    sousCategorieId?: number | null;
-    sousSousCategorieId?: number | null;
-  } = {},
+    niveau,
+    serie,
+    matiere,
+    typeOuvrage,
+    prixMin,
+    prixMax,
+    ramGo,
+    stockageGo,
+    tailleEcran,
+    ecranTactile,
+    marque,
+    ordre = "nom",
+  }: { offset?: number; limit?: number } & FiltresProduitsCategorie = {},
 ): Promise<PageResultat<Produit>> {
-  // .range() est inclusif : on demande une ligne de plus que "limit" pour
-  // savoir s'il reste une page suivante, sans requête de comptage séparée.
   let requete = supabase
     .from("produits")
-    .select(COLONNES_PRODUIT_PUBLIC)
+    .select(COLONNES_PRODUIT_PUBLIC, { count: "exact" })
     .eq("categorie_id", categorieId)
     .or(FILTRE_EDITION_AFFICHABLE);
   if (sousCategorieId != null) requete = requete.eq("sous_categorie_id", sousCategorieId);
-  if (sousSousCategorieId != null) {
-    requete = requete.eq("sous_sous_categorie_id", sousSousCategorieId);
-  }
+  if (sousSousCategorieId != null) requete = requete.eq("sous_sous_categorie_id", sousSousCategorieId);
+  if (niveau) requete = requete.eq("niveau", niveau);
+  // "S" (série générique) doit aussi remonter S1/S2 : géré par l'appelant en
+  // repassant serie=null et en filtrant après coup dans ce cas précis, sinon
+  // filtre exact.
+  if (serie) requete = requete.eq("serie", serie);
+  if (matiere) requete = requete.eq("matiere", matiere);
+  if (typeOuvrage) requete = requete.eq("type_ouvrage", typeOuvrage);
+  if (prixMin != null) requete = requete.gte("prix", prixMin);
+  if (prixMax != null) requete = requete.lt("prix", prixMax);
+  if (ramGo != null) requete = requete.eq("ram_go", ramGo);
+  if (stockageGo != null) requete = requete.eq("stockage_go", stockageGo);
+  if (tailleEcran != null) requete = requete.eq("taille_ecran", tailleEcran);
+  if (ecranTactile != null) requete = requete.eq("ecran_tactile", ecranTactile);
+  if (marque) requete = requete.eq("marque", marque);
 
-  const { data, error } = await requete
-    .order("nom", { ascending: true })
-    .range(offset, offset + limit);
+  if (ordre === "prix_asc") requete = requete.order("prix", { ascending: true });
+  else if (ordre === "score_desc") requete = requete.order("score_global", { ascending: false, nullsFirst: false });
+  else requete = requete.order("nom", { ascending: true });
+
+  // .range() est inclusif : on demande une ligne de plus que "limit" pour
+  // savoir s'il reste une page suivante, sans requête de comptage séparée.
+  const { data, error, count } = await requete.range(offset, offset + limit);
   if (error) throw error;
   const rows = data ?? [];
   const hasMore = rows.length > limit;
-  return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
+  return { items: hasMore ? rows.slice(0, limit) : rows, hasMore, total: count ?? undefined };
+}
+
+function trierValeurs(valeurs: Iterable<string>): string[] {
+  return [...new Set(valeurs)].sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+export type FacettesLivres = { niveaux: string[]; series: string[]; matieres: string[]; types: string[] };
+
+// Valeurs de facette calculées sur TOUTE la catégorie (pas sur la page
+// chargée) : sinon les options du filtre elles-mêmes dépendent de ce qui est
+// déjà chargé, même bug que le filtrage lui-même (maj-26-09 §6).
+export async function getFacettesLivres(categorieId: number): Promise<FacettesLivres> {
+  const { data, error } = await supabase
+    .from("produits")
+    .select("niveau, serie, matiere, type_ouvrage")
+    .eq("categorie_id", categorieId)
+    .or(FILTRE_EDITION_AFFICHABLE);
+  if (error) throw error;
+  const rows = data ?? [];
+  return {
+    niveaux: trierValeurs(rows.map((r) => r.niveau).filter((v): v is string => !!v)),
+    series: trierValeurs(rows.map((r) => r.serie).filter((v): v is string => !!v)),
+    matieres: trierValeurs(rows.map((r) => r.matiere).filter((v): v is string => !!v)),
+    types: trierValeurs(rows.map((r) => r.type_ouvrage).filter((v): v is string => !!v)),
+  };
+}
+
+export type FacettesOrdinateurs = { rams: string[]; stockages: string[]; ecrans: string[]; marques: string[] };
+
+export async function getFacettesOrdinateurs(
+  categorieId: number,
+  sousCategorieId: number,
+): Promise<FacettesOrdinateurs> {
+  const { data, error } = await supabase
+    .from("produits")
+    .select("ram_go, stockage_go, taille_ecran, marque")
+    .eq("categorie_id", categorieId)
+    .eq("sous_categorie_id", sousCategorieId)
+    .or(FILTRE_EDITION_AFFICHABLE);
+  if (error) throw error;
+  const rows = data ?? [];
+  const triNumerique = (a: string, b: string) => parseFloat(a) - parseFloat(b);
+  return {
+    rams: [...new Set(rows.map((r) => (r.ram_go ? `${r.ram_go} Go` : null)).filter((v): v is string => !!v))].sort(triNumerique),
+    stockages: [...new Set(rows.map((r) => (r.stockage_go ? `${r.stockage_go} Go` : null)).filter((v): v is string => !!v))].sort(triNumerique),
+    ecrans: [...new Set(rows.map((r) => (r.taille_ecran ? `${r.taille_ecran} pouces` : null)).filter((v): v is string => !!v))].sort(triNumerique),
+    marques: trierValeurs(rows.map((r) => r.marque).filter((v): v is string => !!v)),
+  };
 }
 
 export async function getSousCategoriesByCategorie(

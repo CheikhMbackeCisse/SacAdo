@@ -1,8 +1,8 @@
-# Correction complète des kits scolaires : version 7
+# Correction complète des kits scolaires : version 9
 
 Les kits ont déjà été intégrés avec une version précédente de `import-kits/kits.json`. Ce prompt remplace toutes les corrections précédentes : applique-le en entier, même si une partie a déjà été faite.
 
-Remplace d'abord le contenu du dossier `import-kits/` par celui fourni : `kits.json` (version `2026-09-26-v7`), `SacAdo_kits_v7.xlsx`, `PROMPT-claude-code-kits.md` et ce fichier.
+Remplace d'abord le contenu du dossier `import-kits/` par celui fourni : `kits.json` (version `2026-09-26-v9`), `SacAdo_kits_v9.xlsx`, `PROMPT-claude-code-kits.md` et ce fichier.
 
 Les kits sont composés côté SacAdo. Ne change pas leur composition : pas de ligne ajoutée, retirée ou remplacée par un produit « équivalent ». Une référence introuvable se signale, elle ne se remplace pas.
 
@@ -46,6 +46,10 @@ Le Complet était trop cher et trop proche du Confort. Au collège, au lycée et
 
 Le primaire ne change pas : ses manuels Didactikos restent dans le Complet.
 
+Dans l'Essentiel du collège, du lycée et de la STEG, le taille-crayon est maintenant le Maped à réservoir (`SAC-017`). L'ancienne référence `S030` était une boîte à éponge : elle n'est plus dans aucun kit.
+
+Le Complet et le Confort du collège, du lycée et de la STEG ont maintenant un protège-cahier par cahier, sur deux lignes : petit format (`S109`, 150 F l'unité) et grand format (`A-CREER-04`). Si l'app n'a qu'un seul protège-cahier, rattache-le à `S109` et signale que `A-CREER-04` est introuvable : ne mets pas un petit format sur un cahier grand format.
+
 Tu n'as rien à coder pour ça : relance le script d'import avec le nouveau `kits.json`. Il remplace les lignes et les descriptions de chaque kit.
 
 ## 4. Retirer l'ebook offert
@@ -74,7 +78,7 @@ Aucune autre série technique n'est affichée (S3, T1, T2, F6...).
 1. Après import : 63 kits exactement (21 par gamme). Aucun kit Première S ou Terminale S sans S1 ni S2. Les 9 kits STEG sont présents.
 2. Relance l'import une deuxième fois : toujours 63 kits, aucun doublon, et aucun kit déjà publié n'est repassé en masqué.
 3. Première S1 Confort et Première S2 Confort : les lignes La Clé des Cracks pointent vers des éditions différentes (ou vers la même édition commune, signalée). Seul le S2 a la ligne SVT.
-4. 3e Complet : pas de manuel, pas de Casio fx-92, calculatrice générique présente. 3e Confort : manuels et Casio fx-92 présents, calculatrice générique absente.
+4. 3e Essentiel : le taille-crayon est le Maped à réservoir, aucune boîte à éponge, aucun protège-cahier. 3e Complet : 8 protège-cahiers petit format et 5 grand format (si le produit existe). 3e Complet : pas de manuel, pas de Casio fx-92, calculatrice générique présente. 3e Confort : manuels et Casio fx-92 présents, calculatrice générique absente.
 5. Terminale STEG Confort : Casio fx-92, stylo 4 couleurs et correcteur présents.
 6. Le mot « ebook » n'apparaît sur aucune page publique.
 7. Le lycée arabe affiche son message en petit texte, sans cadre ni prix. La STEG n'affiche plus aucun message « pas encore disponible ».

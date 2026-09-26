@@ -4,8 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ChampSelect } from "@/components/ui/champ-select";
-import { getProduitsByCategorie, TAILLE_PAGE_CATALOGUE } from "@/lib/supabase/queries";
+import {
+  getFacettesLivres,
+  getFacettesOrdinateurs,
+  getProduitsByCategorie,
+  TAILLE_PAGE_CATEGORIE,
+  type FacettesLivres,
+  type FacettesOrdinateurs,
+} from "@/lib/supabase/queries";
 import { mesurer } from "@/lib/mesure-client";
+import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
+import { DemanderProduit } from "@/components/demande/demander-produit";
 import type { Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
 type CategoryProductListProps = {
@@ -13,6 +22,7 @@ type CategoryProductListProps = {
   categorieSlug: string;
   produitsInitiaux: Produit[];
   hasMoreInitial: boolean;
+  totalInitial: number;
   sousCategories: SousCategorie[];
   // 3e niveau, optionnel : peut être vide même si sousCategories ne l'est pas.
   sousSousCategories: SousSousCategorie[];
@@ -24,16 +34,28 @@ const NIVEAUX_LYCEE = new Set(["2nde", "1ere", "Terminale"]);
 // Tranches de prix pour Ordinateurs portables (§3) : fixes plutôt que dérivées
 // du lot chargé, pour rester stables d'une page à l'autre. `max` exclusif,
 // `null` = dernière tranche, illimitée.
-const TRANCHES_PRIX: { label: string; min: number; max: number | null }[] = [
+const TRANCHES_PRIX_ORDINATEURS: { label: string; min: number; max: number | null }[] = [
   { label: "Moins de 150 000", min: 0, max: 150000 },
   { label: "150 000 – 250 000", min: 150000, max: 250000 },
   { label: "250 000 – 400 000", min: 250000, max: 400000 },
   { label: "Plus de 400 000", min: 400000, max: null },
 ];
 
+// Filtre prix générique (maj-26-09 §6 "remets le filtre de prix dans les
+// pages de catégorie") : toutes les catégories sauf Ordinateurs, qui garde
+// ses tranches dédiées (montants bien plus élevés).
+const TRANCHES_PRIX_GENERIQUE: { label: string; min: number; max: number | null }[] = [
+  { label: "Moins de 2 000", min: 0, max: 2000 },
+  { label: "2 000 – 5 000", min: 2000, max: 5000 },
+  { label: "5 000 – 15 000", min: 5000, max: 15000 },
+  { label: "15 000 – 50 000", min: 15000, max: 50000 },
+  { label: "Plus de 50 000", min: 50000, max: null },
+];
+
 // "S" est la série générique : S1/S2 en sont des sous-séries (retour
-// testeur), donc choisir "S" doit aussi remonter les titres S1 et S2.
-// "S1"/"S2" restent des choix précis.
+// testeur), donc choisir "S" doit aussi remonter les titres S1 et S2. Les
+// filtres serveur ne connaissant qu'une égalité exacte, ce cas précis reste
+// géré en repassant `undefined` au serveur et en filtrant ce sous-lot en JS.
 function serieCorrespond(filtre: string, serie: string | null): boolean {
   if (!serie) return false;
   if (filtre === "S") return serie === "S" || serie === "S1" || serie === "S2";
@@ -79,11 +101,40 @@ function FiltreSelect({
   );
 }
 
+type FiltresEtat = {
+  niveau: string | null;
+  serie: string | null;
+  matiere: string | null;
+  typeOuvrage: string | null;
+  prix: string | null; // label de tranche (générique OU ordinateurs selon la catégorie)
+  ram: string | null;
+  stockage: string | null;
+  ecran: string | null;
+  tactile: string | null;
+  marque: string | null;
+  tri: string | null;
+};
+
+const FILTRES_VIDES: FiltresEtat = {
+  niveau: null,
+  serie: null,
+  matiere: null,
+  typeOuvrage: null,
+  prix: null,
+  ram: null,
+  stockage: null,
+  ecran: null,
+  tactile: null,
+  marque: null,
+  tri: null,
+};
+
 export function CategoryProductList({
   categorieId,
   categorieSlug,
   produitsInitiaux,
   hasMoreInitial,
+  totalInitial,
   sousCategories,
   sousSousCategories,
 }: CategoryProductListProps) {
@@ -91,43 +142,63 @@ export function CategoryProductList({
 
   const [produits, setProduits] = useState(produitsInitiaux);
   const [hasMore, setHasMore] = useState(hasMoreInitial);
+  const [total, setTotal] = useState(totalInitial);
   const [chargement, setChargement] = useState(false);
   // Sous-catégorie / sous-sous-catégorie actives : initialisées depuis l'URL
   // (?sc=, ?ssc=) pour les liens directs (suggestions de recherche incluses).
   const [scSlug, setScSlug] = useState<string | null>(() => searchParams.get("sc"));
   const [sscSlug, setSscSlug] = useState<string | null>(() => searchParams.get("ssc"));
-  // Filtres livres (§1.5) : Niveau, Série (si lycée), Matière, Type d'ouvrage.
-  const estLivres = categorieSlug === "livres-manuels";
-  const [niveauFiltre, setNiveauFiltre] = useState<string | null>(null);
-  const [serieFiltre, setSerieFiltre] = useState<string | null>(null);
-  const [matiereFiltre, setMatiereFiltre] = useState<string | null>(null);
-  const [typeFiltre, setTypeFiltre] = useState<string | null>(null);
-  // Filtres Ordinateurs portables (TACHE_seye_dynamique_integration.md §3) :
-  // Prix, RAM, Stockage, Taille d'écran, Écran tactile, Marque, dans cet ordre.
-  const estOrdinateursPortables = categorieSlug === "ordinateurs" && scSlug === "ordinateurs-portables";
-  const [prixFiltre, setPrixFiltre] = useState<string | null>(null);
-  const [ramFiltre, setRamFiltre] = useState<string | null>(null);
-  const [stockageFiltre, setStockageFiltre] = useState<string | null>(null);
-  const [ecranFiltre, setEcranFiltre] = useState<string | null>(null);
-  const [tactileFiltre, setTactileFiltre] = useState<string | null>(null);
-  const [marqueFiltre, setMarqueFiltre] = useState<string | null>(null);
-  // Tri (TACHE_kits_impression_classement.md Chantier C.3) : "Pertinence" par
-  // défaut (score_global, qui intègre déjà coefficient_visibilite et le boost
-  // de tranche de prix) ; "Prix croissant" l'ignore volontairement — un tri
-  // demandé explicitement n'est jamais truqué.
-  const [triFiltre, setTriFiltre] = useState<string | null>(null);
+  const [filtres, setFiltres] = useState<FiltresEtat>(FILTRES_VIDES);
 
-  // Signal de classement « vue de catégorie » (poids 0.5), une fois par
-  // catégorie affichée.
+  const estLivres = categorieSlug === "livres-manuels";
+  const estOrdinateursPortables = categorieSlug === "ordinateurs" && scSlug === "ordinateurs-portables";
+  const tranchesPrix = estOrdinateursPortables ? TRANCHES_PRIX_ORDINATEURS : TRANCHES_PRIX_GENERIQUE;
+
+  // Facettes : valeurs calculées côté serveur sur TOUTE la catégorie, jamais
+  // sur le seul lot chargé (maj-26-09 §6 — sinon les options elles-mêmes
+  // "manquent" tant que la bonne page n'est pas atteinte).
+  // Valeur brute conservée même hors "livres" (categorieId ne change pas de
+  // sens entre deux rendus) : le "null si pas livres" est dérivé au rendu,
+  // jamais pousuivi par un setState direct dans l'effet.
+  const [facettesLivresBrutes, setFacettesLivresBrutes] = useState<FacettesLivres | null>(null);
   useEffect(() => {
-    mesurer({ type: "vue_categorie", categorieId });
-  }, [categorieId]);
+    if (!estLivres) return;
+    let actif = true;
+    const charger = async () => {
+      const f = await getFacettesLivres(categorieId);
+      if (actif) setFacettesLivresBrutes(f);
+    };
+    void charger();
+    return () => { actif = false; };
+  }, [estLivres, categorieId]);
+  const facettesLivres = estLivres ? facettesLivresBrutes : null;
 
   const idParSlug = useMemo(() => {
     const map = new Map<string, number>();
     for (const sc of sousCategories) map.set(sc.slug, sc.id);
     return map;
   }, [sousCategories]);
+
+  const [facettesOrdinateursBrutes, setFacettesOrdinateursBrutes] = useState<FacettesOrdinateurs | null>(null);
+  useEffect(() => {
+    if (!estOrdinateursPortables) return;
+    const sousCategorieId = idParSlug.get("ordinateurs-portables");
+    if (!sousCategorieId) return;
+    let actif = true;
+    const charger = async () => {
+      const f = await getFacettesOrdinateurs(categorieId, sousCategorieId);
+      if (actif) setFacettesOrdinateursBrutes(f);
+    };
+    void charger();
+    return () => { actif = false; };
+  }, [estOrdinateursPortables, categorieId, idParSlug]);
+  const facettesOrdinateurs = estOrdinateursPortables ? facettesOrdinateursBrutes : null;
+
+  // Signal de classement « vue de catégorie » (poids 0.5), une fois par
+  // catégorie affichée.
+  useEffect(() => {
+    mesurer({ type: "vue_categorie", categorieId });
+  }, [categorieId]);
 
   const sousCategorieActiveId = scSlug ? (idParSlug.get(scSlug) ?? null) : null;
 
@@ -142,30 +213,57 @@ export function CategoryProductList({
             .sort((a, b) => a.ordre - b.ordre || a.nom.localeCompare(b.nom)),
     [sousSousCategories, sousCategorieActiveId],
   );
-  const chargerPage = useCallback(
+
+  const serieVisible = filtres.niveau !== null && NIVEAUX_LYCEE.has(filtres.niveau);
+
+  // Charge une page depuis le serveur avec l'intégralité des filtres actifs —
+  // c'est la SEULE source de vérité pour ce qui s'affiche (plus de filtrage
+  // client sur un lot partiel).
+  const chargerAvec = useCallback(
     async (
-      slug: string | null,
-      sscSlugCourant: string | null,
+      sc: string | null,
+      ssc: string | null,
+      f: FiltresEtat,
       offset: number,
       remplacer: boolean,
     ) => {
       setChargement(true);
-      const sousCategorieId = slug ? (idParSlug.get(slug) ?? null) : null;
+      const sousCategorieId = sc ? (idParSlug.get(sc) ?? null) : null;
       const sscMap = new Map<string, number>();
-      for (const ssc of sousSousCategories) {
-        if (ssc.sous_categorie_id === sousCategorieId) sscMap.set(ssc.slug, ssc.id);
+      for (const s of sousSousCategories) {
+        if (s.sous_categorie_id === sousCategorieId) sscMap.set(s.slug, s.id);
       }
-      const { items, hasMore: encoreApres } = await getProduitsByCategorie(categorieId, {
+      const tranche = f.prix ? tranchesPrix.find((t) => t.label === f.prix) : null;
+      const ramGo = f.ram ? parseFloat(f.ram) : null;
+      const stockageGo = f.stockage ? parseFloat(f.stockage) : null;
+      const tailleEcran = f.ecran ? parseFloat(f.ecran) : null;
+
+      const { items, hasMore: encoreApres, total: totalServeur } = await getProduitsByCategorie(categorieId, {
         offset,
-        limit: TAILLE_PAGE_CATALOGUE,
+        limit: TAILLE_PAGE_CATEGORIE,
         sousCategorieId,
-        sousSousCategorieId: sscSlugCourant ? (sscMap.get(sscSlugCourant) ?? null) : null,
+        sousSousCategorieId: ssc ? (sscMap.get(ssc) ?? null) : null,
+        niveau: f.niveau,
+        // "S" générique : pas de filtre serveur, on complète en JS ci-dessous.
+        serie: f.serie && f.serie !== "S" ? f.serie : null,
+        matiere: f.matiere,
+        typeOuvrage: f.typeOuvrage,
+        prixMin: tranche?.min ?? null,
+        prixMax: tranche?.max ?? null,
+        ramGo,
+        stockageGo,
+        tailleEcran,
+        ecranTactile: f.tactile ? f.tactile === "Oui" : null,
+        marque: f.marque,
+        ordre: estOrdinateursPortables ? (f.tri === "Prix croissant" ? "prix_asc" : "score_desc") : "nom",
       });
-      setProduits((current) => (remplacer ? items : [...current, ...items]));
+      const filtres_S = f.serie === "S" ? items.filter((p) => serieCorrespond("S", p.serie)) : items;
+      setProduits((current) => (remplacer ? filtres_S : [...current, ...filtres_S]));
       setHasMore(encoreApres);
+      if (totalServeur != null) setTotal(f.serie === "S" ? filtres_S.length : totalServeur);
       setChargement(false);
     },
-    [categorieId, idParSlug, sousSousCategories],
+    [categorieId, idParSlug, sousSousCategories, tranchesPrix, estOrdinateursPortables],
   );
 
   const majUrl = (sc: string | null, ssc: string | null) => {
@@ -181,29 +279,40 @@ export function CategoryProductList({
     (slug: string | null) => {
       setScSlug(slug);
       setSscSlug(null);
+      setFiltres(FILTRES_VIDES);
       majUrl(slug, null);
 
       if (!slug) {
         setProduits(produitsInitiaux);
         setHasMore(hasMoreInitial);
+        setTotal(totalInitial);
         return;
       }
       // Choix d'un rayon : signal d'intérêt sur la sous-catégorie (base de
       // l'affinité personnelle).
       const scId = idParSlug.get(slug);
       if (scId) mesurer({ type: "vue_categorie", categorieId, sousCategorieId: scId });
-      void chargerPage(slug, null, 0, true);
+      void chargerAvec(slug, null, FILTRES_VIDES, 0, true);
     },
-    [chargerPage, produitsInitiaux, hasMoreInitial, idParSlug, categorieId],
+    [chargerAvec, produitsInitiaux, hasMoreInitial, totalInitial, idParSlug, categorieId],
   );
 
   const choisirSousSousCat = useCallback(
     (slug: string | null) => {
       setSscSlug(slug);
       majUrl(scSlug, slug);
-      void chargerPage(scSlug, slug, 0, true);
+      void chargerAvec(scSlug, slug, filtres, 0, true);
     },
-    [chargerPage, scSlug],
+    [chargerAvec, scSlug, filtres],
+  );
+
+  const majFiltre = useCallback(
+    (patch: Partial<FiltresEtat>) => {
+      const next = { ...filtres, ...patch };
+      setFiltres(next);
+      void chargerAvec(scSlug, sscSlug, next, 0, true);
+    },
+    [chargerAvec, scSlug, sscSlug, filtres],
   );
 
   // Arrivée directe sur une URL ?sc=...(&ssc=...) : charger les produits
@@ -213,121 +322,13 @@ export function CategoryProductList({
   useEffect(() => {
     if (initialise.current || !scSlug || !idParSlug.has(scSlug)) return;
     initialise.current = true;
-    let actif = true;
-    const sousCategorieId = idParSlug.get(scSlug)!;
-    const sscMap = new Map<string, number>();
-    for (const ssc of sousSousCategories) {
-      if (ssc.sous_categorie_id === sousCategorieId) sscMap.set(ssc.slug, ssc.id);
-    }
-    getProduitsByCategorie(categorieId, {
-      limit: TAILLE_PAGE_CATALOGUE,
-      sousCategorieId,
-      sousSousCategorieId: sscSlug ? (sscMap.get(sscSlug) ?? null) : null,
-    }).then(({ items, hasMore: encoreApres }) => {
-      if (!actif) return;
-      setProduits(items);
-      setHasMore(encoreApres);
-    });
-    return () => {
-      actif = false;
-    };
-  }, [scSlug, sscSlug, idParSlug, categorieId, sousSousCategories]);
+    void chargerAvec(scSlug, sscSlug, FILTRES_VIDES, 0, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scSlug, sscSlug, idParSlug]);
 
-  // Facettes livres, calculées sur le lot chargé (une sous-catégorie livres
-  // ne dépasse jamais TAILLE_PAGE_CATALOGUE, donc pas de pagination serveur
-  // à prévoir pour ces filtres).
-  const facettesLivres = useMemo(() => {
-    if (!estLivres) return null;
-    const valeurs = (champ: "niveau" | "serie" | "matiere" | "type_ouvrage") => {
-      const s = new Set<string>();
-      for (const p of produits) {
-        const v = p[champ];
-        if (v) s.add(v);
-      }
-      return [...s].sort((a, b) => a.localeCompare(b, "fr"));
-    };
-    return {
-      niveaux: valeurs("niveau"),
-      series: valeurs("serie"),
-      matieres: valeurs("matiere"),
-      types: valeurs("type_ouvrage"),
-    };
-  }, [estLivres, produits]);
-
-  const serieVisible = niveauFiltre !== null && NIVEAUX_LYCEE.has(niveauFiltre);
-
-  // Facettes Ordinateurs portables, calculées sur le lot chargé (même principe
-  // que les facettes livres — cette sous-catégorie ne dépasse pas non plus
-  // TAILLE_PAGE_CATALOGUE en pratique pour un seul fournisseur).
-  const facettesOrdinateurs = useMemo(() => {
-    if (!estOrdinateursPortables) return null;
-    const rams = new Set<string>();
-    const stockages = new Set<string>();
-    const ecrans = new Set<string>();
-    const marques = new Set<string>();
-    for (const p of produits) {
-      if (p.ram_go) rams.add(`${p.ram_go} Go`);
-      if (p.stockage_go) stockages.add(`${p.stockage_go} Go`);
-      if (p.taille_ecran) ecrans.add(`${p.taille_ecran} pouces`);
-      if (p.marque) marques.add(p.marque);
-    }
-    const triNumerique = (a: string, b: string) => parseFloat(a) - parseFloat(b);
-    return {
-      rams: [...rams].sort(triNumerique),
-      stockages: [...stockages].sort(triNumerique),
-      ecrans: [...ecrans].sort(triNumerique),
-      marques: [...marques].sort((a, b) => a.localeCompare(b, "fr")),
-    };
-  }, [estOrdinateursPortables, produits]);
-
-  const resultats = useMemo(() => {
-    if (estLivres) {
-      return produits.filter((p) => {
-        // Une édition ancienne ne s'affiche jamais dans les listes quand son
-        // édition en vigueur existe (§3.5.1).
-        if (p.edition_statut === "ancienne" && p.ouvrage_id !== null) return false;
-        if (niveauFiltre && p.niveau !== niveauFiltre) return false;
-        if (serieVisible && serieFiltre && !serieCorrespond(serieFiltre, p.serie)) return false;
-        if (matiereFiltre && p.matiere !== matiereFiltre) return false;
-        if (typeFiltre && p.type_ouvrage !== typeFiltre) return false;
-        return true;
-      });
-    }
-    if (estOrdinateursPortables) {
-      const tranche = prixFiltre ? TRANCHES_PRIX.find((t) => t.label === prixFiltre) : null;
-      const filtres = produits.filter((p) => {
-        if (tranche && (p.prix < tranche.min || (tranche.max !== null && p.prix >= tranche.max))) return false;
-        if (ramFiltre && `${p.ram_go} Go` !== ramFiltre) return false;
-        if (stockageFiltre && `${p.stockage_go} Go` !== stockageFiltre) return false;
-        if (ecranFiltre && `${p.taille_ecran} pouces` !== ecranFiltre) return false;
-        if (tactileFiltre && (p.ecran_tactile ? "Oui" : "Non") !== tactileFiltre) return false;
-        if (marqueFiltre && p.marque !== marqueFiltre) return false;
-        return true;
-      });
-      if (triFiltre === "Prix croissant") {
-        return [...filtres].sort((a, b) => a.prix - b.prix);
-      }
-      // "Pertinence" (défaut) : score_global décroissant, nulls en dernier.
-      return [...filtres].sort((a, b) => (b.score_global ?? -1) - (a.score_global ?? -1));
-    }
-    return produits;
-  }, [
-    produits,
-    estLivres,
-    niveauFiltre,
-    serieFiltre,
-    serieVisible,
-    matiereFiltre,
-    typeFiltre,
-    estOrdinateursPortables,
-    prixFiltre,
-    ramFiltre,
-    stockageFiltre,
-    ecranFiltre,
-    tactileFiltre,
-    marqueFiltre,
-    triFiltre,
-  ]);
+  const sentinelleRef = useChargementAuto(hasMore && !chargement, () => {
+    void chargerAvec(scSlug, sscSlug, filtres, produits.length, false);
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -392,38 +393,41 @@ export function CategoryProductList({
       )}
 
       {/* Filtres livres (§1.5) : Niveau, Série (si lycée), Matière, Type
-          d'ouvrage — des selects compacts plutôt que des rangées de puces
+          d'ouvrage — des selects compacts plutôt qu'une rangée de puces
           (retour testeur : trop de place verticale). */}
       {estLivres && facettesLivres && (
         <div className="flex flex-wrap gap-2 px-4">
           <FiltreSelect
             label="Niveau"
             valeurs={facettesLivres.niveaux}
-            actif={niveauFiltre}
-            onChoisir={(v) => {
-              setNiveauFiltre(v);
-              setSerieFiltre(null);
-            }}
+            actif={filtres.niveau}
+            onChoisir={(v) => majFiltre({ niveau: v, serie: null })}
           />
           {serieVisible && (
             <FiltreSelect
               label="Série"
               valeurs={facettesLivres.series}
-              actif={serieFiltre}
-              onChoisir={setSerieFiltre}
+              actif={filtres.serie}
+              onChoisir={(v) => majFiltre({ serie: v })}
             />
           )}
           <FiltreSelect
             label="Matière"
             valeurs={facettesLivres.matieres}
-            actif={matiereFiltre}
-            onChoisir={setMatiereFiltre}
+            actif={filtres.matiere}
+            onChoisir={(v) => majFiltre({ matiere: v })}
           />
           <FiltreSelect
             label="Type"
             valeurs={facettesLivres.types}
-            actif={typeFiltre}
-            onChoisir={setTypeFiltre}
+            actif={filtres.typeOuvrage}
+            onChoisir={(v) => majFiltre({ typeOuvrage: v })}
+          />
+          <FiltreSelect
+            label="Prix"
+            valeurs={tranchesPrix.map((t) => t.label)}
+            actif={filtres.prix}
+            onChoisir={(v) => majFiltre({ prix: v })}
           />
         </div>
       )}
@@ -436,69 +440,80 @@ export function CategoryProductList({
           <FiltreSelect
             label="Trier"
             valeurs={["Pertinence", "Prix croissant"]}
-            actif={triFiltre}
-            onChoisir={setTriFiltre}
+            actif={filtres.tri}
+            onChoisir={(v) => majFiltre({ tri: v })}
           />
           <FiltreSelect
             label="Prix"
-            valeurs={TRANCHES_PRIX.map((t) => t.label)}
-            actif={prixFiltre}
-            onChoisir={setPrixFiltre}
+            valeurs={tranchesPrix.map((t) => t.label)}
+            actif={filtres.prix}
+            onChoisir={(v) => majFiltre({ prix: v })}
           />
           <FiltreSelect
             label="RAM"
             valeurs={facettesOrdinateurs.rams}
-            actif={ramFiltre}
-            onChoisir={setRamFiltre}
+            actif={filtres.ram}
+            onChoisir={(v) => majFiltre({ ram: v })}
           />
           <FiltreSelect
             label="Stockage"
             valeurs={facettesOrdinateurs.stockages}
-            actif={stockageFiltre}
-            onChoisir={setStockageFiltre}
+            actif={filtres.stockage}
+            onChoisir={(v) => majFiltre({ stockage: v })}
           />
           <FiltreSelect
             label="Écran"
             valeurs={facettesOrdinateurs.ecrans}
-            actif={ecranFiltre}
-            onChoisir={setEcranFiltre}
+            actif={filtres.ecran}
+            onChoisir={(v) => majFiltre({ ecran: v })}
           />
           <FiltreSelect
             label="Tactile"
             valeurs={["Oui", "Non"]}
-            actif={tactileFiltre}
-            onChoisir={setTactileFiltre}
+            actif={filtres.tactile}
+            onChoisir={(v) => majFiltre({ tactile: v })}
           />
           <FiltreSelect
             label="Marque"
             valeurs={facettesOrdinateurs.marques}
-            actif={marqueFiltre}
-            onChoisir={setMarqueFiltre}
+            actif={filtres.marque}
+            onChoisir={(v) => majFiltre({ marque: v })}
+          />
+        </div>
+      )}
+
+      {/* Filtre prix générique (§6) : les autres catégories, qui n'ont pas de
+          facettes dédiées. */}
+      {!estLivres && !estOrdinateursPortables && (
+        <div className="flex flex-wrap gap-2 px-4">
+          <FiltreSelect
+            label="Prix"
+            valeurs={tranchesPrix.map((t) => t.label)}
+            actif={filtres.prix}
+            onChoisir={(v) => majFiltre({ prix: v })}
           />
         </div>
       )}
 
       <div className="px-4">
         <span className="text-xs text-ink/50">
-          {resultats.length} article{resultats.length > 1 ? "s" : ""}
-          {hasMore ? "+" : ""}
+          {total} article{total > 1 ? "s" : ""}
         </span>
       </div>
 
       <ProductGrid
-        produits={resultats}
+        produits={produits}
         emptyMessage="Aucun article dans ce rayon pour le moment."
       />
 
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => chargerPage(scSlug, sscSlug, produits.length, false)}
-          disabled={chargement}
-          className="mx-4 rounded-full border border-ink/15 py-2.5 text-sm font-medium text-ink/70 transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
-        >
-          {chargement ? "Chargement…" : "Charger plus"}
-        </button>
+      {/* Fin de liste (maj-26-09 §8) : chargement automatique au scroll, plus
+          de bouton "Charger plus". */}
+      <div ref={sentinelleRef} aria-hidden="true" />
+      {chargement && (
+        <p className="pb-2 text-center text-xs text-ink/40">Chargement…</p>
+      )}
+      {!hasMore && !chargement && produits.length > 0 && (
+        <DemanderProduit origine="fin_de_liste" variante="discret" />
       )}
     </div>
   );

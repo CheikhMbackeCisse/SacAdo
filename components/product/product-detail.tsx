@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { Minus, Plus, ZoomIn } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { ProductZoom } from "@/components/product/product-zoom";
@@ -9,7 +11,8 @@ import { ShareButton } from "@/components/ui/share-button";
 import { GuideTailles } from "@/components/product/guide-tailles";
 import { NoticeKit } from "@/components/product/notice-kit";
 import { formatPrice } from "@/lib/format";
-import { slugAvecId } from "@/lib/slug";
+import { slugAvecId, slugify } from "@/lib/slug";
+import { logoMarque } from "@/lib/marques";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
 import { mesurer } from "@/lib/mesure-client";
@@ -230,6 +233,24 @@ export function ProductDetail({
               </span>
             )}
             <h1 className="font-heading text-lg font-bold text-ink">{produit.nom}</h1>
+            {produit.marque && (
+              <Link
+                href={`/marques/${slugify(produit.marque)}`}
+                className="mt-0.5 inline-flex items-center gap-1.5 text-xs font-medium text-ink/50"
+              >
+                {logoMarque(produit.marque) && (
+                  <Image
+                    src={logoMarque(produit.marque)!}
+                    alt=""
+                    aria-hidden="true"
+                    width={56}
+                    height={16}
+                    className="h-4 w-auto object-contain"
+                  />
+                )}
+                {produit.marque}
+              </Link>
+            )}
             {(produit.auteur || produit.editeur || produit.edition) && (
               <p className="text-xs text-ink/50">
                 {[produit.auteur, produit.editeur, produit.edition].filter(Boolean).join(" — ")}

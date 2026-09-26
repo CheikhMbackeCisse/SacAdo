@@ -8,6 +8,7 @@ import {
 } from "@/lib/accueil-classement";
 import { getProfilsAffichage } from "@/lib/affinites";
 import { entrelacerAccueil } from "@/lib/accueil-multi";
+import { ordonnerAccueil } from "@/lib/accueil-diversite";
 import type { Produit } from "@/lib/supabase/types";
 
 export type ProduitAccueil = Produit & { origine: OrigineProduit };
@@ -56,7 +57,7 @@ export async function getAccueilFeed(limit = 20): Promise<AccueilFeed> {
           source: "compte",
           id: null,
           prenom: null,
-          produits: repli.map((p) => ({ ...p, origine: "score" as const })),
+          produits: ordonnerAccueil(repli.map((p) => ({ ...p, origine: "score" as const }))),
         },
       ],
     };
@@ -69,16 +70,19 @@ export async function getAccueilFeed(limit = 20): Promise<AccueilFeed> {
 
   const profils: ProfilAccueil[] = profilsAff.map((pr, i) => {
     const places = assemblerAccueil(lignesParProfil[i], limit);
+    const produits = places
+      .map((c) => {
+        const p = parId.get(c.produitId);
+        return p ? { ...p, origine: c.origine } : null;
+      })
+      .filter((p): p is ProduitAccueil => p !== null);
     return {
       source: pr.source,
       id: pr.id,
       prenom: pr.prenom,
-      produits: places
-        .map((c) => {
-          const p = parId.get(c.produitId);
-          return p ? { ...p, origine: c.origine } : null;
-        })
-        .filter((p): p is ProduitAccueil => p !== null),
+      // Rentrée d'abord + variété (maj-26-09 §7) : réordonne le lot déjà
+      // classé/personnalisé, ne le remplace pas.
+      produits: ordonnerAccueil(produits),
     };
   });
 

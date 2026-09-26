@@ -1,12 +1,13 @@
 # Rapport de résolution des références (correction v7)
 
-Lancé le 2026-09-26T07:19:01.645Z.
+Lancé le 2026-09-26T14:57:07.435Z.
 
 | Référence | Nom attendu | Produit trouvé | Méthode | Drapeau prix |
 |---|---|---|---|---|
 | A-CREER-01 | Cahier Calligraphe 192 pages 24x32 (grand format) | #1237 Cahier Calligraphe 200 pages — 1600 F (dispo/publie) | alias_reference_fournisseur |  |
 | A-CREER-02 | Cahier Calligraphe 96 pages 24x32 (grand format) | — | introuvable |  |
 | A-CREER-03 | Paquet de copies doubles grand format | #1716 Paquet de copies doubles grand format — 1800 F (dispo/en_attente) | reference_fournisseur |  |
+| A-CREER-04 | Protège-cahier grand format (à l'unité) | — | introuvable |  |
 | CDC-1M-S1 | La Clé des Cracks : Mathématiques Première S1 | #47 MATHS 1S1 (CRACKS EN MATHS) — 15000 F (dispo/publie) | alias_nom_exact |  |
 | CDC-1M-S2 | La Clé des Cracks : Mathématiques Première S2 | #50 MATHS 1S2 - LA CLE DES CRACKS — 6000 F (dispo/publie) | alias_nom_exact |  |
 | CDC-1PC-S1 | La Clé des Cracks : Sciences physiques Première S1 | #51 PHYSIQUE CHIMIE PREMIERE S — 8000 F (dispo/publie) | alias_nom_exact |  |
@@ -42,31 +43,31 @@ Lancé le 2026-09-26T07:19:01.645Z.
 | DID-6958 | Découverte du monde C.M.1 | #1489 Découverte du monde C.M.1 — 4000 F (dispo/publie) | reference_fournisseur |  |
 | DID-6963 | Découverte du monde C.M.2 | #1490 Découverte du monde C.M.2 — 4000 F (dispo/publie) | reference_fournisseur |  |
 | DID-7017 | VISA Annales CFEE | #1569 VISA Annales CFEE — 4650 F (dispo/publie) | reference_fournisseur |  |
-| DID-7239 | Cahier d’activités mathématiques C.M.1 | #1472 Cahier d&rsquo;activités mathématiques C.M.1 — 3240 F (dispo/publie) | reference_fournisseur |  |
-| DID-7241 | Cahier d’activités mathématiques C.E.2 | #1470 Cahier d&rsquo;activités mathématiques C.E.2 — 3010 F (dispo/publie) | reference_fournisseur |  |
-| DID-7246 | Cahier d’activités mathématiques C.E.1 | #1469 Cahier d&rsquo;activités mathématiques C.E.1 — 3010 F (dispo/publie) | reference_fournisseur |  |
-| DID-7248 | Cahier d’activités mathématiques C.P. | #1474 Cahier d&rsquo;activités mathématiques C.P. — 2790 F (dispo/publie) | reference_fournisseur |  |
-| DID-7253 | Cahier d’activités mathématiques C.I. | #1471 Cahier d&rsquo;activités mathématiques C.I. — 2790 F (dispo/publie) | reference_fournisseur |  |
-| DID-7256 | Cahier d’activités fongible LC C.E.2 | #1464 Cahier d&rsquo;activités fongible LC C.E.2 — 3010 F (dispo/publie) | reference_fournisseur |  |
-| DID-7259 | Cahier d’activités fongible LC C.M.1 | #1466 Cahier d&rsquo;activités fongible LC C.M.1 — 3240 F (dispo/publie) | reference_fournisseur |  |
-| DID-7364 | Cahier d’activités fongible LC C.I. | #1465 Cahier d&rsquo;activités fongible LC C.I. — 2790 F (dispo/publie) | reference_fournisseur |  |
-| DID-7403 | Cahier d’activités fongible LC C.E.1 | #1463 Cahier d&rsquo;activités fongible LC C.E.1 — 3010 F (dispo/publie) | reference_fournisseur |  |
-| DID-7404 | Cahier d’activités fongible LC C.P. | #1468 Cahier d&rsquo;activités fongible LC C.P. — 2790 F (dispo/publie) | reference_fournisseur |  |
+| DID-7239 | Cahier d’activités mathématiques C.M.1 | #1472 Cahier d’activités mathématiques C.M.1 — 3240 F (dispo/publie) | reference_fournisseur |  |
+| DID-7241 | Cahier d’activités mathématiques C.E.2 | #1470 Cahier d’activités mathématiques C.E.2 — 3010 F (dispo/publie) | reference_fournisseur |  |
+| DID-7246 | Cahier d’activités mathématiques C.E.1 | #1469 Cahier d’activités mathématiques C.E.1 — 3010 F (dispo/publie) | reference_fournisseur |  |
+| DID-7248 | Cahier d’activités mathématiques C.P. | #1474 Cahier d’activités mathématiques C.P. — 2790 F (dispo/publie) | reference_fournisseur |  |
+| DID-7253 | Cahier d’activités mathématiques C.I. | #1471 Cahier d’activités mathématiques C.I. — 2790 F (dispo/publie) | reference_fournisseur |  |
+| DID-7256 | Cahier d’activités fongible LC C.E.2 | #1464 Cahier d’activités fongible LC C.E.2 — 3010 F (dispo/publie) | reference_fournisseur |  |
+| DID-7259 | Cahier d’activités fongible LC C.M.1 | #1466 Cahier d’activités fongible LC C.M.1 — 3240 F (dispo/publie) | reference_fournisseur |  |
+| DID-7364 | Cahier d’activités fongible LC C.I. | #1465 Cahier d’activités fongible LC C.I. — 2790 F (dispo/publie) | reference_fournisseur |  |
+| DID-7403 | Cahier d’activités fongible LC C.E.1 | #1463 Cahier d’activités fongible LC C.E.1 — 3010 F (dispo/publie) | reference_fournisseur |  |
+| DID-7404 | Cahier d’activités fongible LC C.P. | #1468 Cahier d’activités fongible LC C.P. — 2790 F (dispo/publie) | reference_fournisseur |  |
 | DID-7422 | Sciences Physiques 3ème | #1446 Sciences Physiques 3ème — 3960 F (dispo/publie) | reference_fournisseur |  |
-| DID-7427 | Cahier d’activités mathématiques 3éme | #1541 Cahier d&rsquo;activités mathématiques 3éme — 3130 F (dispo/publie) | reference_fournisseur |  |
-| DID-7430 | Cahier d’activités PC 3éme | #1538 Cahier d&rsquo;activités PC 3éme — 3130 F (dispo/publie) | reference_fournisseur |  |
+| DID-7427 | Cahier d’activités mathématiques 3éme | #1541 Cahier d’activités mathématiques 3éme — 3130 F (dispo/publie) | reference_fournisseur |  |
+| DID-7430 | Cahier d’activités PC 3éme | #1538 Cahier d’activités PC 3éme — 3130 F (dispo/publie) | reference_fournisseur |  |
 | DID-7432 | Mathématiques 3éme | #1558 Mathématiques 3éme — 3960 F (dispo/publie) | reference_fournisseur |  |
 | DID-7434 | Science de la vie et de la terre 3éme | #1563 Science de la vie et de la terre 3éme — 3960 F (dispo/publie) | reference_fournisseur |  |
-| DID-7452 | Cahier d’activités SVT 3éme | #1539 Cahier d&rsquo;activités SVT 3éme — 3430 F (dispo/publie) | reference_fournisseur |  |
+| DID-7452 | Cahier d’activités SVT 3éme | #1539 Cahier d’activités SVT 3éme — 3430 F (dispo/publie) | reference_fournisseur |  |
 | DID-7454 | Science de la vie et de la terre 4éme | #1564 Science de la vie et de la terre 4éme — 3960 F (dispo/publie) | reference_fournisseur |  |
 | DID-7456 | Mathématiques 4eme | #1445 Mathématiques 4eme — 3960 F (dispo/publie) | reference_fournisseur |  |
 | DID-7459 | Sciences physiques 4éme | #1567 Sciences physiques 4éme — 3960 F (dispo/publie) | reference_fournisseur |  |
-| DID-7461 | Cahier d’activités mathématiques 4éme | #1542 Cahier d&rsquo;activités mathématiques 4éme — 3130 F (dispo/publie) | reference_fournisseur |  |
-| DID-7463 | Cahier d’activités PC 4eme | #1440 Cahier d&rsquo;activités PC 4eme — 3130 F (dispo/publie) | reference_fournisseur |  |
+| DID-7461 | Cahier d’activités mathématiques 4éme | #1542 Cahier d’activités mathématiques 4éme — 3130 F (dispo/publie) | reference_fournisseur |  |
+| DID-7463 | Cahier d’activités PC 4eme | #1440 Cahier d’activités PC 4eme — 3130 F (dispo/publie) | reference_fournisseur |  |
 | DID-7465 | Science de la vie et de la terre 5éme | #1565 Science de la vie et de la terre 5éme — 3960 F (dispo/publie) | reference_fournisseur |  |
 | DID-7467 | Science de la vie et de la terre 6éme | #1566 Science de la vie et de la terre 6éme — 3960 F (dispo/publie) | reference_fournisseur |  |
 | DID-7469 | Mathématiques 6éme | #1560 Mathématiques 6éme — 3960 F (dispo/publie) | reference_fournisseur |  |
-| DID-7471 | Cahier d’activités SVT 6éme | #1540 Cahier d&rsquo;activités SVT 6éme — 3430 F (dispo/publie) | reference_fournisseur |  |
+| DID-7471 | Cahier d’activités SVT 6éme | #1540 Cahier d’activités SVT 6éme — 3430 F (dispo/publie) | reference_fournisseur |  |
 | DID-7941 | Science de la vie et de la terre 1ʳᵉ | #1562 Science de la vie et de la terre 1ʳᵉ — 4720 F (dispo/publie) | reference_fournisseur |  |
 | DID-7944 | Science de la vie et de la terre 2nde | #1450 Science de la vie et de la terre 2nde — 4720 F (dispo/publie) | reference_fournisseur |  |
 | DID-7947 | Cahier d’activités maths 6éme | #1547 Cahier d’activités maths 6éme — 3130 F (dispo/publie) | reference_fournisseur |  |
@@ -81,7 +82,7 @@ Lancé le 2026-09-26T07:19:01.645Z.
 | DID-9284 | Mathématiques 2nde | #1449 Mathématiques 2nde — 4720 F (dispo/publie) | reference_fournisseur |  |
 | DID-9285 | Livre de Mathématiques 1ʳᵉ | #1551 Livre de Mathématiques 1ʳᵉ — 4720 F (dispo/publie) | reference_fournisseur |  |
 | DID-9286 | Livre de Mathématiques Tlᵉ | #1552 Livre de Mathématiques Tlᵉ — 4720 F (dispo/publie) | reference_fournisseur |  |
-| DID-9328 | Cahier d’activités SVT 2nde | #1447 Cahier d&rsquo;activités SVT 2nde — 3660 F (dispo/publie) | reference_fournisseur |  |
+| DID-9328 | Cahier d’activités SVT 2nde | #1447 Cahier d’activités SVT 2nde — 3660 F (dispo/publie) | reference_fournisseur |  |
 | LIT-001 | Une si longue lettre (Mariama Bâ) | #1301 Une si longue lettre — 3500 F (dispo/publie) | reference_fournisseur |  |
 | LIT-002 | L'Aventure ambiguë (Cheikh Hamidou Kane) | #1302 L Aventure ambigue — 3500 F (dispo/publie) | reference_fournisseur |  |
 | LIT-003 | Nini, mulâtresse du Sénégal (Abdoulaye Sadji) | #1303 Nini, mulatresse du Senegal — 3500 F (dispo/publie) | reference_fournisseur |  |
@@ -112,11 +113,10 @@ Lancé le 2026-09-26T07:19:01.645Z.
 | NIO-5189 | Le Français en 3ème | #1362 Le Français en 3ème — 4000 F (dispo/publie) | reference_fournisseur |  |
 | NIO-6379 | Les Nouveaux Contes d'Amadou Koumba (Birago Diop) | #1427 Les nouveaux contes d'Amadou Koumba — 3900 F (dispo/publie) | reference_fournisseur |  |
 | S009 | Gomme Staedtler Mars Plastic | #1181 Gomme Staedtler Mars Plastic — 250 F (dispo/publie) | reference_fournisseur |  |
-| S011 | Règle plastique transparente 20 cm | #1183 Regle plastique transparente 20 cm — 300 F (dispo/publie) | reference_fournisseur |  |
+| S011 | Règle plastique transparente 20 cm | #1183 Regle plastique transparente 20 cm — 100 F (dispo/publie) | reference_fournisseur |  |
 | S015 | Calculatrice scientifique Parpn YH-2000 | #1187 Calculatrice scientifique Parpn YH-2000 — 1400 F (dispo/publie) | reference_fournisseur |  |
 | S020 | Sac à dos bleu marine | #1192 Sac a dos bleu marine — 7000 F (dispo/publie) | reference_fournisseur |  |
 | S027 | Cartable rigide bleu marine | #1199 Cartable rigide bleu marine — 7500 F (dispo/publie) | reference_fournisseur |  |
-| S030 | Taille-crayon rond plastique | #1202 Taille-crayon rond plastique — 250 F (dispo/publie) | reference_fournisseur |  |
 | S033 | Compas de précision avec étui | #1205 Compas de precision avec etui — 600 F (dispo/publie) | reference_fournisseur |  |
 | S053 | Éponge | #1224 Eponge Expanding Sponge — 1500 F (dispo/publie) | reference_fournisseur |  |
 | S062 | Le Marabout de la sécheresse (Cheik Aliou Ndao) | #1233 Le marabout de la secheresse - Cheick Aliou Ndao — 2800 F (dispo/publie) | reference_fournisseur |  |
@@ -126,7 +126,8 @@ Lancé le 2026-09-26T07:19:01.645Z.
 | S086 | Ardoise scolaire | #1255 Ardoise scolaire rouge — 900 F (dispo/publie) | reference_fournisseur |  |
 | S091 | Kit géométrie Maped 30 cm (réf. 1930) | #1260 Kit geometrie Maped ref 1930 30 cm — 1800 F (dispo/publie) | reference_fournisseur |  |
 | S100 | Protège-documents porte-vues | #1269 Protege-documents porte-vues couleurs — 1150 F (dispo/publie) | reference_fournisseur |  |
-| S129 | Cahier de dessin TPG | #1286 Cahier de dessin TPG — 1050 F (dispo/publie) | reference_fournisseur |  |
+| S109 | Protège-cahier couleur petit format (à l'unité) | #1277 Protège-cahiers couleurs — 150 F (dispo/publie) | reference_fournisseur |  |
+| S129 | Cahier de dessin TPG | #1286 Cahier de dessin TPG — 1050 F (dispo/publie) | reference_fournisseur | ⚠️ écart 91% vs classeur (550 F) |
 | SAC-001 | Cahier de dessin L'écolier 32 pages | #1572 Cahier de dessin L'écolier 32 pages — 250 F (dispo/publie) | reference_fournisseur |  |
 | SAC-004 | Cahier L'écolier 48 pages | #1575 Cahier L'écolier 48 pages — 275 F (dispo/publie) | reference_fournisseur |  |
 | SAC-005 | Cahier L'écolier 192 pages | #1576 Cahier L'écolier 192 pages — 500 F (dispo/publie) | reference_fournisseur |  |
@@ -134,16 +135,16 @@ Lancé le 2026-09-26T07:19:01.645Z.
 | SAC-016 | Ciseaux Maped 13 cm Security | #1586 Ciseaux 13cm Security Stop – MAPED — 900 F (dispo/publie) | reference_fournisseur |  |
 | SAC-017 | Taille-crayon avec réservoir Maped | #1587 Tailla Crayon 1 Trou + Réservoir Clean – MAPED — 500 F (dispo/publie) | reference_fournisseur |  |
 | SAC-019 | Crayons de couleur Maped, boîte de 12 | #1589 Crayon Couleur BTE X12 – MAPED — 900 F (dispo/publie) | reference_fournisseur |  |
-| SAC-022 | Calculatrice Casio fx-92 Collège | #1592 Calculatrice Casio fx-92 Collège Classwiz — 9000 F (dispo/publie) | reference_fournisseur |  |
+| SAC-022 | Calculatrice Casio fx-92 Collège | #1592 Calculatrice Casio fx-92 Collège Classwiz — 8000 F (dispo/publie) | reference_fournisseur |  |
 | SAC-024 | Crayons de couleur Maped Nightfall, boîte de 24 | #1594 Crayons de Couleur Boite de 24 Nightfall – MAPED — 1600 F (dispo/publie) | reference_fournisseur |  |
 | SAC-031 | Bâton de colle Giotto 10 g | #1601 Bâton de colle 10 g – GIOTTO — 600 F (dispo/publie) | reference_fournisseur |  |
-| SAC-033 | Cahier Calligraphe 140 pages 17x22 90 g seyès | #1603 Cahier 140P 17X22 90G Seyes Pp Bleu Calligraphe — 750 F (dispo/publie) | reference_fournisseur |  |
+| SAC-033 | Cahier Calligraphe 140 pages 17x22 90 g seyès | #1603 Cahier 140P petit format 90G Seyes Pp Bleu Calligraphe — 750 F (dispo/publie) | reference_fournisseur |  |
 | SAC-034 | Bâton de colle Giotto 20 g | #1604 Bâton de colle 20 g – GIOTTO — 700 F (dispo/publie) | reference_fournisseur |  |
-| SAC-036 | Cahier Calligraphe 140 pages 24x32 90 g seyès | #1606 Cahier 140P 24X32 90G Seyes Pp Bleu Calligraphe — 1500 F (dispo/publie) | reference_fournisseur |  |
+| SAC-036 | Cahier Calligraphe 140 pages 24x32 90 g seyès | #1606 Cahier 140P grand format 90G Seyes Pp Bleu Calligraphe — 1500 F (dispo/publie) | reference_fournisseur |  |
 | SAC-037 | Surligneurs Maped Fluo Peps, pochette de 4 | #1607 Fluo Peps Surligneurs classiques, couleurs assorties – pack de 4 – MAPED — 2500 F (dispo/publie) | reference_fournisseur |  |
 | SAC-041 | Compas Maped | #1611 Compas – MAPED — 2000 F (dispo/publie) | reference_fournisseur |  |
-| SAC-046 | Cahier Calligraphe 192 pages 17x22 90 g seyès | #1616 Cahier 192P 17X22 90G Seyes Pp Orange Calligraphe — 900 F (dispo/publie) | reference_fournisseur |  |
-| SAC-048 | Cahier Calligraphe 96 pages 17x22 56 g seyès | #1618 Cahier 96 pages 17X22 – 56g – seyès calligraphe — 450 F (dispo/publie) | reference_fournisseur |  |
+| SAC-046 | Cahier Calligraphe 192 pages 17x22 90 g seyès | #1616 Cahier 192P petit format 90G Seyes Pp Orange Calligraphe — 900 F (dispo/publie) | reference_fournisseur |  |
+| SAC-048 | Cahier Calligraphe 96 pages 17x22 56 g seyès | #1618 Cahier 96 pages petit format – 56g – seyès calligraphe — 450 F (dispo/publie) | reference_fournisseur |  |
 | SAC-055 | Chemise 3 rabats à élastique | #1625 Chemise. 3 rabats élastiques + étiquettes 4,5/10ème assorties — 500 F (dispo/publie) | reference_fournisseur |  |
 | SAC-062 | Stylo 4 couleurs Schneider | #1632 Stylo 4 Couleurs SCHNEIDER Blanc et Bleu — 1750 F (dispo/publie) | reference_fournisseur |  |
 | SAC-065 | Stylo à bille Schneider Tops 505 M bleu | #1635 Stylo à bille tops 505m Schneider (Couleur: Bleu) — 100 F (dispo/publie) | reference_fournisseur |  |
@@ -152,4 +153,4 @@ Lancé le 2026-09-26T07:19:01.645Z.
 | SAC-104 | Stylo à bille Schneider Tops 505 M vert | #1674 Stylo à bille tops 505m Schneider (Couleur: Vert) — 100 F (dispo/publie) | reference_fournisseur |  |
 | SAC-112 | Dictionnaire Le Robert de français, 65 000 mots | #1682 Le Robert dictionnaire de français 65 000 mots — 3500 F (dispo/publie) | reference_fournisseur |  |
 
-Total : 147 références — 144 trouvées, 0 ambiguës, 3 introuvables.
+Total : 148 références — 144 trouvées, 0 ambiguës, 4 introuvables.

@@ -9,6 +9,7 @@ import {
   getProduitsSimilaires,
   getVariantesByProduit,
 } from "@/lib/supabase/queries";
+import { getRedirectionEquivalent } from "@/lib/supabase/redirection-produit";
 import { ProductDetail } from "@/components/product/product-detail";
 import { ProductGrid } from "@/components/product/product-grid";
 import { origineSite } from "@/lib/site-url";
@@ -24,7 +25,11 @@ async function chargerProduit(slugId: string) {
   const id = idDepuisSlug(slugId);
   if (id === null) notFound();
   const produit = await getProduitById(id);
-  if (!produit) notFound();
+  if (!produit) {
+    const cible = await getRedirectionEquivalent(id);
+    if (cible) permanentRedirect(`/produits/${slugAvecId(cible.nom, cible.id)}`);
+    notFound();
+  }
 
   // Slug périmé (produit renommé) ou vieux lien purement numérique : on
   // redirige en 301 vers la forme canonique plutôt que de servir deux URL

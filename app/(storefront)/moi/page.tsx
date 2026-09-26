@@ -105,7 +105,9 @@ export default function MoiPage() {
         ))}
       </div>
 
-      <DemanderProduit origine="moi" variante="carte" />
+      {/* maj-26-09 §8 : remplace le badge générique "Demander un produit" par
+          l'entrée dédiée "Trouver un produit avec une photo" (photo obligatoire). */}
+      <DemanderProduit origine="photo_produit" variante="carte" />
 
       {favorisProduits.length > 0 && (
         <section className="flex flex-col gap-2">

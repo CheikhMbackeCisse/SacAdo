@@ -13,6 +13,15 @@ export default async function CategoriesPage() {
     <div className="px-4 py-6">
       <h1 className="mb-4 font-heading text-xl font-bold text-ink">Catégories</h1>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <Link
+          href="/marques"
+          className="flex flex-col items-center gap-2 rounded-2xl border border-ink/10 bg-elevated p-4 text-center transition-shadow hover:shadow-md active:scale-95"
+        >
+          <span className="flex size-14 items-center justify-center rounded-full bg-brand/10 text-lg font-bold text-brand">
+            M
+          </span>
+          <span className="text-sm font-medium text-ink">Marques</span>
+        </Link>
         {categories.map((categorie) => (
           <Link
             key={categorie.slug}

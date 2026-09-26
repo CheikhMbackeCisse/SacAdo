@@ -254,6 +254,18 @@ body {
   appearance: textfield;
 }
 
+/*
+ * Zoom au focus (maj-26-09 §8) : iOS zoome automatiquement sur un champ dont
+ * la police fait moins de 16px, même avec `user-scalable=no`. Filet de
+ * sécurité en plus du viewport (app/(storefront)/layout.tsx) — une classe
+ * Tailwind explicite sur un champ précis (`text-sm`…) reste prioritaire.
+ */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

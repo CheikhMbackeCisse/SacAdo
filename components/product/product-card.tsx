@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
@@ -8,6 +9,7 @@ import { FavoriteButton } from "@/components/ui/favorite-button";
 import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { slugAvecId } from "@/lib/slug";
+import { logoMarque } from "@/lib/marques";
 import type { Produit } from "@/lib/supabase/types";
 
 export function ProductCard({
@@ -21,6 +23,7 @@ export function ProductCard({
   const { ajouter } = usePanier();
   const [added, setAdded] = useState(false);
   const epuise = produit.statut === "epuise";
+  const logo = logoMarque(produit.marque);
 
   return (
     <Link
@@ -56,6 +59,12 @@ export function ProductCard({
             elle pousse le prix/bouton hors du cadre de la carte) ; le nom
             complet reste visible sur la fiche produit (toute la carte est
             un lien). */}
+        {logo && (
+          // Logo de marque : montre que le prix correspond à la marque
+          // (maj-26-09 §4). Décoratif seul (le nom porte déjà la marque en
+          // texte) — jamais le logo d'une autre marque.
+          <Image src={logo} alt="" aria-hidden="true" width={48} height={14} className="h-3.5 w-auto object-contain" />
+        )}
         <p
           className={`line-clamp-2 text-ink ${
             produit.nom.length > 30 ? "text-xs" : "text-sm"

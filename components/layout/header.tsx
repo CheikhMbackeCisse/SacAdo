@@ -27,9 +27,13 @@ import {
   slugCategorieDepuisPath,
 } from "@/lib/category-presentation";
 import { NAV_ITEMS } from "@/lib/nav-items";
+import { normaliserTerme } from "@/lib/recherche/normaliser";
+import { slugify } from "@/lib/slug";
 import {
+  getMarques,
   getSuggestionsRecherche,
   rechercherProduits,
+  type MarqueAvecCompte,
   type ProduitTrouve,
   type SuggestionsRecherche,
 } from "@/lib/supabase/queries";
@@ -59,6 +63,14 @@ export function Header() {
   const [produits, setProduits] = useState<ProduitTrouve[]>([]);
   const [ouvert, setOuvert] = useState(false);
   const rechercheRef = useRef<HTMLDivElement>(null);
+  // Marques (maj-26-09 §4) : chargées une fois, comparées en mémoire à chaque
+  // frappe — pas besoin d'aller-retour serveur pour ~30 marques.
+  const [marques, setMarques] = useState<MarqueAvecCompte[]>([]);
+  useEffect(() => {
+    getMarques()
+      .then(setMarques)
+      .catch(() => setMarques([]));
+  }, []);
 
   const placeholders = useMemo(
     () => placeholdersPourCategorie(slugCategorieDepuisPath(pathname)),
@@ -139,11 +151,15 @@ export function Header() {
 
   const produitsParNom = produits.filter((p) => p.type_resultat === "nom");
   const produitsParCategorie = produits.filter((p) => p.type_resultat === "categorie");
+  // Taper "maped"/"giotto" propose la page de la marque en premier (maj-26-09 §4).
+  const marqueCorrespondante = termeSaisi.length >= 2
+    ? marques.find((m) => normaliserTerme(m.marque) === normaliserTerme(termeSaisi))
+    : undefined;
   const aDesRayons =
     rayons.categories.length > 0 ||
     rayons.sousCategories.length > 0 ||
     rayons.sousSousCategories.length > 0;
-  const aDesResultats = produits.length > 0 || aDesRayons;
+  const aDesResultats = produits.length > 0 || aDesRayons || !!marqueCorrespondante;
 
   // Nav horizontale desktop (lg+) : identique quel que soit l'écran, y compris
   // sur la page Moi qui remplace pourtant la barre du haut.
@@ -308,7 +324,23 @@ export function Header() {
 
               {modeSuggestions && aDesResultats && (
                 <div className="max-h-[46vh] overflow-y-auto py-1">
-                  {/* Rayons d'abord (aident à affiner un terme large). */}
+                  {/* Marque exacte d'abord (maj-26-09 §4) : "maped"/"giotto"
+                      doit proposer la page de la marque avant tout le reste. */}
+                  {marqueCorrespondante && (
+                    <button
+                      type="button"
+                      onClick={() => allerVers(`/marques/${slugify(marqueCorrespondante.marque)}`)}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"
+                    >
+                      <Tag size={15} className="shrink-0 text-brand" aria-hidden="true" />
+                      <span className="truncate font-medium text-ink">{marqueCorrespondante.marque}</span>
+                      <span className="shrink-0 text-xs text-ink/40">
+                        {marqueCorrespondante.count} article{marqueCorrespondante.count > 1 ? "s" : ""}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Rayons ensuite (aident à affiner un terme large). */}
                   {rayons.categories.slice(0, 3).map((c) => (
                     <button
                       key={`c-${c.id}`}

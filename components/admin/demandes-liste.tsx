@@ -24,6 +24,9 @@ const ORIGINE_LABEL: Record<string, string> = {
   moi: "écran Moi",
   recherche_vide: "recherche sans résultat",
   categorie: "bas de catégorie",
+  fin_de_liste: "fin de liste",
+  photo_produit: "recherche par photo",
+  liste_fournitures: "liste de fournitures (kits)",
 };
 const ONGLETS: (StatutDemande | "toutes")[] = [
   "nouvelle",

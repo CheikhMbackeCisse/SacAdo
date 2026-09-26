@@ -52,7 +52,7 @@ export default async function CategoriePage(props: PageProps<"/categorie/[slug]"
   // "kits" est une catégorie du référentiel mais son parcours est dédié (/kits).
   if (!categorie || !categorie.actif || categorie.slug === "kits") notFound();
 
-  const [{ items: produits, hasMore }, sousCategories] = await Promise.all([
+  const [{ items: produits, hasMore, total }, sousCategories] = await Promise.all([
     getProduitsByCategorie(categorie.id),
     getSousCategoriesByCategorie(categorie.id),
   ]);
@@ -82,6 +82,7 @@ export default async function CategoriePage(props: PageProps<"/categorie/[slug]"
           categorieSlug={categorie.slug}
           produitsInitiaux={produits}
           hasMoreInitial={hasMore}
+          totalInitial={total ?? produits.length}
           sousCategories={sousCategories}
           sousSousCategories={sousSousCategories}
         />

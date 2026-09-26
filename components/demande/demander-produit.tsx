@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ImagePlus, Loader2, PackageSearch, X } from "lucide-react";
+import { Camera, Check, ImagePlus, Loader2, PackageSearch, X } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import {
   creerDemandeProduit,
@@ -13,6 +13,18 @@ const CHAMP =
   "w-full rounded-xl border border-ink/15 bg-transparent px-3 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none";
 
 type Variante = "primaire" | "carte" | "discret";
+
+// Copie par origine (maj-26-09 §8) : même formulaire générique, intitulé
+// adapté selon d'où on l'ouvre.
+const TITRES: Partial<Record<OrigineDemande, string>> = {
+  photo_produit: "Trouver un produit avec une photo",
+  liste_fournitures: "Envoyer ma liste de fournitures",
+  fin_de_liste: "Demandez-le-nous",
+};
+const SOUS_TITRES: Partial<Record<OrigineDemande, string>> = {
+  photo_produit: "Une photo suffit, on s'occupe du reste.",
+  liste_fournitures: "Envoie la liste, on compose le kit pour toi.",
+};
 
 export function DemanderProduit({
   origine,
@@ -42,7 +54,7 @@ export function DemanderProduit({
 
   return (
     <>
-      <Declencheur variante={variante} onClick={() => setOuvert(true)} />
+      <Declencheur variante={variante} origine={origine} onClick={() => setOuvert(true)} />
       {ouvert && (
         <Panneau
           origine={origine}
@@ -54,8 +66,17 @@ export function DemanderProduit({
   );
 }
 
-function Declencheur({ variante, onClick }: { variante: Variante; onClick: () => void }) {
+function Declencheur({
+  variante,
+  origine,
+  onClick,
+}: {
+  variante: Variante;
+  origine: OrigineDemande;
+  onClick: () => void;
+}) {
   if (variante === "carte") {
+    const Icone = origine === "photo_produit" ? Camera : PackageSearch;
     return (
       <button
         type="button"
@@ -63,12 +84,14 @@ function Declencheur({ variante, onClick }: { variante: Variante; onClick: () =>
         className="flex w-full items-center gap-3 rounded-2xl border border-ink/10 bg-elevated p-4 text-left transition-colors active:scale-[0.99]"
       >
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
-          <PackageSearch size={18} aria-hidden="true" />
+          <Icone size={18} aria-hidden="true" />
         </span>
         <span className="flex flex-col">
-          <span className="text-sm font-semibold text-ink">Demander un produit</span>
+          <span className="text-sm font-semibold text-ink">
+            {TITRES[origine] ?? "Demander un produit"}
+          </span>
           <span className="text-xs text-ink/55">
-            Tu ne trouves pas un article ? On le cherche pour toi.
+            {SOUS_TITRES[origine] ?? "Tu ne trouves pas un article ? On le cherche pour toi."}
           </span>
         </span>
       </button>
@@ -76,16 +99,22 @@ function Declencheur({ variante, onClick }: { variante: Variante; onClick: () =>
   }
 
   if (variante === "discret") {
+    const AMORCES: Partial<Record<OrigineDemande, string>> = {
+      liste_fournitures: "Ta classe n'a pas encore de kit tout prêt ?",
+      fin_de_liste: "Vous ne trouvez pas ce que vous cherchez ?",
+    };
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
-        <p className="text-sm text-ink/55">Tu ne trouves pas ce que tu cherches dans ce rayon ?</p>
+        <p className="text-sm text-ink/55">
+          {AMORCES[origine] ?? "Tu ne trouves pas ce que tu cherches dans ce rayon ?"}
+        </p>
         <button
           type="button"
           onClick={onClick}
           className="inline-flex h-10 items-center gap-2 rounded-full border border-brand px-4 text-sm font-semibold text-brand transition-colors active:scale-95"
         >
           <PackageSearch size={15} aria-hidden="true" />
-          Demander un produit
+          {TITRES[origine] ?? "Demander un produit"}
         </button>
       </div>
     );
@@ -114,11 +143,16 @@ function Panneau({
 }) {
   const { identite } = useIdentite();
   const connecte = Boolean(identite?.telephone && identite?.jeton);
+  const photoObligatoire = origine === "photo_produit" || origine === "liste_fournitures";
+  const estListeFournitures = origine === "liste_fournitures";
 
-  const [description, setDescription] = useState(
-    origine === "recherche_vide" && termeRecherche ? termeRecherche : "",
-  );
+  const [description, setDescription] = useState(() => {
+    if (origine === "recherche_vide" && termeRecherche) return termeRecherche;
+    if (origine === "liste_fournitures") return "Liste de fournitures scolaires";
+    return "";
+  });
   const [precision, setPrecision] = useState("");
+  const [classe, setClasse] = useState("");
   const [telephone, setTelephone] = useState(identite?.telephone ?? "");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoEnCours, setPhotoEnCours] = useState(false);
@@ -143,11 +177,18 @@ function Panneau({
 
   const envoyer = async () => {
     if (!description.trim() || busy) return;
+    if (photoObligatoire && !photoUrl) {
+      setErreur("Ajoute une photo pour envoyer ta demande.");
+      return;
+    }
     setBusy(true);
     setErreur(null);
+    const precisionComplete = [classe.trim() ? `Classe : ${classe.trim()}` : null, precision || null]
+      .filter(Boolean)
+      .join(" — ");
     const r = await creerDemandeProduit({
       description,
-      precisionProduit: precision || null,
+      precisionProduit: precisionComplete || null,
       photoUrl,
       origine,
       termeRecherche: termeRecherche ?? null,
@@ -158,6 +199,8 @@ function Panneau({
     if (r.ok) setEnvoye(true);
     else setErreur(r.error);
   };
+
+  const titre = TITRES[origine] ?? "Demander un produit";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
@@ -174,7 +217,7 @@ function Panneau({
         className="animate-fade-in-up relative flex max-h-[90vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-xl sm:rounded-3xl"
       >
         <div className="flex items-start justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold text-ink">Demander un produit</h2>
+          <h2 className="font-heading text-lg font-bold text-ink">{titre}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -217,6 +260,21 @@ function Panneau({
               />
             </label>
 
+            {estListeFournitures && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-ink/60">
+                  Classe <span className="text-ink/40">(facultatif)</span>
+                </span>
+                <input
+                  value={classe}
+                  onChange={(e) => setClasse(e.target.value)}
+                  maxLength={40}
+                  placeholder="Ex : CM2, 6ème…"
+                  className={CHAMP}
+                />
+              </label>
+            )}
+
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-ink/60">
                 Une précision <span className="text-ink/40">(facultatif)</span>
@@ -232,7 +290,12 @@ function Panneau({
 
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-ink/60">
-                Une photo ou capture d&apos;écran <span className="text-ink/40">(facultatif)</span>
+                {estListeFournitures ? "Photo de la liste" : "Une photo ou capture d'écran"}{" "}
+                {photoObligatoire ? (
+                  <span className="text-action">(obligatoire)</span>
+                ) : (
+                  <span className="text-ink/40">(facultatif)</span>
+                )}
               </span>
               {photoUrl ? (
                 <div className="flex items-center gap-3">
@@ -297,7 +360,7 @@ function Panneau({
             <button
               type="button"
               onClick={envoyer}
-              disabled={busy || photoEnCours || !description.trim()}
+              disabled={busy || photoEnCours || !description.trim() || (photoObligatoire && !photoUrl)}
               className="flex h-11 items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-on-brand transition-transform active:scale-95 disabled:opacity-50"
             >
               {busy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : "Envoyer"}

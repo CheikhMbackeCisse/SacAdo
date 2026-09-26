@@ -22,9 +22,15 @@ export const metadata: Metadata = {
   description:
     "Kits scolaires et fournitures d'étude, livrés partout au Sénégal.",
   // iOS ne lit pas le manifest.json pour l'icône "Ajouter à l'écran d'accueil" :
-  // il lui faut ce lien apple-touch-icon dédié.
+  // il lui faut ce lien apple-touch-icon dédié. Nouveau logo fond bleu
+  // (maj-26-09 §8) : favicon 16/32 explicites en plus du app/favicon.ico
+  // auto-détecté par Next, pour un rendu net dans l'onglet du navigateur.
   icons: {
-    apple: "/images/logo.jpg",
+    apple: "/icons/client-apple-touch-icon-180.png",
+    icon: [
+      { url: "/icons/client-favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/client-favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
   },
   appleWebApp: {
     capable: true,
@@ -42,12 +48,18 @@ export const metadata: Metadata = {
   },
 };
 
+// Pincement et double-tap désactivés dans toute l'app (maj-26-09 §8) : un
+// zoom accidentel casse la mise en page mobile-first plus qu'il n'aide.
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#FEFDFF" },
     { media: "(prefers-color-scheme: dark)", color: "#0E0843" },
   ],
   viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 // Appliqué avant le premier paint pour éviter un flash de thème clair chez les

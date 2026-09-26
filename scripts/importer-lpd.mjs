@@ -35,6 +35,7 @@ import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
+import { decoderEntitesHtml } from "./lib/entites-html.mjs";
 
 const MANIFEST = process.env.MANIFEST ?? "C:\\Users\\WORLD INFORMATIQUE\\Downloads\\files17_extracted\\manifest_lpd_v2.json";
 const RAPPORT = "rapport_import_lpd.md";
@@ -112,9 +113,11 @@ async function assurerVendeurLPD() {
   return cree.id;
 }
 
+// Le manifeste source contient parfois des entités HTML non décodées
+// (ex. "d&rsquo;activités", "&#8211;") — voir maj-26-09 §3.
 function construireLigne(item, vendeurId) {
   return {
-    nom: item.nom,
+    nom: decoderEntitesHtml(item.nom),
     categorie_id: item.categorie_id,
     sous_categorie_id: null,
     prix: item.prix,

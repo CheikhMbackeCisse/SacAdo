@@ -17,7 +17,18 @@ const PRECISION_MAX = 300;
 const TEL_MAX = 30;
 const TEL_CHIFFRES_MIN = 6;
 
-export type OrigineDemande = "moi" | "recherche_vide" | "categorie";
+// "photo_produit" (Paramètres, ex-badge "recherche par photo") et
+// "liste_fournitures" (page Kits, "Envoyer ma liste") : maj-26-09 §8, même
+// formulaire/table, photo obligatoire pour ces deux origines-là.
+export type OrigineDemande =
+  | "moi"
+  | "recherche_vide"
+  | "categorie"
+  | "fin_de_liste"
+  | "photo_produit"
+  | "liste_fournitures";
+
+const ORIGINES_PHOTO_OBLIGATOIRE: readonly OrigineDemande[] = ["photo_produit", "liste_fournitures"];
 
 export type DemandeResult = { ok: true } | { ok: false; error: string };
 
@@ -45,8 +56,20 @@ export async function creerDemandeProduit(entree: Entree): Promise<DemandeResult
   const description = texte(entree.description, DESC_MAX);
   if (description.length < 3) return { ok: false, error: "Dis-nous ce que tu cherches." };
 
-  const origine: OrigineDemande =
-    entree.origine === "recherche_vide" || entree.origine === "categorie" ? entree.origine : "moi";
+  const ORIGINES_VALIDES: readonly OrigineDemande[] = [
+    "recherche_vide",
+    "categorie",
+    "fin_de_liste",
+    "photo_produit",
+    "liste_fournitures",
+  ];
+  const origine: OrigineDemande = ORIGINES_VALIDES.includes(entree.origine as OrigineDemande)
+    ? (entree.origine as OrigineDemande)
+    : "moi";
+
+  if (ORIGINES_PHOTO_OBLIGATOIRE.includes(origine) && !entree.photoUrl) {
+    return { ok: false, error: "Ajoute une photo pour cette demande." };
+  }
 
   // Identité : jeton + téléphone -> client_id ; sinon numéro saisi obligatoire.
   let clientId: number | null = null;

@@ -28,10 +28,20 @@ export function AppBehavior() {
       }
     };
 
+    // Pincement pour zoomer : iOS Safari ignore parfois `user-scalable=no` du
+    // viewport pour le geste de pincement lui-même (maj-26-09 §8) — seul
+    // `gesturestart`/`gesturechange` (API non standard, Safari/WebKit only)
+    // permet de le bloquer réellement.
+    const surGeste = (e: Event) => e.preventDefault();
+    document.addEventListener("gesturestart", surGeste);
+    document.addEventListener("gesturechange", surGeste);
+
     document.addEventListener("contextmenu", surMenuContextuel);
     document.addEventListener("selectstart", surSelection);
     document.addEventListener("dragstart", surGlisser);
     return () => {
+      document.removeEventListener("gesturestart", surGeste);
+      document.removeEventListener("gesturechange", surGeste);
       document.removeEventListener("contextmenu", surMenuContextuel);
       document.removeEventListener("selectstart", surSelection);
       document.removeEventListener("dragstart", surGlisser);
