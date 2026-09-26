@@ -37,7 +37,7 @@ export async function generateMetadata(
   const url = `${site}/kits/${cycle}/${encodeURIComponent(niveau)}/${gamme}`;
   const titre = tronquer(`Kit scolaire ${niveau} — ${gammeDef?.label ?? ""} | SacAdo`, 60);
   const description = tronquer(
-    `Kit scolaire complet pour ${niveau}, gamme ${gammeDef?.label ?? ""} : liste ajustable, ebook de la classe offert, livraison partout au Sénégal.`,
+    `Kit scolaire complet pour ${niveau}, gamme ${gammeDef?.label ?? ""} : liste ajustable, livraison partout au Sénégal.`,
     155,
   );
 
@@ -144,13 +144,6 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
         />
       </div>
       {description && <p className="mx-4 mb-1 mt-1 text-sm text-ink/70">{description}</p>}
-
-      {kit.ebook_offert && (
-        <p className="mx-4 mb-1 mt-0.5 flex items-center gap-1.5 text-xs text-ink/60">
-          <span className="size-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
-          Ebook de la classe offert
-        </p>
-      )}
 
       <KitBuilder
         kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()}

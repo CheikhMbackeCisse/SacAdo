@@ -77,13 +77,9 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
           ))}
 
           {SERIES_LYCEE_A_VENIR.map((s) => (
-            <div
-              key={s.serie}
-              className="rounded-2xl border border-dashed border-ink/15 bg-elevated/50 px-4 py-3.5"
-            >
-              <span className="text-sm font-semibold text-ink/50">{s.libelle}</span>
-              <p className="mt-0.5 text-xs text-ink/40">{s.message}</p>
-            </div>
+            <p key={s.serie} className="px-4 py-1 text-sm text-ink/60">
+              <span className="font-medium">{s.libelle}</span> — {s.message}
+            </p>
           ))}
         </div>
       ) : (

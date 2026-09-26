@@ -26,8 +26,8 @@ const SLIDES: Slide[] = [
     blur: "data:image/webp;base64,UklGRkQAAABXRUJQVlA4IDgAAADwAQCdASoMAAwAA4BaJbACdAELz4SBaYAA/vPIifajCzd3NzQnnTdUL/7XnNJqPoKhGy0h7XEwAA==",
   },
   {
-    title: "Sa classe, son kit prêt à commander, ebook offert",
-    subtitle: "Pour chaque kit complet acheté, 1 ebook offert",
+    title: "Sa classe, son kit prêt à commander",
+    subtitle: "Une liste ajustable, livrée partout au Sénégal",
     cta: "Composer mon kit",
     href: "/kits",
     image: "/images/cat-kits.png",

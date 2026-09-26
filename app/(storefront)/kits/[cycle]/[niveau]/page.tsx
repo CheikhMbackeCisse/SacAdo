@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, BookOpen, Check, Package } from "lucide-react";
+import { ArrowRight, Check, Package } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
 import { GAMMES } from "@/lib/gammes";
 import { getKitsByCycleNiveau, getKitItemsAvecProduits } from "@/lib/supabase/queries";
@@ -63,14 +63,6 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
         <h1 className="font-heading text-2xl font-bold text-ink">Kit {niveau}</h1>
         <p className="text-sm text-ink/60">
           Trois gammes selon votre budget. Ajustez la liste ensuite, rien n&apos;est figé.
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2.5 rounded-2xl border border-decorative/30 bg-decorative/10 px-4 py-3">
-        <BookOpen size={18} className="shrink-0 text-ink/70" aria-hidden="true" />
-        <p className="text-xs text-ink/80">
-          L&apos;<span className="font-semibold">ebook de la classe</span> est offert avec l&apos;achat du
-          kit complet de {niveau}, quelle que soit la gamme choisie.
         </p>
       </div>
 

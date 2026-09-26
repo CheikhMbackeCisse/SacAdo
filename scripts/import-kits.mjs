@@ -1,9 +1,11 @@
 // Import des kits scolaires depuis import-kits/kits.json (voir
-// import-kits/PROMPT-claude-code-kits.md). Usage : node scripts/import-kits.mjs
-// Lit .env.local. Idempotent : upsert sur (cycle, niveau, gamme) — la même clé
-// que la contrainte d'unicité posée en 0001/0007 ; les lignes d'un kit sont
-// entièrement remplacées à chaque lancement (delete + insert), donc relancer
-// ne crée jamais de doublon.
+// import-kits/PROMPT-claude-code-kits.md et la correction v7,
+// import-kits/PROMPT-correction-kits-v7.md). Usage : node scripts/import-kits.mjs
+// Lit .env.local. Idempotent : upsert sur `slug` (kits_slug_key, 0085) ; les
+// lignes d'un kit sont entièrement remplacées à chaque lancement (delete +
+// insert), donc relancer ne crée jamais de doublon. Un kit déjà existant
+// garde son `statut` (publication = action manuelle, jamais écrasée par un
+// réimport) ; seul un nouveau kit est créé `masque`.
 //
 // Un kit ne stocke jamais de prix : voir lib/kits.ts (calculerPrixKit), seule
 // fonction de calcul, utilisée aussi côté app.
@@ -23,7 +25,7 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE
 
 const kitsJson = JSON.parse(readFileSync("import-kits/kits.json", "utf8"));
 
-// --- Résolution des références (Étape 1 du prompt) --------------------------
+// --- Résolution des références (Étape 1 du prompt, corrections v7) ---------
 // Alias décidés manuellement après lecture des consignes "recherche" — voir
 // import-kits/rapport-resolution.md pour le détail de chaque cas.
 const ALIAS_REFERENCE_FOURNISSEUR = {
@@ -32,12 +34,30 @@ const ALIAS_REFERENCE_FOURNISSEUR = {
   "A-CREER-01": "S066", // cahier Calligraphe 200p grand format (vert, #1237) — couleur par défaut
 };
 const ALIAS_NOM_EXACT = {
-  "CDC-1M": "MATHS 1S2 - LA CLE DES CRACKS",
+  // La Clé des Cracks / Clé du Bac — Seconde S (pas de split S1/S2).
   "CDC-2M": "KAAMILE DE MATHS - SECONDE S",
   "CDC-2PC": "PHYSIQUE CHIMIE SECONDE S",
-  "CDC-TM": "MATHS TS2 - LA CLE DU BAC",
-  "KANDIA-3PC": "Collection Kandia - Physique Chimie 3ème",
-  "LACLE-3SVT": "SVT TROISIEME COLLEGE",
+  "CDC-2SVT": "SVT SECONDE S",
+  // Troisième — CDC-3PC : décision fondateur, garder Collection Kandia
+  // (déjà utilisé sur le kit 3e Confort publié) plutôt que la résolution
+  // générique "PHYSIQUE CHIMIE TROISIEME" trouvée par la recherche v7.
+  "CDC-3M": "MATHEMATIQUES TROISIEME",
+  "CDC-3PC": "Collection Kandia - Physique Chimie 3ème",
+  // Première — éditions distinctes S1/S2 (ne jamais croiser).
+  "CDC-1M-S1": "MATHS 1S1 (CRACKS EN MATHS)",
+  "CDC-1M-S2": "MATHS 1S2 - LA CLE DES CRACKS",
+  // Pas d'édition Sciences physiques séparée S1/S2 au catalogue : édition
+  // commune "PHYSIQUE CHIMIE PREMIERE S" utilisée pour les deux séries.
+  "CDC-1PC-S1": "PHYSIQUE CHIMIE PREMIERE S",
+  "CDC-1PC-S2": "PHYSIQUE CHIMIE PREMIERE S",
+  // SVT Première S2 : édition commune S1/S2/L au catalogue.
+  "CDC-1SVT-S2": "SVT PREMIERE S1 S2 L",
+  // Terminale — éditions distinctes S1/S2. CDC-TM-S1 et CDC-TPC-S1 : aucune
+  // édition spécifique S1 trouvée au catalogue (seulement des éditions S2 ou
+  // "Terminale S" génériques ambiguës) → non aliasées, lignes ignorées.
+  "CDC-TM-S2": "MATHS TS2 - LA CLE DU BAC",
+  "CDC-TPC-S2": "PHYSIQUE CHIMIE TS2",
+  "CDC-TSVT-S2": "SVT TERMINALE S2",
 };
 
 async function fetchAllProduits() {
@@ -58,28 +78,194 @@ async function fetchAllProduits() {
   return all;
 }
 
-function resoudre(ref, byRef, byNom) {
+// Regroupe par clé en conservant chaque doublon : sert à détecter les
+// références/noms qui correspondent à plusieurs produits (ambiguïté).
+function grouper(produits, cle) {
+  const map = new Map();
+  for (const p of produits) {
+    const valeur = p[cle];
+    if (!valeur) continue;
+    if (!map.has(valeur)) map.set(valeur, []);
+    map.get(valeur).push(p);
+  }
+  return map;
+}
+
+// Résout une référence vers { produit, methode } ou { ambigu: true } ou null
+// (introuvable). Ordre : alias référence fournisseur, alias nom exact,
+// référence fournisseur directe, nom exact direct.
+function resoudre(ref, nomAttendu, byRef, byNom) {
   const aliasRef = ALIAS_REFERENCE_FOURNISSEUR[ref];
-  if (aliasRef && byRef.has(aliasRef)) return byRef.get(aliasRef);
+  if (aliasRef) {
+    const trouves = byRef.get(aliasRef);
+    if (trouves?.length === 1) return { produit: trouves[0], methode: "alias_reference_fournisseur" };
+    if (trouves?.length > 1) return { ambigu: true, methode: "alias_reference_fournisseur" };
+  }
 
   const aliasNom = ALIAS_NOM_EXACT[ref];
-  if (aliasNom && byNom.has(aliasNom)) return byNom.get(aliasNom);
+  if (aliasNom) {
+    const trouves = byNom.get(aliasNom);
+    if (trouves?.length === 1) return { produit: trouves[0], methode: "alias_nom_exact" };
+    if (trouves?.length > 1) return { ambigu: true, methode: "alias_nom_exact" };
+  }
 
-  if (byRef.has(ref)) return byRef.get(ref);
+  const parRef = byRef.get(ref);
+  if (parRef?.length === 1) return { produit: parRef[0], methode: "reference_fournisseur" };
+  if (parRef?.length > 1) return { ambigu: true, methode: "reference_fournisseur" };
+
+  if (nomAttendu) {
+    const parNom = byNom.get(nomAttendu);
+    if (parNom?.length === 1) return { produit: parNom[0], methode: "nom_exact" };
+    if (parNom?.length > 1) return { ambigu: true, methode: "nom_exact" };
+  }
 
   return null;
 }
 
+// A-CREER-03 (copies doubles) : garde-fou prix, comme demandé par la
+// correction v7 même si le produit existe déjà (créé lors d'un import
+// précédent). Ne modifie le prix d'aucun autre produit.
+async function assurerCopiesDoubles(byRef) {
+  const trouves = byRef.get("A-CREER-03");
+  const produit = trouves?.length === 1 ? trouves[0] : null;
+
+  if (produit) {
+    if (produit.prix !== 1800) {
+      const { error } = await supabase.from("produits").update({ prix: 1800 }).eq("id", produit.id);
+      if (error) console.error("Copies doubles : échec MAJ prix vente —", error.message);
+      else produit.prix = 1800;
+    }
+    return;
+  }
+
+  const { data: categorie, error: errCat } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("nom", "Cahiers & papeterie")
+    .single();
+  if (errCat || !categorie) {
+    console.error("Copies doubles : catégorie « Cahiers & papeterie » introuvable —", errCat?.message);
+    return;
+  }
+
+  const { data: inserted, error: errIns } = await supabase
+    .from("produits")
+    .insert({
+      nom: "Paquet de copies doubles grand format",
+      prix: 1800,
+      prix_achat: 1300,
+      categorie_id: categorie.id,
+      statut: "dispo",
+      statut_publication: "en_attente",
+      reference_fournisseur: "A-CREER-03",
+      unite_vente: "paquet",
+      photo_a_ameliorer: true,
+      vendeur_id: "00000000-0000-0000-0000-000000000001",
+      publie_par: "admin",
+    })
+    .select("id, nom, prix, statut, statut_publication, reference_fournisseur")
+    .single();
+  if (errIns) {
+    console.error("Copies doubles : échec création —", errIns.message);
+    return;
+  }
+  console.log(`Copies doubles créées (#${inserted.id}, masquées, photo à fournir).`);
+  byRef.set("A-CREER-03", [inserted]);
+}
+
+function genererRapportResolution(byRef, byNom) {
+  const lignes = [
+    "# Rapport de résolution des références (correction v7)",
+    "",
+    `Lancé le ${new Date().toISOString()}.`,
+    "",
+    "| Référence | Nom attendu | Produit trouvé | Méthode | Drapeau prix |",
+    "|---|---|---|---|---|",
+  ];
+
+  const refs = Object.entries(kitsJson.references).sort(([a], [b]) => a.localeCompare(b));
+  let trouvees = 0;
+  let ambigues = 0;
+  let introuvables = 0;
+
+  for (const [ref, meta] of refs) {
+    const resultat = resoudre(ref, meta.nom, byRef, byNom);
+    let colProduit = "—";
+    let colMethode = "introuvable";
+    let colDrapeau = "";
+
+    if (resultat?.ambigu) {
+      colMethode = `ambiguë (${resultat.methode})`;
+      colProduit = "plusieurs produits correspondent";
+      ambigues++;
+    } else if (resultat?.produit) {
+      const p = resultat.produit;
+      colProduit = `#${p.id} ${p.nom} — ${p.prix} F (${p.statut}/${p.statut_publication})`;
+      colMethode = resultat.methode;
+      trouvees++;
+      if (meta.prix_vente_classeur && p.prix) {
+        const ecart = Math.abs(p.prix - meta.prix_vente_classeur) / meta.prix_vente_classeur;
+        if (ecart > 0.5) colDrapeau = `⚠️ écart ${Math.round(ecart * 100)}% vs classeur (${meta.prix_vente_classeur} F)`;
+      }
+    } else {
+      introuvables++;
+    }
+
+    lignes.push(
+      `| ${ref} | ${meta.nom} | ${colProduit} | ${colMethode} | ${colDrapeau} |`,
+    );
+  }
+
+  lignes.push(
+    "",
+    `Total : ${refs.length} références — ${trouvees} trouvées, ${ambigues} ambiguës, ${introuvables} introuvables.`,
+  );
+
+  writeFileSync("import-kits/rapport-resolution.md", lignes.join("\n"), "utf8");
+  console.log(
+    `Résolution : ${trouvees}/${refs.length} trouvées, ${ambigues} ambiguës, ${introuvables} introuvables.`,
+  );
+}
+
+async function supprimerAnciensKits() {
+  const slugs = kitsJson.slugs_supprimes ?? [];
+  if (slugs.length === 0) return;
+  // on delete cascade (0001_schema.sql) : supprime aussi les kit_items.
+  const { error, count } = await supabase
+    .from("kits")
+    .delete({ count: "exact" })
+    .in("slug", slugs);
+  if (error) {
+    console.error("Échec suppression des anciens kits —", error.message);
+    return;
+  }
+  console.log(`Anciens kits supprimés (slugs_supprimes) : ${count ?? 0}/${slugs.length}`);
+}
+
 async function main() {
   const produits = await fetchAllProduits();
-  const byRef = new Map(produits.filter((p) => p.reference_fournisseur).map((p) => [p.reference_fournisseur, p]));
-  const byNom = new Map(produits.map((p) => [p.nom, p]));
+  const byRef = grouper(produits, "reference_fournisseur");
+  const byNom = grouper(produits, "nom");
+
+  await supprimerAnciensKits();
+  await assurerCopiesDoubles(byRef);
+  genererRapportResolution(byRef, byNom);
 
   const lignesIgnorees = [];
-  let kitsCreesOuMaj = 0;
+  let kitsCrees = 0;
+  let kitsMisAJour = 0;
   let lignesInserees = 0;
 
   for (const kit of kitsJson.kits) {
+    // On ne connaît pas encore si c'est un insert ou un update : on le
+    // détecte via l'existence préalable du slug (pour le compte rendu et
+    // pour ne jamais envoyer `statut` sur un kit existant).
+    const { data: existant } = await supabase
+      .from("kits")
+      .select("id")
+      .eq("slug", kit.slug)
+      .maybeSingle();
+
     const payloadKit = {
       cycle: kit.cycle,
       niveau: kit.classe,
@@ -90,23 +276,26 @@ async function main() {
       ordre_gamme: kit.ordre_gamme ?? null,
       description: kit.description ?? null,
       description_si_aucune_cle_des_cracks: kit.description_si_aucune_cle_des_cracks ?? null,
-      ebook_offert: kit.ebook_offert ?? true,
       type_source: kit.type_source ?? null,
-      statut: "masque", // Toujours réimporté masqué : publication = action manuelle.
       source_interne: kit.source_interne ?? null,
       manquants_connus: kit.manquants_connus ?? [],
     };
+    // Nouveau kit : statut par défaut de la colonne = "masque" (0085). Kit
+    // existant : `statut` absent du payload = jamais écrasé (publication
+    // manuelle préservée), même en repassant par un upsert.
+    if (!existant) payloadKit.statut = "masque";
 
     const { data: kitRow, error: errKit } = await supabase
       .from("kits")
-      .upsert(payloadKit, { onConflict: "cycle,niveau,gamme" })
+      .upsert(payloadKit, { onConflict: "slug" })
       .select("id")
       .single();
     if (errKit) {
       console.error(`Kit ${kit.slug} : échec upsert —`, errKit.message);
       continue;
     }
-    kitsCreesOuMaj++;
+    if (existant) kitsMisAJour++;
+    else kitsCrees++;
 
     const { error: errDelete } = await supabase.from("kit_items").delete().eq("kit_id", kitRow.id);
     if (errDelete) {
@@ -116,14 +305,20 @@ async function main() {
 
     const lignesAInserer = [];
     for (const ligne of kit.lignes) {
-      const produit = resoudre(ligne.ref, byRef, byNom);
-      if (!produit) {
-        lignesIgnorees.push({ kit: kit.slug, ref: ligne.ref, libelle: ligne.libelle_besoin });
+      const meta = kitsJson.references[ligne.ref];
+      const resultat = resoudre(ligne.ref, meta?.nom, byRef, byNom);
+      if (!resultat || resultat.ambigu || !resultat.produit) {
+        lignesIgnorees.push({
+          kit: kit.slug,
+          ref: ligne.ref,
+          libelle: ligne.libelle_besoin,
+          motif: resultat?.ambigu ? "ambiguë" : "introuvable",
+        });
         continue;
       }
       lignesAInserer.push({
         kit_id: kitRow.id,
-        produit_id: produit.id,
+        produit_id: resultat.produit.id,
         quantite_defaut: ligne.quantite,
         libelle_besoin: ligne.libelle_besoin,
         groupe_affichage: ligne.groupe_affichage,
@@ -148,18 +343,20 @@ async function main() {
     "",
     `Lancé le ${new Date().toISOString()}.`,
     "",
-    `- Kits créés ou mis à jour : ${kitsCreesOuMaj} / ${kitsJson.kits.length}`,
+    `- Kits créés : ${kitsCrees}`,
+    `- Kits mis à jour (statut conservé) : ${kitsMisAJour}`,
+    `- Total kits traités : ${kitsCrees + kitsMisAJour} / ${kitsJson.kits.length}`,
     `- Lignes insérées : ${lignesInserees}`,
-    `- Lignes ignorées (référence introuvable) : ${lignesIgnorees.length}`,
+    `- Lignes ignorées (référence introuvable ou ambiguë) : ${lignesIgnorees.length}`,
     "",
     "## Lignes ignorées",
     ...(lignesIgnorees.length
-      ? lignesIgnorees.map((l) => `- ${l.kit} — ${l.ref} (${l.libelle})`)
+      ? lignesIgnorees.map((l) => `- ${l.kit} — ${l.ref} (${l.libelle}) [${l.motif}]`)
       : ["(aucune)"]),
   ].join("\n");
 
   writeFileSync("import-kits/rapport-import.md", rapport, "utf8");
-  console.log(`Kits créés/mis à jour : ${kitsCreesOuMaj}/${kitsJson.kits.length}`);
+  console.log(`Kits créés : ${kitsCrees}, mis à jour : ${kitsMisAJour} / ${kitsJson.kits.length}`);
   console.log(`Lignes insérées : ${lignesInserees}, ignorées : ${lignesIgnorees.length}`);
 }
 

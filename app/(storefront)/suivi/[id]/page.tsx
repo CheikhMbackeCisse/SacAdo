@@ -3,15 +3,13 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifierJetonClient } from "@/lib/client-auth";
 import { formatPrice } from "@/lib/format";
-import { BookOpen, FileText, MessageCircle } from "lucide-react";
+import { FileText, MessageCircle } from "lucide-react";
 import { lienAssistanceCommande } from "@/lib/whatsapp";
 import { MENTION_BENEFICIAIRE_WAVE } from "@/lib/legal";
 import { OrderStepper } from "@/components/suivi/order-stepper";
 import { PushInvite } from "@/components/moi/push-invite";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
-import { EbookTelechargement } from "@/components/suivi/ebook-telechargement";
 import { DocumentTelechargement } from "@/components/suivi/document-telechargement";
-import { getEbooksCommande } from "@/lib/ebooks/actions";
 import { getDocumentsCommande } from "@/lib/documents/actions";
 import type { Commande } from "@/lib/supabase/types";
 
@@ -38,7 +36,6 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
   if (!verifierJetonClient(commande.client_id, jeton)) notFound();
 
   const enAttentePaiement = commande.statut === "paiement_en_attente";
-  const ebooks = enAttentePaiement ? [] : await getEbooksCommande(commande.id, jeton);
   const documents = enAttentePaiement ? [] : await getDocumentsCommande(commande.id, jeton);
 
   return (
@@ -72,25 +69,6 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
       <OrderStepper statut={commande.statut} />
 
       {!enAttentePaiement && <PushInvite commandeId={commande.id} />}
-
-      {ebooks.length > 0 && (
-        <section className="flex flex-col gap-2 rounded-2xl border border-decorative/30 bg-decorative/10 p-3">
-          <span className="flex items-center gap-1.5 text-xs font-medium text-ink/70">
-            <BookOpen size={14} aria-hidden="true" />
-            Ton ebook offert avec le kit
-          </span>
-          {ebooks.map((ebook) => (
-            <EbookTelechargement
-              key={`${ebook.cycle}|${ebook.niveau}`}
-              commandeId={commande.id}
-              jeton={jeton}
-              cycle={ebook.cycle}
-              niveau={ebook.niveau}
-              titre={ebook.titre}
-            />
-          ))}
-        </section>
-      )}
 
       {documents.length > 0 && (
         <section className="flex flex-col gap-2 rounded-2xl border border-decorative/30 bg-decorative/10 p-3">

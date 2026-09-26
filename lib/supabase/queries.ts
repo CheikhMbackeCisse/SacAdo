@@ -556,7 +556,7 @@ export async function getSousSousCategoriesBySousCategories(
 // `source_interne` et `manquants_connus` sont réservés à l'admin : jamais
 // exposés côté client (Étape 4 du prompt), donc jamais dans ce select public.
 const COLONNES_KIT_PUBLIC =
-  "id,cycle,niveau,gamme,nom,created_at,slug,serie,ordre_gamme,description,description_si_aucune_cle_des_cracks,ebook_offert,type_source,statut" as const;
+  "id,cycle,niveau,gamme,nom,created_at,slug,serie,ordre_gamme,description,description_si_aucune_cle_des_cracks,type_source,statut" as const;
 
 // Les gammes disponibles pour une classe, triées Essentiel -> Complet -> Confort
 // (ordre_gamme). Seuls les kits publiés sont visibles côté storefront —

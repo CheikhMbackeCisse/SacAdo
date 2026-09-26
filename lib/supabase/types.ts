@@ -281,7 +281,6 @@ export type Kit = {
   ordre_gamme: number | null;
   description: string | null;
   description_si_aucune_cle_des_cracks: string | null;
-  ebook_offert: boolean;
   type_source: string | null;
   statut: StatutKit;
   // Réservés à l'admin, jamais exposés côté client (page, API publique, HTML).

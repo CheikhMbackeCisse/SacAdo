@@ -1,11 +1,12 @@
 import { getCycleByValue } from "@/lib/cycles";
 import type { KitItem, Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
-// Les kits couvrent des classes de lycée plus simples ("Seconde S") que le
-// découpage fin utilisé ailleurs dans l'app ("Seconde S1"/"Seconde S2" pour
-// d'autres besoins, lib/cycles.ts) : le picker et les pages kit valident donc
-// la classe avec cette règle plutôt qu'avec cycleDef.classes.includes(...).
-const CLASSE_LYCEE_KIT = /^(Seconde|Première|Terminale) (L|S)$/;
+// Les kits couvrent des classes de lycée plus simples que le découpage fin
+// utilisé ailleurs dans l'app (lib/cycles.ts) : le picker et les pages kit
+// valident donc la classe avec cette règle plutôt qu'avec
+// cycleDef.classes.includes(...). Depuis la correction v7 : L et S en
+// Seconde ; L, S1, S2 en Première et en Terminale ; STEG aux trois niveaux.
+const CLASSE_LYCEE_KIT = /^(Seconde (L|S|STEG)|(Première|Terminale) (L|S1|S2|STEG))$/;
 
 export function estClasseKitValide(cycle: string, niveau: string): boolean {
   if (cycle === "lycee") return CLASSE_LYCEE_KIT.test(niveau);
@@ -128,17 +129,13 @@ export function lignesParSection(lignes: LigneKit[], section: KitItem["section"]
   return lignesAffichables(lignes).filter((l) => l.item.section === section);
 }
 
-// --- Séries à venir (Étape 4 du prompt) --------------------------------------
+// --- Séries à venir (correction v7) ------------------------------------------
 // Contenu statique (import-kits/kits.json "series_a_venir") : aucun kit n'est
-// créé pour ces séries, affichées sans prix, sans bouton, sans lien.
+// créé pour cette série, affichée sans prix, sans bouton, sans lien — un
+// simple texte sous le nom de la série (pas de carte/encadré).
 export type SerieAVenir = { serie: string; libelle: string; message: string };
 
 export const SERIES_LYCEE_A_VENIR: SerieAVenir[] = [
-  {
-    serie: "STEG",
-    libelle: "Série STEG",
-    message: "Les kits de la série STEG ne sont pas encore disponibles.",
-  },
   {
     serie: "Arabe",
     libelle: "Lycée arabe",
