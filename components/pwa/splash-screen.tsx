@@ -12,11 +12,31 @@ const DUREE_MS_MOUVEMENT_REDUIT = 450;
 // le même onglet ne re-déclenche pas le splash ; relancer l'app installée oui.
 const CLE_SESSION = "sacado_splash_vu";
 
+// Réservé au mode app installée (`display-mode: standalone`, ou son ancienne
+// équivalence iOS `navigator.standalone`). En navigateur normal, la classe
+// CSS `.splash-overlay` (globals.css) masque déjà ce calque sans JavaScript —
+// ce test ne fait qu'éviter de lancer inutilement le minuteur/sessionStorage
+// dans ce cas (recherche Search Console : le robot Google voyait une capture
+// d'écran figée sur ce calque, faute d'attendre le minuteur assez longtemps).
+function appInstallee(): boolean {
+  const standaloneIOS = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  const standaloneMediaQuery =
+    typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches;
+  return standaloneIOS || standaloneMediaQuery;
+}
+
 export function SplashScreen() {
-  // Visible dès le premier rendu (serveur + client) : aucun flash de page nue.
+  // Visible dès le premier rendu (serveur + client) — mais masqué en
+  // navigateur normal par la CSS `.splash-overlay` tant que le JS n'a pas
+  // confirmé le mode installé.
   const [phase, setPhase] = useState<"visible" | "sortie" | "fini">("visible");
 
   useEffect(() => {
+    if (!appInstallee()) {
+      setPhase("fini");
+      return;
+    }
+
     let dejaVu = false;
     try {
       dejaVu = sessionStorage.getItem(CLE_SESSION) === "1";
@@ -45,7 +65,7 @@ export function SplashScreen() {
   return (
     <div
       aria-hidden="true"
-      className={`splash-fond fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-300 ${
+      className={`splash-overlay splash-fond fixed inset-0 z-[100] items-center justify-center transition-opacity duration-300 ${
         phase === "sortie" ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >

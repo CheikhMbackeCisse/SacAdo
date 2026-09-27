@@ -106,6 +106,21 @@ body {
   }
 }
 
+/* Écran de démarrage : masqué par défaut (navigateur normal, y compris le
+   robot de Google — Search Console montrait une capture d'écran vide car ce
+   calque plein écran restait visible le temps qu'un minuteur JS le retire).
+   Affiché UNIQUEMENT quand l'app tourne en mode installé (display-mode:
+   standalone) : règle CSS pure, ne dépend d'aucun JavaScript ni de
+   l'user-agent — un navigateur normal (humain ou robot) ne le voit jamais. */
+.splash-overlay {
+  display: none;
+}
+@media (display-mode: standalone) {
+  .splash-overlay {
+    display: flex;
+  }
+}
+
 /* Écran de démarrage : fond clair par défaut (comme à l'origine), bleu-nuit
    sombre en mode sombre — système OU choix explicite. Le logo ne change pas.
    Même mécanique de thème que les tokens de couleur plus haut. */

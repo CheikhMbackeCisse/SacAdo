@@ -58,3 +58,10 @@ next-env.d.ts
 # worker MapLibre copié depuis node_modules par scripts/copier-worker-maplibre.mjs
 # (regénéré à chaque predev/prebuild — inutile de le versionner)
 /public/vendor/
+
+# exports Excel ponctuels à la racine + scripts d'export associés + leurs
+# sauvegardes JSON (scratch local, jamais versionnés : sinon `vercel --prod`
+# les enverrait aussi, vu qu'il envoie tout le dossier local)
+/*.xlsx
+/scripts/exporter-*-excel.mjs
+/scripts/_backup_*.json
