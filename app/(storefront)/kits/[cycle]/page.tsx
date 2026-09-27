@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
 import { getClassesLyceeAvecKits } from "@/lib/supabase/queries";
-import { SERIES_LYCEE_A_VENIR } from "@/lib/kits";
+import { CLASSES_LYCEE, SERIES_LYCEE_A_VENIR } from "@/lib/kits";
 
 export const revalidate = 120;
 
@@ -15,19 +15,33 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
 
   const estLycee = cycleDef.value === "lycee";
 
-  // Le lycée a des kits seulement pour Seconde/Première/Terminale x L/S (pas
-  // le découpage fin L1/L2/S1/S2/T/G de lib/cycles.ts, utilisé ailleurs pour
-  // d'autres besoins) : on part des classes qui ont réellement un kit publié.
-  const classesLycee = estLycee ? await getClassesLyceeAvecKits() : [];
+  // Le lycée a des kits seulement pour les classes de CLASSES_LYCEE (ordre et
+  // groupes exacts de l'onglet "Écran lycée", CORRECTIONS_KITS Lot 5 §3) — pas
+  // le découpage fin de lib/cycles.ts, utilisé ailleurs pour d'autres besoins.
+  // On ne garde que les classes qui ont réellement un kit publié.
+  const classesLyceeDb = new Set(estLycee ? await getClassesLyceeAvecKits() : []);
+  const classesLycee = CLASSES_LYCEE.filter((c) => classesLyceeDb.has(c.classe));
   const NIVEAU_ORDRE = ["Seconde", "Première", "Terminale"];
-  const parNiveauLycee = new Map<string, string[]>();
-  for (const classe of classesLycee) {
-    const niveau = classe.split(" ")[0];
-    parNiveauLycee.set(niveau, [...(parNiveauLycee.get(niveau) ?? []), classe]);
+  const parNiveauLycee = new Map<string, typeof classesLycee>();
+  for (const c of classesLycee) {
+    const niveau = c.classe.split(" ")[0];
+    parNiveauLycee.set(niveau, [...(parNiveauLycee.get(niveau) ?? []), c]);
   }
   const niveauxLycee = [...parNiveauLycee.keys()].sort(
     (a, b) => NIVEAU_ORDRE.indexOf(a) - NIVEAU_ORDRE.indexOf(b),
   );
+  // Classes déjà triées par ordre canonique (CLASSES_LYCEE) : regrouper les
+  // classes consécutives d'un même "Groupe affiché" (Séries littéraires,
+  // scientifiques, Gestion, Technique, Séries arabes) pour l'affichage.
+  function grouperParGroupe(classes: typeof classesLycee) {
+    const groupes: { groupe: string; classes: typeof classesLycee }[] = [];
+    for (const c of classes) {
+      const dernier = groupes[groupes.length - 1];
+      if (dernier && dernier.groupe === c.groupe) dernier.classes.push(c);
+      else groupes.push({ groupe: c.groupe, classes: [c] });
+    }
+    return groupes;
+  }
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
@@ -63,14 +77,21 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
                 />
               </summary>
 
-              <div className="flex flex-col gap-2 border-t border-ink/10 px-3 py-3">
-                {(parNiveauLycee.get(niveau) ?? []).map((classe) => (
-                  <ClasseLien
-                    key={classe}
-                    href={`/kits/${cycleDef.value}/${encodeURIComponent(classe)}`}
-                    label={`Série ${classe.split(" ")[1]}`}
-                    ariaLabel={classe}
-                  />
+              <div className="flex flex-col gap-3 border-t border-ink/10 px-3 py-3">
+                {grouperParGroupe(parNiveauLycee.get(niveau) ?? []).map((g) => (
+                  <div key={g.groupe} className="flex flex-col gap-2">
+                    <span className="px-1 text-[11px] font-medium uppercase tracking-wide text-ink/40">
+                      {g.groupe}
+                    </span>
+                    {g.classes.map((c) => (
+                      <ClasseLien
+                        key={c.classe}
+                        href={`/kits/${cycleDef.value}/${encodeURIComponent(c.classe)}`}
+                        label={`Série ${c.classe.split(" ")[1]}`}
+                        ariaLabel={c.classe}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
             </details>

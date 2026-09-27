@@ -357,7 +357,11 @@ export function Header() {
                     <button
                       key={`sc-${sc.id}`}
                       type="button"
-                      onClick={() => allerVers(`/categorie/${sc.categorie_slug}?sc=${sc.slug}`)}
+                      onClick={() =>
+                        allerVers(
+                          `/categorie/${sc.categorie_slug}?sc=${sc.slug}&q=${encodeURIComponent(termeSaisi)}`,
+                        )
+                      }
                       className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"
                     >
                       <Tag size={15} className="shrink-0 text-ink/35" aria-hidden="true" />
@@ -372,7 +376,7 @@ export function Header() {
                       type="button"
                       onClick={() =>
                         allerVers(
-                          `/categorie/${ssc.categorie_slug}?sc=${ssc.sous_categorie_slug}&ssc=${ssc.slug}`,
+                          `/categorie/${ssc.categorie_slug}?sc=${ssc.sous_categorie_slug}&ssc=${ssc.slug}&q=${encodeURIComponent(termeSaisi)}`,
                         )
                       }
                       className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-ink/5"

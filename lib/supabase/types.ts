@@ -286,6 +286,10 @@ export type Kit = {
   // Réservés à l'admin, jamais exposés côté client (page, API publique, HTML).
   source_interne: string | null;
   manquants_connus: string[];
+  // Mosaïque d'images curée à la main (migration 0090, CORRECTIONS_KITS Lot 5
+  // §2) : jusqu'à 4 ids produits dans l'ordre d'affichage. Null/vide = repli
+  // sur la logique générique (photosMosaique dans la page kit).
+  images_mosaique: number[] | null;
 };
 
 export type KitItem = {

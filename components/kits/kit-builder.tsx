@@ -44,7 +44,9 @@ export function KitBuilder({ kitNom, cycle, niveau, lignes: toutesLesLignes }: K
   const { enregistrer: enregistrerKitClasse } = useKitsPanier();
   const [added, setAdded] = useState(false);
   const [beneficiaireId, setBeneficiaireId] = useState<number | null>(null);
-  const [cahiersOuverts, setCahiersOuverts] = useState(false);
+  // Ouvert par défaut (CORRECTIONS_KITS Lot 5 §1) : fermé, les cahiers
+  // passaient inaperçus (ex. kits 3e Confort, CM2 Confort).
+  const [cahiersOuverts, setCahiersOuverts] = useState(true);
 
   const lignes = useMemo(
     () => toutesLesLignes.filter((l) => ligneEstAffichable(l.produit)).sort((a, b) => a.ordre - b.ordre),
@@ -88,7 +90,11 @@ export function KitBuilder({ kitNom, cycle, niveau, lignes: toutesLesLignes }: K
 
   const cahiers = principales.filter((l) => l.groupeAffichage === GROUPE_CAHIERS);
   const autresPrincipales = principales.filter((l) => l.groupeAffichage !== GROUPE_CAHIERS);
-  const nbCahiersCoches = cahiers.filter((l) => etats[l.id]?.checked).length;
+  // Titre du bloc (CORRECTIONS_KITS Lot 5 §1) : somme des quantités cochées,
+  // pas le nombre de lignes (un même cahier peut être en quantité 2, 3…).
+  const nbCahiersCoches = cahiers
+    .filter((l) => etats[l.id]?.checked)
+    .reduce((s, l) => s + l.quantite, 0);
 
   const handleAjouter = () => {
     const produitIds: number[] = [];
@@ -121,8 +127,7 @@ export function KitBuilder({ kitNom, cycle, niveau, lignes: toutesLesLignes }: K
               className="flex items-center justify-between gap-2"
             >
               <span className="text-sm text-ink">
-                {cahiers.length} cahier{cahiers.length > 1 ? "s" : ""}{" "}
-                <span className="text-ink/45">({nbCahiersCoches} sélectionné{nbCahiersCoches > 1 ? "s" : ""})</span>
+                Cahiers : {nbCahiersCoches} cahier{nbCahiersCoches > 1 ? "s" : ""}
               </span>
               <ChevronDown
                 size={16}

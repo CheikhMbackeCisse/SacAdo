@@ -100,12 +100,19 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
     }));
 
   // Visuel du kit : mosaïque d'au plus 4 photos déjà publiées (jamais générée) —
-  // Étape 4 du prompt.
-  const photosMosaique = [
+  // Étape 4 du prompt initial, affinée par CORRECTIONS_KITS Lot 5 §2.
+  // `images_mosaique` (migration 0090) est une curation manuelle par kit
+  // (cahier, géométrie, livre, stylos) : sans elle, prendre les 4 premières
+  // photos "principal" dans l'ordre des lignes peut afficher 4 fois le même
+  // groupe (ex. 4 cahiers) quand ce groupe ouvre la liste.
+  const photoParProduitId = new Map(items.map((it) => [it.produit.id, it.produit.photo]));
+  const photosCurees = (kit.images_mosaique ?? [])
+    .map((id) => photoParProduitId.get(id))
+    .filter((p): p is string => !!p);
+  const photosGenerique = [
     ...new Set(lignes.filter((l) => l.section === "principal").map((l) => l.produit.photo)),
-  ]
-    .filter((p): p is string => !!p)
-    .slice(0, 4);
+  ].filter((p): p is string => !!p);
+  const photosMosaique = [...new Set(photosCurees.length > 0 ? photosCurees : photosGenerique)].slice(0, 4);
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-1 py-4">

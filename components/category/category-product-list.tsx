@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ChampSelect } from "@/components/ui/champ-select";
 import {
@@ -139,6 +139,7 @@ export function CategoryProductList({
   sousSousCategories,
 }: CategoryProductListProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [produits, setProduits] = useState(produitsInitiaux);
   const [hasMore, setHasMore] = useState(hasMoreInitial);
@@ -260,8 +261,10 @@ export function CategoryProductList({
       const filtres_S = f.serie === "S" ? items.filter((p) => serieCorrespond("S", p.serie)) : items;
       setProduits((current) => (remplacer ? filtres_S : [...current, ...filtres_S]));
       setHasMore(encoreApres);
-      if (totalServeur != null) setTotal(f.serie === "S" ? filtres_S.length : totalServeur);
+      const totalFinal = f.serie === "S" ? filtres_S.length : (totalServeur ?? filtres_S.length);
+      setTotal(totalFinal);
       setChargement(false);
+      return { total: totalFinal };
     },
     [categorieId, idParSlug, sousSousCategories, tranchesPrix, estOrdinateursPortables],
   );
@@ -317,12 +320,20 @@ export function CategoryProductList({
 
   // Arrivée directe sur une URL ?sc=...(&ssc=...) : charger les produits
   // filtrés une fois au montage (les produitsInitiaux venus du serveur ne sont
-  // pas filtrés).
+  // pas filtrés). Repli recherche (CORRECTIONS_KITS Lot 4 §3) : un lien de
+  // suggestion de recherche porte aussi ?q= — si le rayon suggéré est en fait
+  // vide pour ce terme, on ne laisse jamais l'utilisateur face à un filtre
+  // vide, on retombe sur la recherche texte plein-nom.
   const initialise = useRef(false);
   useEffect(() => {
     if (initialise.current || !scSlug || !idParSlug.has(scSlug)) return;
     initialise.current = true;
-    void chargerAvec(scSlug, sscSlug, FILTRES_VIDES, 0, true);
+    const qTerme = searchParams.get("q");
+    void chargerAvec(scSlug, sscSlug, FILTRES_VIDES, 0, true).then((resultat) => {
+      if (qTerme && resultat?.total === 0) {
+        router.replace(`/recherche?q=${encodeURIComponent(qTerme)}`);
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scSlug, sscSlug, idParSlug]);
 
