@@ -121,6 +121,17 @@ body {
   }
 }
 
+/* Écran de bienvenue (première visite) : même principe — masqué par défaut,
+   affiché uniquement en mode app installée. */
+.onboarding-overlay {
+  display: none;
+}
+@media (display-mode: standalone) {
+  .onboarding-overlay {
+    display: block;
+  }
+}
+
 /* Écran de démarrage : fond clair par défaut (comme à l'origine), bleu-nuit
    sombre en mode sombre — système OU choix explicite. Le logo ne change pas.
    Même mécanique de thème que les tokens de couleur plus haut. */

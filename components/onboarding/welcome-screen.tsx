@@ -12,6 +12,7 @@ import {
 } from "react";
 import { ArrowRight, Loader2, Phone, ShieldCheck, User } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
+import { estAppInstallee } from "@/lib/pwa/standalone";
 
 const REPORTE_KEY = "sacado_onboarding_reporte";
 // Si l'utilisateur choisit "Plus tard", on ne le re-sollicite pas avant ce délai.
@@ -74,10 +75,12 @@ function reporteRecemment(): boolean {
 
 const EMPTY_SUBSCRIBE = () => () => {};
 
-// Écran de bienvenue plein écran, première chose vue par un nouveau visiteur
-// (z au-dessus du splash). Option A, contournable : on demande nom + numéro pour
-// pré-remplir le checkout et retrouver "Mes commandes" sans redemander. Aucune
-// vérification SMS, aucun mot de passe (CLAUDE.md : rien d'agressif).
+// Écran de bienvenue plein écran, réservé au mode app installée (Search
+// Console : le robot Google voyait ce calque à la place de la boutique — un
+// navigateur normal, humain ou robot, ne doit jamais le voir). Option A,
+// contournable : on demande nom + numéro pour pré-remplir le checkout et
+// retrouver "Mes commandes" sans redemander. Aucune vérification SMS, aucun
+// mot de passe (CLAUDE.md : rien d'agressif).
 export function WelcomeScreen() {
   const { identite, setIdentite } = useIdentite();
   // Rendu client uniquement : évite un flash pour les visiteurs déjà connus.
@@ -88,7 +91,7 @@ export function WelcomeScreen() {
   const [tentative, setTentative] = useState(false);
   const [envoi, setEnvoi] = useState(false);
 
-  const ouvert = monte && !ferme && identite === null && !reporteRecemment();
+  const ouvert = monte && !ferme && identite === null && !reporteRecemment() && estAppInstallee();
   const typed = useTypewriter(SLOGAN, ouvert);
 
   const reporter = useCallback(() => {
@@ -137,7 +140,7 @@ export function WelcomeScreen() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-titre"
-      className="animate-fade-in-up fixed inset-0 z-[120] overflow-hidden bg-[#FEFDFF]"
+      className="onboarding-overlay animate-fade-in-up fixed inset-0 z-[120] overflow-hidden bg-[#FEFDFF]"
     >
       {/* Fond illustré (fournitures scolaires, palette SacAdo). */}
       <Image

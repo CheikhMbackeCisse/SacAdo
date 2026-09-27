@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { estAppInstallee } from "@/lib/pwa/standalone";
 
 // Écran de démarrage : le logo SacAdo (le sac) centré. Le fond suit le thème du
 // téléphone — clair par défaut, bleu nuit `#02296C` en mode sombre (classe
@@ -12,19 +13,6 @@ const DUREE_MS_MOUVEMENT_REDUIT = 450;
 // le même onglet ne re-déclenche pas le splash ; relancer l'app installée oui.
 const CLE_SESSION = "sacado_splash_vu";
 
-// Réservé au mode app installée (`display-mode: standalone`, ou son ancienne
-// équivalence iOS `navigator.standalone`). En navigateur normal, la classe
-// CSS `.splash-overlay` (globals.css) masque déjà ce calque sans JavaScript —
-// ce test ne fait qu'éviter de lancer inutilement le minuteur/sessionStorage
-// dans ce cas (recherche Search Console : le robot Google voyait une capture
-// d'écran figée sur ce calque, faute d'attendre le minuteur assez longtemps).
-function appInstallee(): boolean {
-  const standaloneIOS = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-  const standaloneMediaQuery =
-    typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches;
-  return standaloneIOS || standaloneMediaQuery;
-}
-
 export function SplashScreen() {
   // Visible dès le premier rendu (serveur + client) — mais masqué en
   // navigateur normal par la CSS `.splash-overlay` tant que le JS n'a pas
@@ -32,7 +20,7 @@ export function SplashScreen() {
   const [phase, setPhase] = useState<"visible" | "sortie" | "fini">("visible");
 
   useEffect(() => {
-    if (!appInstallee()) {
+    if (!estAppInstallee()) {
       setPhase("fini");
       return;
     }

@@ -11,6 +11,7 @@ import { getMessagesParTelephone } from "@/lib/moi/actions";
 import { getPopulaires, getProduitsByIds } from "@/lib/supabase/queries";
 import { ProductGrid } from "@/components/product/product-grid";
 import { DemanderProduit } from "@/components/demande/demander-produit";
+import { IdentitePrompt } from "@/components/moi/identite-prompt";
 import type { Produit } from "@/lib/supabase/types";
 
 // 6 entrées disposées en 2 lignes × 3 colonnes (voir la grille plus bas).
@@ -104,6 +105,11 @@ export default function MoiPage() {
           </Link>
         ))}
       </div>
+
+      {/* Remplace l'écran de bienvenue plein écran (retiré du navigateur,
+          Search Console) : même formulaire nom/téléphone, en carte discrète,
+          déjà utilisé sur "Mes commandes" quand l'identité n'est pas connue. */}
+      {!identite && <IdentitePrompt contexte="vos commandes et votre boîte de réception" />}
 
       {/* maj-accueil §2 : remplace "Trouver un produit avec une photo" par une
           recherche texte (même moteur/synonymes que la barre principale, dans
