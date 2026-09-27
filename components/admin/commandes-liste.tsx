@@ -198,6 +198,13 @@ export function CommandesListe({
                 </span>
               )}
             </ChampCarte>
+            {commande.code_confirmation && (
+              <ChampCarte label="Code confirmation">
+                <span className="font-mono font-semibold tracking-wide text-ink">
+                  {commande.code_confirmation}
+                </span>
+              </ChampCarte>
+            )}
             <div className="mt-1.5 flex items-center justify-between gap-2">
               <span className="text-xs text-ink/50">Statut</span>
               <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
@@ -224,6 +231,7 @@ export function CommandesListe({
               <th className="px-4 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium">Livraison</th>
               <th className="px-4 py-3 font-medium">Total</th>
+              <th className="px-4 py-3 font-medium">Code</th>
               <th className="px-4 py-3 font-medium">Statut</th>
             </tr>
           </thead>
@@ -262,6 +270,9 @@ export function CommandesListe({
                       {commande.statut_paiement === "payee" ? " ✓" : ""}
                     </span>
                   )}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-ink/70">
+                  {commande.code_confirmation ?? "—"}
                 </td>
                 <td className="px-4 py-3">
                   <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />

@@ -11,6 +11,8 @@ import { PushInvite } from "@/components/moi/push-invite";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
 import { DocumentTelechargement } from "@/components/suivi/document-telechargement";
 import { getDocumentsCommande } from "@/lib/documents/actions";
+import { FactureActions } from "@/components/suivi/facture-actions";
+import { numeroFacture } from "@/lib/factures/config";
 import type { Commande } from "@/lib/supabase/types";
 
 export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
@@ -37,6 +39,14 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
 
   const enAttentePaiement = commande.statut === "paiement_en_attente";
   const documents = enAttentePaiement ? [] : await getDocumentsCommande(commande.id, jeton);
+
+  const { data: facture } = enAttentePaiement
+    ? { data: null }
+    : await supabaseAdmin
+        .from("factures")
+        .select("id, code_confirmation")
+        .eq("commande_id", commande.id)
+        .maybeSingle<{ id: number; code_confirmation: string }>();
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-6 px-4 py-6">
@@ -142,6 +152,26 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
           <p className="mt-0.5 text-[11px] text-ink/50">{MENTION_BENEFICIAIRE_WAVE}</p>
         )}
       </section>
+
+      {facture && (
+        <section className="flex flex-col gap-3 rounded-2xl border border-ink/10 bg-elevated p-3">
+          <div>
+            <span className="text-xs font-medium text-ink/60">
+              Facture n° {numeroFacture(facture.id)}
+            </span>
+            <p className="mt-1 text-xs text-ink/70">
+              Présente cette facture (sur ton téléphone ou imprimée) avec le code{" "}
+              <span className="font-semibold text-ink">{facture.code_confirmation}</span> au
+              livreur à la réception.
+            </p>
+          </div>
+          <FactureActions
+            commandeId={commande.id}
+            jeton={jeton}
+            numero={numeroFacture(facture.id)}
+          />
+        </section>
+      )}
 
       {!enAttentePaiement && (
         <a

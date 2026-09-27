@@ -16,6 +16,7 @@ export type LivraisonCommande = {
   lat: number;
   lng: number;
   articles: { nom: string; quantite: number }[];
+  codeConfirmation: string | null;
 };
 
 type Rel<T> = T | T[] | null;
@@ -36,7 +37,8 @@ export async function getLivraisons(): Promise<LivraisonCommande[]> {
       `id, total, mode_livraison, precision_livreur, statut, lat, lng,
        client:clients(nom, telephone),
        zone:zones(nom),
-       commande_items(quantite, produit:produits(nom))`,
+       commande_items(quantite, produit:produits(nom)),
+       facture:factures(code_confirmation)`,
     )
     .not("statut", "in", "(livree,paiement_en_attente)")
     .not("lat", "is", null)
@@ -56,6 +58,7 @@ export async function getLivraisons(): Promise<LivraisonCommande[]> {
     client: Rel<{ nom: string; telephone: string }>;
     zone: Rel<{ nom: string }>;
     commande_items: { quantite: number; produit: Rel<{ nom: string }> }[] | null;
+    facture: Rel<{ code_confirmation: string }>;
   };
 
   return (data as unknown as Row[]).map((r) => {
@@ -75,6 +78,7 @@ export async function getLivraisons(): Promise<LivraisonCommande[]> {
         nom: un(it.produit)?.nom ?? "Article",
         quantite: it.quantite,
       })),
+      codeConfirmation: un(r.facture)?.code_confirmation ?? null,
     };
   });
 }

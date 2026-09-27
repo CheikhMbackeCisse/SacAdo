@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCommandeAdmin, getCommandeItemsAdmin } from "@/lib/admin/commandes-actions";
 import { getBlocWhatsApp } from "@/lib/admin/whatsapp-actions";
+import { Download } from "lucide-react";
 import { formatDateLivraison, formatPrice } from "@/lib/format";
 import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
+import { numeroFacture } from "@/lib/factures/config";
 import { StatutSelect } from "@/components/admin/statut-select";
 import { BlocWhatsAppFiche } from "@/components/admin/bloc-whatsapp";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
@@ -105,6 +107,31 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
           />
         ) : (
           <p className="text-xs text-ink/40">Aucune position de livraison enregistrée.</p>
+        )}
+
+        {commande.facture_id != null && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink/10 pt-3">
+            <div>
+              <p className="text-xs font-medium text-ink/50">
+                Facture n° {numeroFacture(commande.facture_id)}
+              </p>
+              <p className="text-ink/80">
+                Code de confirmation :{" "}
+                <span className="font-mono font-semibold tracking-wide text-ink">
+                  {commande.code_confirmation}
+                </span>
+              </p>
+            </div>
+            <a
+              href={`/api/factures/${commande.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 hover:border-brand hover:text-brand"
+            >
+              <Download size={13} aria-hidden="true" />
+              Télécharger la facture
+            </a>
+          </div>
         )}
 
         {commande.enfants_ebook && (

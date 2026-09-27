@@ -6,12 +6,21 @@ import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import type { Commande, CommandeItem, StatutCommande } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
-export type CommandeAvecClient = Commande & { client_nom: string; client_telephone: string };
+export type CommandeAvecClient = Commande & {
+  client_nom: string;
+  client_telephone: string;
+  facture_id: number | null;
+  code_confirmation: string | null;
+};
 
 type ClientJoint = { nom: string; telephone: string } | { nom: string; telephone: string }[] | null;
+type FactureJoint = { id: number; code_confirmation: string } | { id: number; code_confirmation: string }[] | null;
 
-function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecClient {
+function mapCommandeRow(
+  row: Commande & { client: ClientJoint; facture: FactureJoint },
+): CommandeAvecClient {
   const client = Array.isArray(row.client) ? row.client[0] : row.client;
+  const facture = Array.isArray(row.facture) ? row.facture[0] : row.facture;
   return {
     id: row.id,
     client_id: row.client_id,
@@ -44,6 +53,8 @@ function mapCommandeRow(row: Commande & { client: ClientJoint }): CommandeAvecCl
     date_livraison_prevue: row.date_livraison_prevue,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
+    facture_id: facture?.id ?? null,
+    code_confirmation: facture?.code_confirmation ?? null,
   };
 }
 
@@ -63,7 +74,7 @@ export async function getCommandesAdmin(
 
   let query = supabaseAdmin
     .from("commandes")
-    .select("*, client:clients(nom, telephone)")
+    .select("*, client:clients(nom, telephone), facture:factures(id, code_confirmation)")
     .order("date", { ascending: false })
     .range(offset, offset + limit);
   if (statut) query = query.eq("statut", statut);
@@ -74,7 +85,7 @@ export async function getCommandesAdmin(
   const { data, error } = await query;
   if (error) return { items: [], hasMore: false };
 
-  const rows = (data ?? []) as unknown as (Commande & { client: ClientJoint })[];
+  const rows = (data ?? []) as unknown as (Commande & { client: ClientJoint; facture: FactureJoint })[];
   const hasMore = rows.length > limit;
   return { items: (hasMore ? rows.slice(0, limit) : rows).map(mapCommandeRow), hasMore };
 }
@@ -83,11 +94,11 @@ export async function getCommandeAdmin(id: number): Promise<CommandeAvecClient |
   await requireAdmin();
   const { data, error } = await supabaseAdmin
     .from("commandes")
-    .select("*, client:clients(nom, telephone)")
+    .select("*, client:clients(nom, telephone), facture:factures(id, code_confirmation)")
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
-  return mapCommandeRow(data as unknown as Commande & { client: ClientJoint });
+  return mapCommandeRow(data as unknown as Commande & { client: ClientJoint; facture: FactureJoint });
 }
 
 export async function changerStatutCommande(id: number, statut: StatutCommande): Promise<ActionResult> {

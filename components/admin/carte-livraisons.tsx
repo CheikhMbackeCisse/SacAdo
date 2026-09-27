@@ -309,6 +309,13 @@ function PanneauCommande({
         <span className="font-semibold text-ink">{formatPrice(c.total)}</span>
       </div>
 
+      {c.codeConfirmation && (
+        <p className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-xs text-ink/70">
+          <span className="font-medium text-ink">Code de confirmation : </span>
+          <span className="font-mono font-semibold tracking-wide text-ink">{c.codeConfirmation}</span>
+        </p>
+      )}
+
       {c.precisionLivreur && (
         <p className="rounded-lg bg-ink/[0.03] px-2.5 py-1.5 text-xs text-ink/70">
           <span className="font-medium text-ink">Précision : </span>
