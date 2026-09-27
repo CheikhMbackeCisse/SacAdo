@@ -37,26 +37,37 @@ const CLE_SEUIL_LIVRAISON_GRATUITE = "seuil_livraison_gratuite";
 const SEUIL_LIVRAISON_GRATUITE_DEFAUT = 75000;
 
 // Sous-total (FCFA) à partir duquel la livraison est offerte, réglable dans
-// l'admin — IMPLEMENTATION_TARIFS_LIVRAISON.md §5.
-export async function getSeuilLivraisonGratuite(): Promise<number> {
+// l'admin — IMPLEMENTATION_TARIFS_LIVRAISON.md §5. `null` = désactivée
+// (valeur vide en base, CORRECTIONS_V11 lot 1) : plus de livraison gratuite,
+// quel que soit le sous-total.
+export async function getSeuilLivraisonGratuite(): Promise<number | null> {
   const { data } = await supabaseAdmin
     .from("parametres")
     .select("valeur")
     .eq("cle", CLE_SEUIL_LIVRAISON_GRATUITE)
     .maybeSingle();
+  if (!data) return SEUIL_LIVRAISON_GRATUITE_DEFAUT;
 
-  const n = Number(data?.valeur);
+  const brut = data.valeur?.trim() ?? "";
+  if (brut === "") return null;
+  const n = Number(brut);
   return Number.isFinite(n) && n >= 0 ? n : SEUIL_LIVRAISON_GRATUITE_DEFAUT;
 }
 
 export async function setSeuilLivraisonGratuite(
-  valeur: number,
+  valeur: number | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const n = Math.round(valeur);
-  if (!Number.isFinite(n) || n < 0) return { ok: false, error: "Le seuil doit être un nombre positif." };
+  let colonneValeur: string;
+  if (valeur === null) {
+    colonneValeur = "";
+  } else {
+    const n = Math.round(valeur);
+    if (!Number.isFinite(n) || n < 0) return { ok: false, error: "Le seuil doit être un nombre positif." };
+    colonneValeur = String(n);
+  }
   const { error } = await supabaseAdmin
     .from("parametres")
-    .upsert({ cle: CLE_SEUIL_LIVRAISON_GRATUITE, valeur: String(n), maj: new Date().toISOString() });
+    .upsert({ cle: CLE_SEUIL_LIVRAISON_GRATUITE, valeur: colonneValeur, maj: new Date().toISOString() });
   if (error) return { ok: false, error: "Impossible d'enregistrer le réglage." };
   return { ok: true };
 }

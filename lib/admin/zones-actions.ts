@@ -74,12 +74,12 @@ export async function modifierZone(id: number, input: ZoneInput): Promise<Action
 // ============================================================================
 // Réglage : seuil de livraison gratuite (IMPLEMENTATION_TARIFS_LIVRAISON.md §5).
 // ============================================================================
-export async function getSeuilLivraisonGratuiteActuel(): Promise<number> {
+export async function getSeuilLivraisonGratuiteActuel(): Promise<number | null> {
   await requireAdmin();
   return getSeuilLivraisonGratuite();
 }
 
-export async function reglerSeuilLivraisonGratuite(valeur: number): Promise<ActionResult> {
+export async function reglerSeuilLivraisonGratuite(valeur: number | null): Promise<ActionResult> {
   await requireAdmin();
   return setSeuilLivraisonGratuite(valeur);
 }

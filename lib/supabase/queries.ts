@@ -488,15 +488,18 @@ export async function getLieuxSpeciaux(): Promise<LieuSpecial[]> {
 const SEUIL_LIVRAISON_GRATUITE_DEFAUT = 75000;
 
 // Réglable en admin (table `parametres`) : repli sur la valeur par défaut si
-// la ligne n'existe pas encore ou si elle est mal formée.
-export async function getSeuilLivraisonGratuite(): Promise<number> {
+// la ligne n'existe pas encore ou si elle est mal formée. `null` = livraison
+// gratuite désactivée (valeur vide en base, CORRECTIONS_V11 lot 1).
+export async function getSeuilLivraisonGratuite(): Promise<number | null> {
   const { data, error } = await supabase
     .from("parametres")
     .select("valeur")
     .eq("cle", "seuil_livraison_gratuite")
     .maybeSingle();
   if (error || !data) return SEUIL_LIVRAISON_GRATUITE_DEFAUT;
-  const valeur = Number(data.valeur);
+  const brut = data.valeur?.trim() ?? "";
+  if (brut === "") return null;
+  const valeur = Number(brut);
   return Number.isFinite(valeur) && valeur >= 0 ? valeur : SEUIL_LIVRAISON_GRATUITE_DEFAUT;
 }
 

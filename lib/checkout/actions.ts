@@ -318,7 +318,8 @@ async function resoudreCommande(
   const sousTotal = lignesResolues.reduce((sum, l) => sum + l.prixUnitaire * l.quantite, 0);
   // Livraison gratuite au-dessus du seuil : prime sur tout le reste, y compris
   // un tarif "à confirmer" (rien à confirmer si c'est de toute façon gratuit).
-  const gratuite = sousTotal >= seuil;
+  // seuil === null : désactivée (CORRECTIONS_V11 lot 1), jamais gratuite.
+  const gratuite = seuil !== null && sousTotal >= seuil;
   const fraisLivraison = gratuite ? 0 : livraison.data.fraisLivraison;
   const aConfirmer = gratuite ? false : livraison.data.aConfirmer;
 

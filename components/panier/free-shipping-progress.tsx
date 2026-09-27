@@ -4,19 +4,21 @@ import { useEffect, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { getSeuilLivraisonGratuite } from "@/lib/supabase/queries";
 
-// Repli le temps que la vraie valeur arrive (table `parametres`, réglable en
-// admin — IMPLEMENTATION_TARIFS_LIVRAISON.md §5) : évite un saut visuel.
-const SEUIL_GRATUITE_DEFAUT = 75000;
 // En dessous de ce montant, la barre n'est pas affichée : la relance n'est
 // pertinente que lorsque l'objectif devient réellement atteignable.
 const SEUIL_AFFICHAGE = 35000;
 
 export function FreeShippingProgress({ sousTotal }: { sousTotal: number }) {
-  const [seuil, setSeuil] = useState(SEUIL_GRATUITE_DEFAUT);
+  // null tant que la vraie valeur n'est pas arrivée (table `parametres`,
+  // réglable en admin — IMPLEMENTATION_TARIFS_LIVRAISON.md §5) : la barre
+  // reste cachée par défaut plutôt que d'apparaître puis disparaître si la
+  // livraison gratuite est désactivée (CORRECTIONS_V11 lot 1).
+  const [seuil, setSeuil] = useState<number | null>(null);
   useEffect(() => {
     getSeuilLivraisonGratuite().then(setSeuil);
   }, []);
 
+  if (seuil === null) return null;
   if (sousTotal <= SEUIL_AFFICHAGE) return null;
 
   const atteint = sousTotal >= seuil;
