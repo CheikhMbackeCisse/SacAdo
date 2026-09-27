@@ -132,19 +132,11 @@ body {
   }
 }
 
-/* Écran de démarrage : fond clair par défaut (comme à l'origine), bleu-nuit
-   sombre en mode sombre — système OU choix explicite. Le logo ne change pas.
-   Même mécanique de thème que les tokens de couleur plus haut. */
+/* Écran de démarrage : fond bleu nuit fixe (même bleu que le splash natif de
+   la PWA), quel que soit le thème clair/sombre du téléphone — le logo animé
+   (sac + objets) est dessiné pour ce fond. */
 .splash-fond {
-  background-color: #fefdff;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .splash-fond {
-    background-color: #031726;
-  }
-}
-:root[data-theme="dark"] .splash-fond {
-  background-color: #031726;
+  background-color: #02296c;
 }
 
 /* Mode sombre : sur le fond très sombre (#031726), les bordures ink/10–15 des

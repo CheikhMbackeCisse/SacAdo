@@ -134,7 +134,7 @@ export function SplashScreen() {
       }`}
     >
       <LogoAnime
-        className="size-32"
+        className="h-[min(70vw,70vh)] w-[min(70vw,70vh)]"
         anime={anime}
         enBoucle={enBoucle}
         onFin={anime ? surFinIntro : undefined}
