@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SacAdo — Fournitures scolaires",
+    name: "SacAdo",
     short_name: "SacAdo",
     description:
       "Kits scolaires et fournitures d'étude, livrés partout au Sénégal.",
