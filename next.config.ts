@@ -63,6 +63,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Sprite du logo animé de l'écran de démarrage : nom de fichier
+        // versionné (objets-v1.webp) → cache navigateur immuable, instantané
+        // dès la 2e ouverture (LOGO_ANIME.md).
+        source: "/images/splash/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: CSP },

@@ -1,23 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { estAppInstallee } from "@/lib/pwa/standalone";
+import { DUREE_ANIMATION_LOGO_MS, LogoAnime } from "@/components/pwa/logo-anime";
 
-// Écran de démarrage : le logo SacAdo (le sac) centré. Le fond suit le thème du
-// téléphone — clair par défaut, bleu nuit `#02296C` en mode sombre (classe
-// `.splash-fond` dans globals.css) — pour rester cohérent avec le splash natif.
-// COURT : masque l'initialisation, ne la rallonge pas. N'attend pas le catalogue.
-const DUREE_MS = 1400;
-const DUREE_MS_MOUVEMENT_REDUIT = 450;
-// Une seule apparition par session (= par lancement de l'app). Un refresh dans
-// le même onglet ne re-déclenche pas le splash ; relancer l'app installée oui.
+// Écran de démarrage : logo animé (LOGO_ANIME.md), même fond que le splash
+// natif de la PWA — clair par défaut, bleu nuit `#02296C` en mode sombre
+// (classe `.splash-fond` dans globals.css).
+// Une seule apparition par session (= par lancement de l'app). Un refresh
+// dans le même onglet ne re-déclenche pas le splash ; relancer l'app
+// installée oui.
 const CLE_SESSION = "sacado_splash_vu";
+// Sécurité : le splash disparaît au plus tard 12 s après son affichage, quoi
+// qu'il arrive (l'app pourrait ne jamais signaler "prête").
+const DUREE_MAX_MS = 12000;
+const SORTIE_MS = 300;
+const ATTENTE_APRES_INTRO_MS = 300;
+const DUREE_MOUVEMENT_REDUIT_MS = 450;
 
 export function SplashScreen() {
   // Visible dès le premier rendu (serveur + client) — mais masqué en
   // navigateur normal par la CSS `.splash-overlay` tant que le JS n'a pas
   // confirmé le mode installé.
   const [phase, setPhase] = useState<"visible" | "sortie" | "fini">("visible");
+  const [anime, setAnime] = useState(true);
+  const [enBoucle, setEnBoucle] = useState(false);
+  const introFinieRef = useRef(false);
+  const appPreteRef = useRef(false);
+  const sortieDeclencheeRef = useRef(false);
+
+  const declencherSortie = useCallback(() => {
+    if (sortieDeclencheeRef.current) return;
+    sortieDeclencheeRef.current = true;
+    setPhase("sortie");
+    setTimeout(() => setPhase("fini"), SORTIE_MS);
+  }, []);
 
   useEffect(() => {
     if (!estAppInstallee()) {
@@ -32,21 +49,80 @@ export function SplashScreen() {
     } catch {
       // sessionStorage indisponible : on affiche le splash normalement
     }
+    if (dejaVu) {
+      setPhase("fini");
+      return;
+    }
 
     const mouvementReduit =
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // Déjà vu cette session → retrait immédiat (setState via timer, pas dans le
-    // corps de l'effet).
-    const duree = dejaVu ? 0 : mouvementReduit ? DUREE_MS_MOUVEMENT_REDUIT : DUREE_MS;
 
-    const versSortie = setTimeout(() => setPhase("sortie"), duree);
-    const versFini = setTimeout(() => setPhase("fini"), duree + (dejaVu ? 0 : 320));
-    return () => {
-      clearTimeout(versSortie);
-      clearTimeout(versFini);
+    const surAppPrete = () => {
+      appPreteRef.current = true;
+      if (introFinieRef.current) {
+        setTimeout(declencherSortie, ATTENTE_APRES_INTRO_MS);
+      } else {
+        setEnBoucle(true);
+      }
     };
-  }, []);
+
+    if (mouvementReduit) {
+      setAnime(false);
+      // Sortie dès que l'app est prête, 450 ms minimum sur le logo immobile.
+      const debut = Date.now();
+      const versSortie = () => {
+        const reste = Math.max(0, DUREE_MOUVEMENT_REDUIT_MS - (Date.now() - debut));
+        setTimeout(declencherSortie, reste);
+      };
+      if (document.readyState === "complete") {
+        versSortie();
+      } else {
+        window.addEventListener("load", versSortie, { once: true });
+      }
+      const secours = setTimeout(declencherSortie, DUREE_MAX_MS);
+      return () => {
+        window.removeEventListener("load", versSortie);
+        clearTimeout(secours);
+      };
+    }
+
+    if (document.readyState === "complete") {
+      surAppPrete();
+    } else {
+      window.addEventListener("load", surAppPrete, { once: true });
+    }
+
+    // Toucher l'écran pendant l'intro la passe : sortie directe si l'app est
+    // prête, sinon passage à la boucle.
+    const surToucher = () => {
+      if (introFinieRef.current) return;
+      introFinieRef.current = true;
+      if (appPreteRef.current) {
+        declencherSortie();
+      } else {
+        setEnBoucle(true);
+      }
+    };
+    window.addEventListener("pointerdown", surToucher, { once: true });
+
+    const secours = setTimeout(declencherSortie, DUREE_MAX_MS);
+
+    return () => {
+      window.removeEventListener("load", surAppPrete);
+      window.removeEventListener("pointerdown", surToucher);
+      clearTimeout(secours);
+    };
+  }, [declencherSortie]);
+
+  const surFinIntro = useCallback(() => {
+    introFinieRef.current = true;
+    if (appPreteRef.current) {
+      setTimeout(declencherSortie, ATTENTE_APRES_INTRO_MS);
+    } else {
+      setEnBoucle(true);
+    }
+  }, [declencherSortie]);
 
   if (phase === "fini") return null;
 
@@ -57,18 +133,15 @@ export function SplashScreen() {
         phase === "sortie" ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >
-      {/* Le splash doit peindre le logo AU PLUS TÔT : on sert le fichier brut,
-          sans passer par le pipeline d'optimisation next/image (roundtrip).
-          Logo fond bleu (maj-26-09 §8) : se pose bien sur le fond clair OU
-          sombre du splash. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/images/logo-sacado-fond-bleu.webp"
-        alt="SacAdo"
-        width={128}
-        height={128}
-        className="size-32 rounded-[28px] object-cover shadow-2xl shadow-black/30 motion-safe:animate-[splash-pulse_1400ms_ease-in-out_infinite]"
+      <LogoAnime
+        className="size-32"
+        anime={anime}
+        enBoucle={enBoucle}
+        onFin={anime ? surFinIntro : undefined}
       />
     </div>
   );
 }
+
+// Durée exportée pour d'éventuels tests / réglages fins ailleurs.
+export const DUREE_INTRO_LOGO_MS = DUREE_ANIMATION_LOGO_MS;

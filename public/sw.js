@@ -1,7 +1,7 @@
 // v6 : nouveau logo (cartable sur fond blanc) + icônes PWA — on repart d'un
 // cache propre pour ne pas resservir l'ancienne image mise en cache « d'abord ».
 const CACHE_NAME = "sacado-v6";
-const APP_SHELL = ["/", "/manifest.webmanifest"];
+const APP_SHELL = ["/", "/manifest.webmanifest", "/images/splash/objets-v1.webp"];
 
 // Pas de skipWaiting / clients.claim : un nouveau service worker ne prend PAS
 // le contrôle en pleine session. Il attend que toutes les pages de l'app
