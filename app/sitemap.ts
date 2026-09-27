@@ -8,6 +8,8 @@ import { SITE_URL } from "@/lib/site";
 // la main) : ne contient que les catégories actives et les produits publiés.
 // Les URL à paramètre (?sc=, ?ssc=) ne figurent jamais ici (canonical vers la
 // page nue, voir app/(storefront)/categorie/[slug]/page.tsx).
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [categories, produits] = await Promise.all([
     getCategories(),
