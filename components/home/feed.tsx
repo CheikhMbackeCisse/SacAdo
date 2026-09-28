@@ -2,10 +2,13 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { ProductGrid } from "@/components/product/product-grid";
+import { ProductGridSkeleton } from "@/components/product/product-grid-skeleton";
+import { FinDeListe } from "@/components/product/fin-de-liste";
 import { DemanderProduit } from "@/components/demande/demander-produit";
 import { entrelacerAccueil } from "@/lib/accueil-multi";
 import { chargerPageAccueil } from "@/lib/accueil-suite";
 import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
+import { useRestaurerDefilement } from "@/lib/hooks/use-restaurer-defilement";
 import type { AccueilFeed } from "@/lib/accueil";
 import type { Produit } from "@/lib/supabase/types";
 
@@ -44,6 +47,14 @@ export function Feed({ feed: feedInitial }: { feed: AccueilFeed }) {
 
   const sentinelleRef = useChargementAuto(hasMore && !chargement && !enErreur, chargerSuite);
 
+  // Retour arrière depuis une fiche produit (CORRECTIONS_V11 lot 2).
+  useRestaurerDefilement("accueil", taille, async (compte) => {
+    const suite = await chargerPageAccueil(compte, 0);
+    setFeed(suite);
+    setTaille(compte);
+    setHasMore((suite.profils[0]?.produits.length ?? 0) >= compte);
+  });
+
   const beneficiaires = feed.profils.filter((p) => p.source === "beneficiaire");
 
   const { produits, etiquettes } = useMemo<{
@@ -76,7 +87,7 @@ export function Feed({ feed: feedInitial }: { feed: AccueilFeed }) {
   const piedDeListe = (
     <>
       <div ref={sentinelleRef} aria-hidden="true" />
-      {chargement && <p className="pb-2 text-center text-xs text-ink/40">Chargement…</p>}
+      {chargement && <ProductGridSkeleton />}
       {enErreur && !chargement && (
         <button
           type="button"
@@ -87,7 +98,10 @@ export function Feed({ feed: feedInitial }: { feed: AccueilFeed }) {
         </button>
       )}
       {!hasMore && !chargement && (produits.length > 0 || feed.profils[0]?.produits.length) && (
-        <DemanderProduit origine="fin_de_liste" variante="discret" />
+        <>
+          <FinDeListe />
+          <DemanderProduit origine="fin_de_liste" variante="discret" />
+        </>
       )}
     </>
   );

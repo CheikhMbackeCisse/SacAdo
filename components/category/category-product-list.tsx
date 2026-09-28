@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProductGrid } from "@/components/product/product-grid";
+import { ProductGridSkeleton } from "@/components/product/product-grid-skeleton";
+import { FinDeListe } from "@/components/product/fin-de-liste";
 import { ChampSelect } from "@/components/ui/champ-select";
 import {
   getFacettesLivres,
@@ -14,6 +16,7 @@ import {
 } from "@/lib/supabase/queries";
 import { mesurer } from "@/lib/mesure-client";
 import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
+import { useRestaurerDefilement } from "@/lib/hooks/use-restaurer-defilement";
 import { DemanderProduit } from "@/components/demande/demander-produit";
 import type { Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
@@ -145,6 +148,7 @@ export function CategoryProductList({
   const [hasMore, setHasMore] = useState(hasMoreInitial);
   const [total, setTotal] = useState(totalInitial);
   const [chargement, setChargement] = useState(false);
+  const [enErreur, setEnErreur] = useState(false);
   // Sous-catégorie / sous-sous-catégorie actives : initialisées depuis l'URL
   // (?sc=, ?ssc=) pour les liens directs (suggestions de recherche incluses).
   const [scSlug, setScSlug] = useState<string | null>(() => searchParams.get("sc"));
@@ -227,8 +231,13 @@ export function CategoryProductList({
       f: FiltresEtat,
       offset: number,
       remplacer: boolean,
+      // Restauration après retour arrière (CORRECTIONS_V11 lot 2) : un seul
+      // appel offset=0 redemandant exactement le nombre d'articles déjà vus,
+      // plutôt que de rejouer chaque page une par une.
+      limitOverride?: number,
     ) => {
       setChargement(true);
+      setEnErreur(false);
       const sousCategorieId = sc ? (idParSlug.get(sc) ?? null) : null;
       const sscMap = new Map<string, number>();
       for (const s of sousSousCategories) {
@@ -239,32 +248,38 @@ export function CategoryProductList({
       const stockageGo = f.stockage ? parseFloat(f.stockage) : null;
       const tailleEcran = f.ecran ? parseFloat(f.ecran) : null;
 
-      const { items, hasMore: encoreApres, total: totalServeur } = await getProduitsByCategorie(categorieId, {
-        offset,
-        limit: TAILLE_PAGE_CATEGORIE,
-        sousCategorieId,
-        sousSousCategorieId: ssc ? (sscMap.get(ssc) ?? null) : null,
-        niveau: f.niveau,
-        // "S" générique : pas de filtre serveur, on complète en JS ci-dessous.
-        serie: f.serie && f.serie !== "S" ? f.serie : null,
-        matiere: f.matiere,
-        typeOuvrage: f.typeOuvrage,
-        prixMin: tranche?.min ?? null,
-        prixMax: tranche?.max ?? null,
-        ramGo,
-        stockageGo,
-        tailleEcran,
-        ecranTactile: f.tactile ? f.tactile === "Oui" : null,
-        marque: f.marque,
-        ordre: estOrdinateursPortables ? (f.tri === "Prix croissant" ? "prix_asc" : "score_desc") : "nom",
-      });
-      const filtres_S = f.serie === "S" ? items.filter((p) => serieCorrespond("S", p.serie)) : items;
-      setProduits((current) => (remplacer ? filtres_S : [...current, ...filtres_S]));
-      setHasMore(encoreApres);
-      const totalFinal = f.serie === "S" ? filtres_S.length : (totalServeur ?? filtres_S.length);
-      setTotal(totalFinal);
-      setChargement(false);
-      return { total: totalFinal };
+      try {
+        const { items, hasMore: encoreApres, total: totalServeur } = await getProduitsByCategorie(categorieId, {
+          offset,
+          limit: limitOverride ?? TAILLE_PAGE_CATEGORIE,
+          sousCategorieId,
+          sousSousCategorieId: ssc ? (sscMap.get(ssc) ?? null) : null,
+          niveau: f.niveau,
+          // "S" générique : pas de filtre serveur, on complète en JS ci-dessous.
+          serie: f.serie && f.serie !== "S" ? f.serie : null,
+          matiere: f.matiere,
+          typeOuvrage: f.typeOuvrage,
+          prixMin: tranche?.min ?? null,
+          prixMax: tranche?.max ?? null,
+          ramGo,
+          stockageGo,
+          tailleEcran,
+          ecranTactile: f.tactile ? f.tactile === "Oui" : null,
+          marque: f.marque,
+          ordre: estOrdinateursPortables ? (f.tri === "Prix croissant" ? "prix_asc" : "score_desc") : "nom",
+        });
+        const filtres_S = f.serie === "S" ? items.filter((p) => serieCorrespond("S", p.serie)) : items;
+        setProduits((current) => (remplacer ? filtres_S : [...current, ...filtres_S]));
+        setHasMore(encoreApres);
+        const totalFinal = f.serie === "S" ? filtres_S.length : (totalServeur ?? filtres_S.length);
+        setTotal(totalFinal);
+        setChargement(false);
+        return { total: totalFinal };
+      } catch {
+        setChargement(false);
+        setEnErreur(true);
+        return undefined;
+      }
     },
     [categorieId, idParSlug, sousSousCategories, tranchesPrix, estOrdinateursPortables],
   );
@@ -337,9 +352,19 @@ export function CategoryProductList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scSlug, sscSlug, idParSlug]);
 
-  const sentinelleRef = useChargementAuto(hasMore && !chargement, () => {
+  const chargerSuite = useCallback(() => {
     void chargerAvec(scSlug, sscSlug, filtres, produits.length, false);
-  });
+  }, [chargerAvec, scSlug, sscSlug, filtres, produits.length]);
+
+  const sentinelleRef = useChargementAuto(hasMore && !chargement && !enErreur, chargerSuite);
+
+  // Retour arrière depuis une fiche produit (CORRECTIONS_V11 lot 2). Clé
+  // incluant sc/ssc : une vue différente ne restaure jamais une position qui
+  // ne lui appartient pas (les filtres livres/ordinateurs, non présents dans
+  // l'URL, restent hors de portée de cette restauration — limite acceptée).
+  useRestaurerDefilement(`categorie:${categorieId}:${scSlug ?? ""}:${sscSlug ?? ""}`, produits.length, (compte) =>
+    chargerAvec(scSlug, sscSlug, filtres, 0, true, compte).then(() => {}),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -517,14 +542,24 @@ export function CategoryProductList({
         emptyMessage="Aucun article dans ce rayon pour le moment."
       />
 
-      {/* Fin de liste (maj-26-09 §8) : chargement automatique au scroll, plus
-          de bouton "Charger plus". */}
+      {/* Fin de liste (maj-26-09 §8, CORRECTIONS_V11 lot 2) : chargement
+          automatique au scroll, avec repli manuel si ça échoue. */}
       <div ref={sentinelleRef} aria-hidden="true" />
-      {chargement && (
-        <p className="pb-2 text-center text-xs text-ink/40">Chargement…</p>
+      {chargement && <ProductGridSkeleton />}
+      {enErreur && !chargement && (
+        <button
+          type="button"
+          onClick={chargerSuite}
+          className="mx-auto mb-2 flex h-9 items-center justify-center rounded-full border border-ink/15 px-4 text-xs font-medium text-ink/70"
+        >
+          Charger plus
+        </button>
       )}
       {!hasMore && !chargement && produits.length > 0 && (
-        <DemanderProduit origine="fin_de_liste" variante="discret" />
+        <>
+          <FinDeListe />
+          <DemanderProduit origine="fin_de_liste" variante="discret" />
+        </>
       )}
     </div>
   );

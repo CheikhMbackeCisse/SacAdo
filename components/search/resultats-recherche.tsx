@@ -3,9 +3,12 @@
 import { useCallback, useState } from "react";
 import { PackageSearch } from "lucide-react";
 import { ProductGrid } from "@/components/product/product-grid";
+import { ProductGridSkeleton } from "@/components/product/product-grid-skeleton";
+import { FinDeListe } from "@/components/product/fin-de-liste";
 import { DemanderProduit } from "@/components/demande/demander-produit";
 import { chargerRecherchePage } from "@/lib/recherche/actions";
 import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
+import { useRestaurerDefilement } from "@/lib/hooks/use-restaurer-defilement";
 import type { ProduitTrouve } from "@/lib/supabase/queries";
 
 const MAX_CATEGORIE = 12;
@@ -43,6 +46,14 @@ export function ResultatsRecherche({
   }, [query, taille, resultats.length]);
 
   const sentinelleRef = useChargementAuto(hasMore && !chargement && !enErreur, chargerSuite);
+
+  // Retour arrière depuis une fiche produit (CORRECTIONS_V11 lot 2).
+  useRestaurerDefilement(`recherche:${query}`, taille, async (compte) => {
+    const suite = await chargerRecherchePage(query, compte);
+    setResultats(suite);
+    setTaille(compte);
+    setHasMore(suite.length >= compte);
+  });
 
   if (!query) {
     return (
@@ -92,7 +103,7 @@ export function ResultatsRecherche({
       )}
 
       <div ref={sentinelleRef} aria-hidden="true" />
-      {chargement && <p className="pb-2 text-center text-xs text-ink/40">Chargement…</p>}
+      {chargement && <ProductGridSkeleton />}
       {enErreur && !chargement && (
         <button
           type="button"
@@ -102,7 +113,12 @@ export function ResultatsRecherche({
           Charger plus
         </button>
       )}
-      {!hasMore && !chargement && <DemanderProduit origine="fin_de_liste" variante="discret" />}
+      {!hasMore && !chargement && (
+        <>
+          <FinDeListe />
+          <DemanderProduit origine="fin_de_liste" variante="discret" />
+        </>
+      )}
     </div>
   );
 }
