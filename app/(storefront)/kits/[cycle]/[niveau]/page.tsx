@@ -14,7 +14,6 @@ import {
   lignesAffichables,
   type LigneKit,
 } from "@/lib/kits";
-import { FondDecor, varianteFondDuCycle } from "@/components/ui/fond-decor";
 
 // ISR : le contenu des kits change rarement.
 export const revalidate = 120;
@@ -48,7 +47,6 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
   if (kits.length === 0) {
     return (
       <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24 text-center">
-        <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
         <span className="flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand">
           <Package size={26} aria-hidden="true" />
         </span>
@@ -71,7 +69,6 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
-      <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
       <DeclarerNiveau cycle={cycle} niveau={niveau} />
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-brand">{cycleDef.label}</span>
