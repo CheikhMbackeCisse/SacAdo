@@ -5,6 +5,7 @@ import { ArrowRight, ChevronDown } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
 import { getClassesLyceeAvecKits, getClassesActives } from "@/lib/supabase/queries";
 import { SERIES_LYCEE_A_VENIR } from "@/lib/kits";
+import { FondDecor, varianteFondDuCycle } from "@/components/ui/fond-decor";
 
 export const revalidate = 120;
 
@@ -49,6 +50,7 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
+      <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
       <div className="flex items-center gap-3">
         <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl">
           <Image

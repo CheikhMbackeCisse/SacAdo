@@ -3,6 +3,7 @@ import { CategoryScroll } from "@/components/home/category-scroll";
 import { Feed } from "@/components/home/feed";
 import { getAccueilFeed } from "@/lib/accueil";
 import { getCategories } from "@/lib/supabase/queries";
+import { FondDecor } from "@/components/ui/fond-decor";
 
 // Rendu dynamique : le flux est personnalisé par visiteur (cookie `sacado_sid`
 // -> affinité de session / compte / bénéficiaires). Le score reste calculé hors
@@ -14,6 +15,7 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col pb-6">
+      <FondDecor variante="general" />
       <HeroCarousel />
       <CategoryScroll categories={categories} />
       <section className="mt-4">

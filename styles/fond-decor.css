@@ -1,0 +1,55 @@
+/* CORRECTIONS_V12 Lot 3 : décor pastel derrière les pages kits/accueil.
+   Couleur crème (#FDF7F0) affichée immédiatement, avant que l'image charge —
+   pas d'éclair blanc. background-attachment: fixed est volontairement évité
+   (saccades sur Android, ignoré sur iOS) : le positionnement "fixed" du div
+   lui-même (voir fond-decor.tsx) suffit à garder le décor derrière le
+   contenu qui défile. */
+.fond-decor {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: #fdf7f0;
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.fond-decor--general {
+  background-image: url("/images/fonds/fond-general-1080.webp");
+}
+.fond-decor--elementaire {
+  background-image: url("/images/fonds/fond-elementaire-1080.webp");
+}
+.fond-decor--college {
+  background-image: url("/images/fonds/fond-college-1080.webp");
+}
+.fond-decor--lycee {
+  background-image: url("/images/fonds/fond-lycee-1080.webp");
+}
+
+@media (max-width: 480px) {
+  .fond-decor--general {
+    background-image: url("/images/fonds/fond-general-720.webp");
+  }
+  .fond-decor--elementaire {
+    background-image: url("/images/fonds/fond-elementaire-720.webp");
+  }
+  .fond-decor--college {
+    background-image: url("/images/fonds/fond-college-720.webp");
+  }
+  .fond-decor--lycee {
+    background-image: url("/images/fonds/fond-lycee-720.webp");
+  }
+}
+
+/* Pas de décor en mode sombre (même convention que globals.css : choix
+   explicite [data-theme="dark"], ou mode "système" via la media query). */
+[data-theme="dark"] .fond-decor {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fond-decor {
+    display: none;
+  }
+}

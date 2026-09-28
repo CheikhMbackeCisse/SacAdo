@@ -3,10 +3,12 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { CYCLES } from "@/lib/cycles";
 import { DemanderProduit } from "@/components/demande/demander-produit";
+import { FondDecor } from "@/components/ui/fond-decor";
 
 export default function KitsPage() {
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
+      <FondDecor variante="general" />
       <div>
         <h1 className="font-heading text-xl font-bold text-ink">Kits scolaires</h1>
         <p className="text-sm text-ink/60">
