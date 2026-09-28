@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Download, X } from "lucide-react";
 import { onInstallChange, promptInstall, useInstallState } from "@/lib/pwa/install-prompt";
+import { estAndroid } from "@/lib/pwa/platform";
 
 // Après un rejet, on ne re-propose pas la bannière avant ce délai — sauf si
 // l'utilisateur désinstalle l'app entre-temps (voir plus bas).
@@ -10,13 +11,21 @@ const DISMISS_KEY = "sacado_install_dismiss";
 const INSTALLED_KEY = "sacado_pwa_installed";
 const RE_ASK_MS = 3 * 24 * 60 * 60 * 1000;
 
+const EMPTY_SUBSCRIBE = () => () => {};
+
 // "beforeinstallprompt" n'existe que sur Chrome/Edge/Android — pas de bannière
 // sur iOS Safari (l'événement n'y est jamais déclenché). L'option reste
-// accessible dans Moi > Paramètres.
+// accessible dans Moi > Paramètres. Sur Android, AndroidInstallInvite prend
+// le relais (CORRECTIONS_V11 lot 3) : une seule invitation à la fois.
 export function InstallBanner() {
   const { canPrompt, installed } = useInstallState();
   // Masquée par défaut ; révélée après évaluation de l'historique local.
   const [masquee, setMasquee] = useState(true);
+  const android = useSyncExternalStore(
+    EMPTY_SUBSCRIBE,
+    () => estAndroid(navigator.userAgent),
+    () => false,
+  );
 
   useEffect(() => {
     const evaluer = () => {
@@ -57,7 +66,7 @@ export function InstallBanner() {
     fermer();
   };
 
-  if (installed || !canPrompt || masquee) return null;
+  if (installed || !canPrompt || masquee || android) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-16 z-40 px-4 pb-2 lg:bottom-0">

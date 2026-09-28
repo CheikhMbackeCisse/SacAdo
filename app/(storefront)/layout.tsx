@@ -10,6 +10,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { WelcomeScreen } from "@/components/onboarding/welcome-screen";
 import { NavigationGuardProvider } from "@/components/ui/navigation-guard";
 import { InstallBanner } from "@/components/pwa/install-banner";
+import { AndroidInstallInvite } from "@/components/pwa/android-install-invite";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { SplashScreen } from "@/components/pwa/splash-screen";
 import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
@@ -100,6 +101,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         </AppMain>
         <BottomNav />
         <WelcomeScreen />
+        <AndroidInstallInvite />
         <InstallBanner />
         <ServiceWorkerRegister />
       </body>
