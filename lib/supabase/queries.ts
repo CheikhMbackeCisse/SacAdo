@@ -2,8 +2,11 @@ import { supabase } from "./client";
 import { slugify } from "@/lib/slug";
 import { GAMME_ORDER } from "@/lib/gammes";
 import { aplatirAttributs } from "@/lib/variantes";
+import { CYCLES } from "@/lib/cycles";
+import { CLASSES_LYCEE } from "@/lib/kits";
 import type {
   Categorie,
+  ClasseDb,
   DocumentApercu,
   Gamme,
   Kit,
@@ -703,6 +706,37 @@ const COLONNES_KIT_PUBLIC =
 // Les gammes disponibles pour une classe, triées Essentiel -> Complet -> Confort
 // (ordre_gamme). Seuls les kits publiés sont visibles côté storefront —
 // masqué = pas encore vérifié par l'admin après import.
+// Repli tant que la migration 0099 (table `classes`) n'est pas passée en
+// prod : reconstitue la même liste à partir des anciennes constantes
+// (CYCLES, CLASSES_LYCEE) plutôt que de vider /kits en silence.
+function classesDeSecours(cycle?: string): ClasseDb[] {
+  const tout: ClasseDb[] = [];
+  for (const c of CYCLES) {
+    if (cycle && c.value !== cycle) continue;
+    if (c.value === "lycee") {
+      CLASSES_LYCEE.forEach((cl) =>
+        tout.push({ id: 0, cycle: c.value, classe: cl.classe, groupe: cl.groupe, ordre: cl.ordre, actif: true }),
+      );
+    } else {
+      c.classes.forEach((classe, i) =>
+        tout.push({ id: 0, cycle: c.value, classe, groupe: null, ordre: i + 1, actif: true }),
+      );
+    }
+  }
+  return tout;
+}
+
+// Classes actives d'un cycle (ou de tous les cycles si omis), triées par
+// ordre d'affichage — source unique pour /kits, le sitemap et "Mes sacados"
+// (migration 0099, ADMIN.md Lot 3).
+export async function getClassesActives(cycle?: string): Promise<ClasseDb[]> {
+  let query = supabase.from("classes").select("*").eq("actif", true).order("ordre", { ascending: true });
+  if (cycle) query = query.eq("cycle", cycle);
+  const { data, error } = await query;
+  if (error) return classesDeSecours(cycle);
+  return data ?? [];
+}
+
 export async function getKitsByCycleNiveau(cycle: string, niveau: string): Promise<Kit[]> {
   const { data, error } = await supabase
     .from("kits")

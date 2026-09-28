@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, FileText, Plus, RefreshCw, Trash2, X } from "lucide-react";
-import { CYCLES } from "@/lib/cycles";
 import { ChampSelect } from "@/components/ui/champ-select";
 import {
   associerClasse,
@@ -14,7 +13,7 @@ import {
   supprimerEbook,
   type EbookAvecClasses,
 } from "@/lib/admin/ebooks-actions";
-import type { Cycle } from "@/lib/supabase/types";
+import type { ClasseDb, Cycle } from "@/lib/supabase/types";
 
 const LABELS_CYCLE: Record<Cycle, string> = {
   prescolaire: "Préscolaire",
@@ -22,6 +21,8 @@ const LABELS_CYCLE: Record<Cycle, string> = {
   college: "Collège",
   lycee: "Lycée",
 };
+
+const CYCLES_ORDRE: Cycle[] = ["prescolaire", "elementaire", "college", "lycee"];
 
 const CHAMP = "min-h-11 rounded-lg border border-ink/15 px-3 text-sm";
 
@@ -35,7 +36,9 @@ function classeLabel(cycle: string, niveau: string): string {
   return `${LABELS_CYCLE[cycle as Cycle] ?? cycle} · ${niveau}`;
 }
 
-export function EbooksManager({ ebooks }: { ebooks: EbookAvecClasses[] }) {
+export function EbooksManager({ ebooks, classes }: { ebooks: EbookAvecClasses[]; classes: ClasseDb[] }) {
+  const classesParCycle = new Map<Cycle, string[]>();
+  for (const c of classes) classesParCycle.set(c.cycle, [...(classesParCycle.get(c.cycle) ?? []), c.classe]);
   const router = useRouter();
 
   // Classes déjà rattachées à un ebook (pour la synthèse de couverture).
@@ -57,13 +60,13 @@ export function EbooksManager({ ebooks }: { ebooks: EbookAvecClasses[] }) {
         <ul className="flex flex-col gap-3">
           {ebooks.map((ebook) => (
             <li key={ebook.id}>
-              <CarteEbook ebook={ebook} onDone={() => router.refresh()} />
+              <CarteEbook ebook={ebook} classesParCycle={classesParCycle} onDone={() => router.refresh()} />
             </li>
           ))}
         </ul>
       )}
 
-      <CouvertureClasses classesCouvertes={classesCouvertes} />
+      <CouvertureClasses classesCouvertes={classesCouvertes} classesParCycle={classesParCycle} />
     </div>
   );
 }
@@ -139,7 +142,15 @@ function AjouterEbook({ onDone }: { onDone: () => void }) {
   );
 }
 
-function CarteEbook({ ebook, onDone }: { ebook: EbookAvecClasses; onDone: () => void }) {
+function CarteEbook({
+  ebook,
+  classesParCycle,
+  onDone,
+}: {
+  ebook: EbookAvecClasses;
+  classesParCycle: Map<Cycle, string[]>;
+  onDone: () => void;
+}) {
   const [titre, setTitre] = useState(ebook.titre);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -207,7 +218,12 @@ function CarteEbook({ ebook, onDone }: { ebook: EbookAvecClasses; onDone: () => 
         </button>
       </div>
 
-      <ClassesEbook classes={ebook.classes} ebookId={ebook.id} onDone={onDone} />
+      <ClassesEbook
+        classes={ebook.classes}
+        classesParCycle={classesParCycle}
+        ebookId={ebook.id}
+        onDone={onDone}
+      />
 
       <div className="flex flex-wrap items-center gap-2 border-t border-ink/10 pt-3">
         <input
@@ -234,10 +250,12 @@ function CarteEbook({ ebook, onDone }: { ebook: EbookAvecClasses; onDone: () => 
 
 function ClassesEbook({
   classes,
+  classesParCycle,
   ebookId,
   onDone,
 }: {
   classes: EbookAvecClasses["classes"];
+  classesParCycle: Map<Cycle, string[]>;
   ebookId: number;
   onDone: () => void;
 }) {
@@ -246,7 +264,7 @@ function ClassesEbook({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const niveaux = cycle ? (CYCLES.find((c) => c.value === cycle)?.classes ?? []) : [];
+  const niveaux = cycle ? (classesParCycle.get(cycle) ?? []) : [];
 
   const ajouter = async () => {
     if (cycle === "" || !niveau) return;
@@ -303,7 +321,7 @@ function ClassesEbook({
             setCycle(v as Cycle | "");
             setNiveau("");
           }}
-          options={CYCLES.map((c) => ({ value: c.value, label: c.label }))}
+          options={CYCLES_ORDRE.map((c) => ({ value: c, label: LABELS_CYCLE[c] }))}
         />
         <ChampSelect
           ariaLabel="Niveau"
@@ -331,19 +349,26 @@ function ClassesEbook({
   );
 }
 
-function CouvertureClasses({ classesCouvertes }: { classesCouvertes: Set<string> }) {
+function CouvertureClasses({
+  classesCouvertes,
+  classesParCycle,
+}: {
+  classesCouvertes: Set<string>;
+  classesParCycle: Map<Cycle, string[]>;
+}) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-ink/10 bg-white p-4">
       <span className="text-sm font-semibold text-ink">Couverture par classe</span>
       <div className="flex flex-col gap-3">
-        {CYCLES.map((c) => {
-          const manquantes = c.classes.filter((n) => !classesCouvertes.has(`${c.value}|${n}`));
+        {CYCLES_ORDRE.map((cycle) => {
+          const classesDuCycle = classesParCycle.get(cycle) ?? [];
+          const manquantes = classesDuCycle.filter((n) => !classesCouvertes.has(`${cycle}|${n}`));
           return (
-            <div key={c.value} className="flex flex-col gap-1">
+            <div key={cycle} className="flex flex-col gap-1">
               <span className="text-xs font-medium text-ink/70">
-                {LABELS_CYCLE[c.value]}{" "}
+                {LABELS_CYCLE[cycle]}{" "}
                 <span className="font-normal text-ink/45">
-                  {c.classes.length - manquantes.length}/{c.classes.length} couvertes
+                  {classesDuCycle.length - manquantes.length}/{classesDuCycle.length} couvertes
                 </span>
               </span>
               {manquantes.length > 0 && (

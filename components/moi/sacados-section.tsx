@@ -1,18 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Backpack, Trash2 } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
-import { CLASSES_PAR_CYCLE, seriesDe } from "@/lib/cycles";
+import { decouperClasseLycee } from "@/lib/cycles";
+import { getClassesPourPicker } from "@/lib/classes-picker-actions";
 import {
   creerBeneficiaire,
   desactiverBeneficiaire,
   listerBeneficiaires,
 } from "@/lib/beneficiaires-actions";
 import type { Beneficiaire } from "@/lib/beneficiaires";
+import type { ClasseDb, Cycle } from "@/lib/supabase/types";
 
 const CHAMP =
   "min-h-10 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none";
+
+const CYCLES_ORDRE: Cycle[] = ["prescolaire", "elementaire", "college", "lycee"];
+const LABELS_CYCLE: Record<Cycle, string> = {
+  prescolaire: "Préscolaire",
+  elementaire: "Élémentaire",
+  college: "Collège",
+  lycee: "Lycée",
+};
 
 // « d'Awa » / « de Bineta » selon l'initiale du prénom.
 function possessif(prenom: string): string {
@@ -36,8 +46,34 @@ export function SacadosSection() {
   const [serie, setSerie] = useState("");
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [toutesLesClasses, setToutesLesClasses] = useState<ClasseDb[]>([]);
 
-  const seriesDispo = seriesDe(niveau);
+  const classesParCycle = useMemo(() => {
+    const groupes: { cycle: Cycle; label: string; classes: string[] }[] = [];
+    for (const cycle of CYCLES_ORDRE) {
+      const rows = toutesLesClasses.filter((c) => c.cycle === cycle);
+      if (rows.length === 0) continue;
+      const classes =
+        cycle === "lycee"
+          ? [...new Set(rows.map((r) => decouperClasseLycee(r.classe).niveau))]
+          : rows.map((r) => r.classe);
+      groupes.push({ cycle, label: LABELS_CYCLE[cycle], classes });
+    }
+    return groupes;
+  }, [toutesLesClasses]);
+
+  const seriesDispo = useMemo(() => {
+    if (!niveau) return [];
+    return toutesLesClasses
+      .filter((c) => c.cycle === "lycee")
+      .map((c) => decouperClasseLycee(c.classe))
+      .filter((d) => d.niveau === niveau && d.serie)
+      .map((d) => d.serie);
+  }, [niveau, toutesLesClasses]);
+
+  useEffect(() => {
+    getClassesPourPicker().then(setToutesLesClasses);
+  }, []);
 
   useEffect(() => {
     if (!connecte || !identite) return;
@@ -72,7 +108,7 @@ export function SacadosSection() {
     if (!prenom.trim()) return;
     setBusy(true);
     setErreur(null);
-    const serieRetenue = seriesDe(niveau).length ? serie : "";
+    const serieRetenue = seriesDispo.length ? serie : "";
     const r = await creerBeneficiaire(identite.telephone, identite.jeton ?? "", {
       prenom,
       niveau: niveau || null,
@@ -145,7 +181,7 @@ export function SacadosSection() {
             aria-label="Classe"
           >
             <option value="">Classe</option>
-            {CLASSES_PAR_CYCLE.map((groupe) => (
+            {classesParCycle.map((groupe) => (
               <optgroup key={groupe.cycle} label={groupe.label}>
                 {groupe.classes.map((c) => (
                   <option key={c} value={c}>

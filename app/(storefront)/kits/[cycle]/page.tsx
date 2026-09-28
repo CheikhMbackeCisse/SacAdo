@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
-import { getClassesLyceeAvecKits } from "@/lib/supabase/queries";
-import { CLASSES_LYCEE, SERIES_LYCEE_A_VENIR } from "@/lib/kits";
+import { getClassesLyceeAvecKits, getClassesActives } from "@/lib/supabase/queries";
+import { SERIES_LYCEE_A_VENIR } from "@/lib/kits";
 
 export const revalidate = 120;
 
@@ -15,12 +15,16 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
 
   const estLycee = cycleDef.value === "lycee";
 
-  // Le lycée a des kits seulement pour les classes de CLASSES_LYCEE (ordre et
-  // groupes exacts de l'onglet "Écran lycée", CORRECTIONS_KITS Lot 5 §3) — pas
-  // le découpage fin de lib/cycles.ts, utilisé ailleurs pour d'autres besoins.
-  // On ne garde que les classes qui ont réellement un kit publié.
+  const toutesLesClasses = await getClassesActives(cycle);
+
+  // Le lycée a des kits seulement pour les classes actives qui ont réellement
+  // un kit publié (ordre et groupes définis en base, migration 0099).
   const classesLyceeDb = new Set(estLycee ? await getClassesLyceeAvecKits() : []);
-  const classesLycee = CLASSES_LYCEE.filter((c) => classesLyceeDb.has(c.classe));
+  const classesLycee = estLycee
+    ? toutesLesClasses
+        .filter((c) => classesLyceeDb.has(c.classe))
+        .map((c) => ({ classe: c.classe, groupe: c.groupe ?? "", ordre: c.ordre }))
+    : [];
   const NIVEAU_ORDRE = ["Seconde", "Première", "Terminale"];
   const parNiveauLycee = new Map<string, typeof classesLycee>();
   for (const c of classesLycee) {
@@ -105,7 +109,7 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {cycleDef.classes.map((niveau) => (
+          {toutesLesClasses.map(({ classe: niveau }) => (
             <ClasseLien
               key={niveau}
               href={`/kits/${cycleDef.value}/${encodeURIComponent(niveau)}`}

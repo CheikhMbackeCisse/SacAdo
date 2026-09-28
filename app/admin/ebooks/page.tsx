@@ -1,10 +1,11 @@
 import { getEbooksAdmin } from "@/lib/admin/ebooks-actions";
+import { getClassesActives } from "@/lib/supabase/queries";
 import { EbooksManager } from "@/components/admin/ebooks-manager";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminEbooksPage() {
-  const ebooks = await getEbooksAdmin();
+  const [ebooks, classes] = await Promise.all([getEbooksAdmin(), getClassesActives()]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-5">
@@ -16,7 +17,7 @@ export default async function AdminEbooksPage() {
           jamais publics : l&apos;acheteur y accède depuis « Mes commandes ».
         </p>
       </div>
-      <EbooksManager ebooks={ebooks} />
+      <EbooksManager ebooks={ebooks} classes={classes} />
     </div>
   );
 }

@@ -325,6 +325,18 @@ export type EbookClasse = {
   niveau: string;
 };
 
+// Classe/série d'un cycle (migration 0099, ADMIN.md Lot 3) : source unique
+// pour /kits, le sitemap, "Mes sacados" et l'admin. Remplace CYCLES[].classes
+// et CLASSES_LYCEE (lib/cycles.ts, lib/kits.ts).
+export type ClasseDb = {
+  id: number;
+  cycle: Cycle;
+  classe: string;
+  groupe: string | null;
+  ordre: number;
+  actif: boolean;
+};
+
 export type Zone = {
   id: number;
   nom: string;

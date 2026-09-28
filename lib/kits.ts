@@ -1,17 +1,10 @@
-import { getCycleByValue } from "@/lib/cycles";
 import type { KitItem, Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
-// Les kits couvrent des classes de lycée plus simples que le découpage fin
-// utilisé ailleurs dans l'app (lib/cycles.ts) : le picker et les pages kit
-// valident donc la classe avec cette règle plutôt qu'avec
-// cycleDef.classes.includes(...). Depuis la correction v7 : L et S en
-// Seconde ; L, S1, S2 en Première et en Terminale ; STEG aux trois niveaux.
-const CLASSE_LYCEE_KIT = /^(Seconde (L|S|STEG)|(Première|Terminale) (L|S1|S2|STEG))$/;
-
-export function estClasseKitValide(cycle: string, niveau: string): boolean {
-  if (cycle === "lycee") return CLASSE_LYCEE_KIT.test(niveau);
-  const cycleDef = getCycleByValue(cycle);
-  return cycleDef ? cycleDef.classes.includes(niveau) : false;
+// Valide une classe d'URL (ex: "Terminale S1") contre la liste des classes
+// actives du cycle, chargée en base (migration 0099, ADMIN.md Lot 3) par
+// l'appelant via getClassesActives(cycle).
+export function estClasseKitValide(niveau: string, classesDuCycle: { classe: string }[]): boolean {
+  return classesDuCycle.some((c) => c.classe === niveau);
 }
 
 // Un kit ne stocke jamais de prix (import-kits/PROMPT-claude-code-kits.md) :

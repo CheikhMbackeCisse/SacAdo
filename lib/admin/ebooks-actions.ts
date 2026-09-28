@@ -3,7 +3,6 @@
 import { randomUUID } from "crypto";
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getCycleByValue } from "@/lib/cycles";
 import type { ActionResult } from "./produits-actions";
 import type { Ebook, EbookClasse } from "@/lib/supabase/types";
 
@@ -129,9 +128,19 @@ export async function supprimerEbook(id: number): Promise<ActionResult> {
   return { ok: true };
 }
 
-function classeValide(cycle: string, niveau: string): boolean {
-  const c = getCycleByValue(cycle);
-  return !!c && c.classes.includes(niveau);
+// Classes en base (migration 0099, ADMIN.md Lot 3) — toutes, pas seulement
+// les actives : l'admin doit pouvoir associer un ebook même à une classe
+// temporairement masquée côté storefront.
+async function classeValide(cycle: string, niveau: string): Promise<boolean> {
+  const { count, error } = await supabaseAdmin
+    .from("classes")
+    .select("id", { count: "exact", head: true })
+    .eq("cycle", cycle)
+    .eq("classe", niveau);
+  // Table pas encore migrée (0099) : ne bloque pas l'écran, le <select> du
+  // formulaire ne propose de toute façon que des classes connues.
+  if (error) return true;
+  return (count ?? 0) > 0;
 }
 
 // unique(cycle, niveau) : une classe ne pointe que vers un seul ebook. Associer
@@ -142,7 +151,7 @@ export async function associerClasse(
   niveau: string,
 ): Promise<ActionResult> {
   await requireAdmin();
-  if (!classeValide(cycle, niveau)) return { ok: false, error: "Classe inconnue." };
+  if (!(await classeValide(cycle, niveau))) return { ok: false, error: "Classe inconnue." };
 
   const { error } = await supabaseAdmin
     .from("ebook_classes")

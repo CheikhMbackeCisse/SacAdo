@@ -1,5 +1,10 @@
 import type { MetadataRoute } from "next";
-import { getCategories, getProduitsPubliesPourSitemap } from "@/lib/supabase/queries";
+import {
+  getCategories,
+  getClassesActives,
+  getClassesLyceeAvecKits,
+  getProduitsPubliesPourSitemap,
+} from "@/lib/supabase/queries";
 import { slugAvecId } from "@/lib/slug";
 import { CYCLES } from "@/lib/cycles";
 import { SITE_URL } from "@/lib/site";
@@ -11,10 +16,17 @@ import { SITE_URL } from "@/lib/site";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [categories, produits] = await Promise.all([
+  const [categories, produits, classesLyceeDb, toutesLesClasses] = await Promise.all([
     getCategories(),
     getProduitsPubliesPourSitemap(),
+    getClassesLyceeAvecKits(),
+    getClassesActives(),
   ]);
+  const classesLyceeAvecKits = new Set(classesLyceeDb);
+  const classesParCycle = new Map<string, string[]>();
+  for (const c of toutesLesClasses) {
+    classesParCycle.set(c.cycle, [...(classesParCycle.get(c.cycle) ?? []), c.classe]);
+  }
 
   const entrees: MetadataRoute.Sitemap = [{ url: SITE_URL, changeFrequency: "daily", priority: 1 }];
 
@@ -43,7 +55,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   entrees.push({ url: `${SITE_URL}/kits`, changeFrequency: "weekly", priority: 0.6 });
   for (const cycle of CYCLES) {
     entrees.push({ url: `${SITE_URL}/kits/${cycle.value}`, changeFrequency: "weekly", priority: 0.5 });
-    for (const classe of cycle.classes) {
+    // Classes en base (migration 0099, ADMIN.md Lot 3). Le lycée ne liste que
+    // les classes qui ont réellement un kit publié (CORRECTIONS_V12 Lot 2).
+    const classesDuCycle = classesParCycle.get(cycle.value) ?? [];
+    const classes =
+      cycle.value === "lycee" ? classesDuCycle.filter((c) => classesLyceeAvecKits.has(c)) : classesDuCycle;
+    for (const classe of classes) {
       entrees.push({
         url: `${SITE_URL}/kits/${cycle.value}/${encodeURIComponent(classe)}`,
         changeFrequency: "weekly",

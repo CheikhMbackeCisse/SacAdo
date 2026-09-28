@@ -8,6 +8,7 @@ import {
   getKitByCycleNiveauGamme,
   getKitItemsAvecProduits,
   getVariantesByProduitIds,
+  getClassesActives,
 } from "@/lib/supabase/queries";
 import { KitBuilder, type LigneKitBuilder } from "@/components/kits/kit-builder";
 import { ProductImage } from "@/components/ui/product-image";
@@ -30,7 +31,8 @@ export async function generateMetadata(
   const { cycle, niveau: niveauParam, gamme } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
   const cycleDef = getCycleByValue(cycle);
-  if (!cycleDef || !estClasseKitValide(cycle, niveau) || !isGamme(gamme)) return {};
+  const classesDuCycle = await getClassesActives(cycle);
+  if (!cycleDef || !estClasseKitValide(niveau, classesDuCycle) || !isGamme(gamme)) return {};
 
   const gammeDef = getGammeDef(gamme);
   const site = await origineSite();
@@ -54,7 +56,8 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
   const { cycle, niveau: niveauParam, gamme } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
   const cycleDef = getCycleByValue(cycle);
-  if (!cycleDef || !estClasseKitValide(cycle, niveau) || !isGamme(gamme)) notFound();
+  const classesDuCycle = await getClassesActives(cycle);
+  if (!cycleDef || !estClasseKitValide(niveau, classesDuCycle) || !isGamme(gamme)) notFound();
 
   const gammeDef = getGammeDef(gamme);
   const kit = await getKitByCycleNiveauGamme(cycle, niveau, gamme);

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Check, Package } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
 import { GAMMES } from "@/lib/gammes";
-import { getKitsByCycleNiveau, getKitItemsAvecProduits } from "@/lib/supabase/queries";
+import { getKitsByCycleNiveau, getKitItemsAvecProduits, getClassesActives } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import { DeclarerNiveau } from "@/components/kits/declarer-niveau";
 import { calculerPrixKit, estClasseKitValide, kitEstAffichable, lignesAffichables, type LigneKit } from "@/lib/kits";
@@ -15,7 +15,8 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
   const { cycle, niveau: niveauParam } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
   const cycleDef = getCycleByValue(cycle);
-  if (!cycleDef || !estClasseKitValide(cycle, niveau)) notFound();
+  const classesDuCycle = await getClassesActives(cycle);
+  if (!cycleDef || !estClasseKitValide(niveau, classesDuCycle)) notFound();
 
   const kitsBruts = await getKitsByCycleNiveau(cycle, niveau);
 
