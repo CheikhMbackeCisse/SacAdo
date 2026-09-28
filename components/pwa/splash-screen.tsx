@@ -38,7 +38,11 @@ export function SplashScreen() {
 
   useEffect(() => {
     if (!estAppInstallee()) {
-      setPhase("fini");
+      // Micro-tâche plutôt qu'un appel synchrone : évite les rendus en
+      // cascade dans le corps de l'effet (react-hooks/set-state-in-effect),
+      // sans changer le résultat (le navigateur n'a de toute façon pas encore
+      // peint entre les deux).
+      queueMicrotask(() => setPhase("fini"));
       return;
     }
 
@@ -50,7 +54,7 @@ export function SplashScreen() {
       // sessionStorage indisponible : on affiche le splash normalement
     }
     if (dejaVu) {
-      setPhase("fini");
+      queueMicrotask(() => setPhase("fini"));
       return;
     }
 
@@ -68,7 +72,7 @@ export function SplashScreen() {
     };
 
     if (mouvementReduit) {
-      setAnime(false);
+      queueMicrotask(() => setAnime(false));
       // Sortie dès que l'app est prête, 450 ms minimum sur le logo immobile.
       const debut = Date.now();
       const versSortie = () => {
