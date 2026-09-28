@@ -1,10 +1,10 @@
-import type { CSSProperties } from "react";
-import type { LucideIcon } from "lucide-react";
+import type { CSSProperties, ElementType } from "react";
 
 // Icône d'une entrée de navigation. Si l'entrée fournit une image (PNG fourni
 // par la marque), on l'affiche en masque CSS teinté par `currentColor` : les
 // états actif / inactif se colorent alors comme les icônes lucide. Sinon on
-// retombe sur l'icône lucide de l'entrée.
+// retombe sur l'icône lucide (ou icône maison, voir icones-sacado.tsx) de
+// l'entrée.
 export function NavIcon({
   img,
   icon: Icon,
@@ -12,7 +12,7 @@ export function NavIcon({
   className,
 }: {
   img?: string;
-  icon: LucideIcon;
+  icon: ElementType;
   size: number;
   className?: string;
 }) {

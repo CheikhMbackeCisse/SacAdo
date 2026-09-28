@@ -101,6 +101,43 @@ export async function modifierNomClient(
   return { ok: true, nom };
 }
 
+const TELEPHONE_MIN = 6;
+const TELEPHONE_MAX = 30;
+
+export type ModifierTelephoneResult = { ok: true; telephone: string } | { ok: false; error: string };
+
+// Changement de numéro volontaire (CORRECTIONS_V14 §1 : « Mes informations »
+// dans Paramètres). Vérifie qu'un autre client n'utilise pas déjà ce numéro
+// avant d'écraser (contrainte d'unicité en base, voir lib/checkout/actions.ts).
+export async function modifierTelephoneClient(
+  telephone: string,
+  jeton: string,
+  nouveauTelephone: string,
+): Promise<ModifierTelephoneResult> {
+  const tel = nouveauTelephone.trim();
+  if (tel.length < TELEPHONE_MIN || tel.length > TELEPHONE_MAX) {
+    return { ok: false, error: "Numéro invalide." };
+  }
+
+  const clientId = await clientAutorise(telephone, jeton);
+  if (!clientId) return { ok: false, error: "Session invalide, réessaie." };
+
+  if (tel !== telephone.trim()) {
+    const { data: existant } = await supabaseAdmin
+      .from("clients")
+      .select("id")
+      .eq("telephone", tel)
+      .maybeSingle();
+    if (existant && existant.id !== clientId) {
+      return { ok: false, error: "Ce numéro est déjà utilisé par un autre compte." };
+    }
+  }
+
+  const { error } = await supabaseAdmin.from("clients").update({ telephone: tel }).eq("id", clientId);
+  if (error) return { ok: false, error: "Impossible de mettre à jour le numéro." };
+  return { ok: true, telephone: tel };
+}
+
 export type SupprimerCompteResult = { ok: boolean; error?: string };
 
 // Suppression de compte (Préférences > Compte, confirmation en deux temps

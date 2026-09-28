@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ClipboardList, Heart, History, Inbox, LifeBuoy, Search } from "lucide-react";
+import { ClipboardList, Heart, History, LifeBuoy, Search } from "lucide-react";
 import { NavIcon } from "@/components/layout/nav-icon";
+import { IconeBoiteReception } from "@/components/ui/icones-sacado";
 import { useIdentite } from "@/lib/local/identite";
 import { useFavoris } from "@/lib/local/favoris";
 import { useConsultes } from "@/lib/local/consultes";
@@ -20,7 +21,7 @@ import type { Produit } from "@/lib/supabase/types";
 const ONGLETS = [
   { href: "/moi/assistance", label: "Assistance", icon: LifeBuoy, img: "/images/moi-assistance.png" },
   { href: "/commandes", label: "Mes commandes", icon: ClipboardList, img: "/images/moi-commandes.png" },
-  { href: "/moi/messages", label: "Boîte de réception", icon: Inbox, img: "/images/moi-boite-reception.png" },
+  { href: "/moi/messages", label: "Boîte de réception", icon: IconeBoiteReception, img: undefined },
   { href: "/favoris", label: "Favoris", icon: Heart, img: undefined },
   { href: "/moi/consultes", label: "Déjà consultés", icon: History, img: undefined },
   { href: "/recherche", label: "Rechercher un produit", icon: Search, img: "/images/moi-recherche.png" },

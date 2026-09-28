@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { ProductGrid } from "@/components/product/product-grid";
+import { ChargementListe } from "@/components/ui/chargement-liste";
 import { getProduitsByMarque, TAILLE_PAGE_CATEGORIE } from "@/lib/supabase/queries";
 import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
 import { DemanderProduit } from "@/components/demande/demander-produit";
@@ -45,7 +46,7 @@ export function MarqueProductList({
       </div>
       <ProductGrid produits={produits} emptyMessage="Aucun article de cette marque pour le moment." />
       <div ref={sentinelleRef} aria-hidden="true" />
-      {chargement && <p className="pb-2 text-center text-xs text-ink/40">Chargement…</p>}
+      {chargement && <ChargementListe />}
       {!hasMore && !chargement && produits.length > 0 && (
         <DemanderProduit origine="fin_de_liste" variante="discret" />
       )}

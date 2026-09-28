@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ImagePlus, Loader2, PackageSearch, X } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
+import { IconeListeFournitures } from "@/components/ui/icones-sacado";
 import {
   creerDemandeProduit,
   televerserFichierDemande,
@@ -86,6 +87,9 @@ function Declencheur({
   onClick: () => void;
   texteAmorce?: string;
 }) {
+  const estListeFournitures = origine === "liste_fournitures";
+  const estFinDeListe = origine === "fin_de_liste";
+
   if (variante === "carte") {
     return (
       <button
@@ -94,7 +98,11 @@ function Declencheur({
         className="flex w-full items-center gap-3 rounded-2xl border border-ink/10 bg-elevated p-4 text-left transition-colors active:scale-[0.99]"
       >
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
-          <PackageSearch size={18} aria-hidden="true" />
+          {estListeFournitures ? (
+            <IconeListeFournitures size={18} aria-hidden="true" />
+          ) : (
+            <PackageSearch size={18} aria-hidden="true" />
+          )}
         </span>
         <span className="flex flex-col">
           <span className="text-sm font-semibold text-ink">
@@ -121,9 +129,18 @@ function Declencheur({
         <button
           type="button"
           onClick={onClick}
-          className="inline-flex h-10 items-center gap-2 rounded-full border border-brand px-4 text-sm font-semibold text-brand transition-colors active:scale-95"
+          className={
+            estFinDeListe
+              ? "inline-flex h-10 items-center justify-center rounded-full bg-brand px-4 text-sm font-semibold text-on-brand transition-transform active:scale-95"
+              : "inline-flex h-10 items-center gap-2 rounded-full border border-brand px-4 text-sm font-semibold text-brand transition-colors active:scale-95"
+          }
         >
-          <PackageSearch size={15} aria-hidden="true" />
+          {!estFinDeListe &&
+            (estListeFournitures ? (
+              <IconeListeFournitures size={15} aria-hidden="true" />
+            ) : (
+              <PackageSearch size={15} aria-hidden="true" />
+            ))}
           {TITRES[origine] ?? "Demander un produit"}
         </button>
       </div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Pencil, TriangleAlert } from "lucide-react";
 import { useIdentite, type Identite } from "@/lib/local/identite";
-import { modifierNomClient, supprimerCompte } from "@/lib/moi/actions";
+import { modifierNomClient, modifierTelephoneClient, supprimerCompte } from "@/lib/moi/actions";
 import { SacadosSection } from "@/components/moi/sacados-section";
 
 export function CompteSection() {
@@ -13,9 +13,9 @@ export function CompteSection() {
     <>
       <section className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated">
         <div className="flex flex-col gap-2 px-4 py-3">
-          <span className="text-sm text-ink">Compte</span>
+          <span className="text-sm text-ink">Mes informations</span>
           {identite ? (
-            <NomCompte identite={identite} onChange={(nom) => setIdentite({ ...identite, nom })} />
+            <InfosCompte identite={identite} onChange={(next) => setIdentite(next)} />
           ) : (
             <span className="text-xs text-ink/50">Aucune commande enregistrée sur cet appareil</span>
           )}
@@ -47,9 +47,13 @@ export function CompteSection() {
   );
 }
 
-function NomCompte({ identite, onChange }: { identite: Identite; onChange: (nom: string) => void }) {
+// Nom ET numéro modifiables (CORRECTIONS_V14 §1). Sans jeton (aucune commande
+// passée depuis cet appareil : identité purement locale), l'édition ne touche
+// que le stockage local, pas de compte serveur à mettre à jour.
+function InfosCompte({ identite, onChange }: { identite: Identite; onChange: (identite: Identite) => void }) {
   const [edition, setEdition] = useState(false);
-  const [valeur, setValeur] = useState(identite.nom);
+  const [nom, setNom] = useState(identite.nom);
+  const [telephone, setTelephone] = useState(identite.telephone);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -59,53 +63,84 @@ function NomCompte({ identite, onChange }: { identite: Identite; onChange: (nom:
         <span className="text-xs text-ink/50">
           {identite.nom || "—"} · {identite.telephone}
         </span>
-        {identite.jeton && (
-          <button
-            type="button"
-            onClick={() => {
-              setValeur(identite.nom);
-              setErreur(null);
-              setEdition(true);
-            }}
-            aria-label="Modifier le nom"
-            className="shrink-0 rounded-lg p-1.5 text-ink/50 hover:bg-ink/5"
-          >
-            <Pencil size={14} aria-hidden="true" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            setNom(identite.nom);
+            setTelephone(identite.telephone);
+            setErreur(null);
+            setEdition(true);
+          }}
+          aria-label="Modifier mes informations"
+          className="shrink-0 rounded-lg p-1.5 text-ink/50 hover:bg-ink/5"
+        >
+          <Pencil size={14} aria-hidden="true" />
+        </button>
       </div>
     );
   }
 
   const enregistrer = async () => {
-    if (!identite.jeton) return;
-    setEnCours(true);
-    setErreur(null);
-    const res = await modifierNomClient(identite.telephone, identite.jeton, valeur);
-    if (!res.ok) {
-      setErreur(res.error);
-      setEnCours(false);
+    const nomSaisi = nom.trim();
+    const telSaisi = telephone.trim();
+    if (!nomSaisi || telSaisi.length < 6) {
+      setErreur("Renseigne un nom et un numéro valides.");
       return;
     }
-    onChange(res.nom);
+    setEnCours(true);
+    setErreur(null);
+
+    if (identite.jeton) {
+      if (nomSaisi !== identite.nom) {
+        const res = await modifierNomClient(identite.telephone, identite.jeton, nomSaisi);
+        if (!res.ok) {
+          setErreur(res.error);
+          setEnCours(false);
+          return;
+        }
+      }
+      if (telSaisi !== identite.telephone) {
+        const res = await modifierTelephoneClient(identite.telephone, identite.jeton, telSaisi);
+        if (!res.ok) {
+          setErreur(res.error);
+          setEnCours(false);
+          return;
+        }
+      }
+    }
+
+    onChange({ ...identite, nom: nomSaisi, telephone: telSaisi });
     setEnCours(false);
     setEdition(false);
   };
 
   return (
     <div className="flex flex-col gap-2">
-      <input
-        value={valeur}
-        onChange={(e) => setValeur(e.target.value)}
-        className="min-h-10 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
-        autoFocus
-      />
+      <label className="flex flex-col gap-1">
+        <span className="text-[11px] text-ink/45">Nom complet</span>
+        <input
+          value={nom}
+          onChange={(e) => setNom(e.target.value)}
+          className="min-h-10 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          autoFocus
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-[11px] text-ink/45">Téléphone</span>
+        <input
+          type="tel"
+          inputMode="tel"
+          value={telephone}
+          onChange={(e) => setTelephone(e.target.value)}
+          className="min-h-10 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+        />
+      </label>
       {erreur && <p className="text-xs text-red-600">{erreur}</p>}
       <div className="flex gap-2">
         <button
           type="button"
           onClick={enregistrer}
-          disabled={enCours || !valeur.trim()}
+          disabled={enCours || !nom.trim() || !telephone.trim()}
           className="min-h-9 rounded-full bg-brand px-3.5 text-xs font-semibold text-on-brand active:scale-95 disabled:opacity-50"
         >
           {enCours ? "Enregistrement…" : "Enregistrer"}

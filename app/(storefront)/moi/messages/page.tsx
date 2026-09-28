@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Inbox } from "lucide-react";
+import { IconeBoiteReception } from "@/components/ui/icones-sacado";
 import { useIdentite } from "@/lib/local/identite";
 import { getMessagesParTelephone, marquerMessageLu } from "@/lib/moi/actions";
 import { IdentitePrompt } from "@/components/moi/identite-prompt";
@@ -61,13 +61,13 @@ export default function MessagesPage() {
         <p className="text-sm text-ink/50">Chargement…</p>
       ) : sansHistorique ? (
         <EmptyState
-          icon={Inbox}
+          icon={IconeBoiteReception}
           title="Boîte liée à cet appareil"
           description="Passez une commande depuis cet appareil pour recevoir vos messages ici."
         />
       ) : messages.length === 0 ? (
         <EmptyState
-          icon={Inbox}
+          icon={IconeBoiteReception}
           title="Aucun message pour l'instant"
           description="Les mises à jour de tes commandes apparaîtront ici."
         />
