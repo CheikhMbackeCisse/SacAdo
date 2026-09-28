@@ -5,7 +5,7 @@ import { texteNonVide } from "./validation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { GAMME_ORDER, isGamme } from "@/lib/gammes";
 import { calculerPrixKit, ligneEstAffichable, type LigneKit } from "@/lib/kits";
-import type { Cycle, Gamme, Kit, Produit } from "@/lib/supabase/types";
+import type { Cycle, Gamme, Kit, Produit, SectionKitItem } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
 export type MotifLigneCachee = "masque" | "rupture" | "sans_prix";
@@ -21,6 +21,16 @@ export type KitAvecCompte = Kit & {
   nb_items_affiches: number;
   prix_calcule: number;
   lignes_cachees: LigneCacheeAdmin[];
+  // Vrai si, pour cette classe (cycle+niveau), le prix Essentiel < Complet <
+  // Confort n'est pas respecté — signalé en rouge dans la liste (ADMIN.md Lot 2).
+  ordre_prix_invalide: boolean;
+};
+
+export type FiltresKitsAdmin = {
+  cycle?: Cycle;
+  niveau?: string;
+  gamme?: Gamme;
+  statut?: "masque" | "publie";
 };
 
 function motifLigneCachee(produit: { statut: string; statut_publication: string; prix: number }): MotifLigneCachee {
@@ -29,8 +39,11 @@ function motifLigneCachee(produit: { statut: string; statut_publication: string;
   return "sans_prix";
 }
 
-export async function getKitsAdmin(): Promise<KitAvecCompte[]> {
+export async function getKitsAdmin(filtres: FiltresKitsAdmin = {}): Promise<KitAvecCompte[]> {
   await requireAdmin();
+  // Toujours chargés sans filtre : le signalement "ordre de prix invalide"
+  // compare les 3 gammes d'une classe, y compris celles masquées par les
+  // filtres d'affichage.
   const { data: kits } = await supabaseAdmin
     .from("kits")
     .select("*")
@@ -71,7 +84,7 @@ export async function getKitsAdmin(): Promise<KitAvecCompte[]> {
     parKit.set(row.kit_id, [...(parKit.get(row.kit_id) ?? []), row]);
   });
 
-  return kits.map((kit) => {
+  const avecTotal = kits.map((kit) => {
     const lignes = parKit.get(kit.id) ?? [];
     const ligneKit: LigneKit[] = lignes.map((l) => ({
       item: {
@@ -102,6 +115,40 @@ export async function getKitsAdmin(): Promise<KitAvecCompte[]> {
       })),
     };
   });
+
+  // Une classe (cycle+niveau) est invalide si le prix Essentiel > Complet, ou
+  // Complet > Confort (quand les deux existent).
+  const parClasse = new Map<string, typeof avecTotal>();
+  avecTotal.forEach((k) => {
+    const cle = `${k.cycle}|${k.niveau}`;
+    parClasse.set(cle, [...(parClasse.get(cle) ?? []), k]);
+  });
+  const classesInvalides = new Set<string>();
+  parClasse.forEach((kitsDeLaClasse, cle) => {
+    const prixParGamme = new Map(kitsDeLaClasse.map((k) => [k.gamme, k.prix_calcule]));
+    const essentiel = prixParGamme.get("essentiel");
+    const complet = prixParGamme.get("complet");
+    const confort = prixParGamme.get("confort");
+    if (
+      (essentiel != null && complet != null && essentiel > complet) ||
+      (complet != null && confort != null && complet > confort)
+    ) {
+      classesInvalides.add(cle);
+    }
+  });
+
+  const resultat = avecTotal.map((k) => ({
+    ...k,
+    ordre_prix_invalide: classesInvalides.has(`${k.cycle}|${k.niveau}`),
+  }));
+
+  return resultat.filter(
+    (k) =>
+      (!filtres.cycle || k.cycle === filtres.cycle) &&
+      (!filtres.niveau || k.niveau === filtres.niveau) &&
+      (!filtres.gamme || k.gamme === filtres.gamme) &&
+      (!filtres.statut || k.statut === filtres.statut),
+  );
 }
 
 export async function togglerStatutKit(id: number, statut: "masque" | "publie"): Promise<ActionResult> {
@@ -135,27 +182,85 @@ export async function creerKit(input: KitInput): Promise<ActionResult & { id?: n
   return { ok: true, id: data.id };
 }
 
+// « Dupliquer un kit existant » (ADMIN.md Lot 2) : copie le kit (nouvelle
+// gamme/nom) et toutes ses lignes, pour partir du Complet et faire le Confort.
+export async function dupliquerKit(
+  kitSourceId: number,
+  cible: { gamme: Gamme; nom: string },
+): Promise<ActionResult & { id?: number }> {
+  await requireAdmin();
+  const { data: source } = await supabaseAdmin.from("kits").select("*").eq("id", kitSourceId).maybeSingle();
+  if (!source) return { ok: false, error: "Kit source introuvable." };
+
+  const { data: kitCree, error } = await supabaseAdmin
+    .from("kits")
+    .insert({ cycle: source.cycle, niveau: source.niveau, gamme: cible.gamme, nom: cible.nom })
+    .select()
+    .single();
+  if (error || !kitCree) {
+    return { ok: false, error: "Impossible de créer le kit (cycle + niveau + gamme déjà utilisé ?)." };
+  }
+
+  const { data: items } = await supabaseAdmin
+    .from("kit_items")
+    .select("produit_id, quantite_defaut, libelle_besoin, groupe_affichage, section, coche_defaut, ordre")
+    .eq("kit_id", kitSourceId);
+  if (items && items.length > 0) {
+    await supabaseAdmin
+      .from("kit_items")
+      .insert(items.map((it) => ({ ...it, kit_id: kitCree.id })));
+  }
+
+  return { ok: true, id: kitCree.id };
+}
+
+// Rappel des totaux des deux autres gammes de la même classe (ADMIN.md Lot 2 :
+// « total en direct, avec le rappel des totaux des deux autres gammes »).
+export async function getTotauxGammesClasse(
+  cycle: Cycle,
+  niveau: string,
+  excluKitId: number,
+): Promise<{ gamme: Gamme; nom: string; prix_calcule: number }[]> {
+  await requireAdmin();
+  const kits = (await getKitsAdmin({ cycle, niveau })).filter((k) => k.id !== excluKitId);
+  return kits.map((k) => ({ gamme: k.gamme, nom: k.nom, prix_calcule: k.prix_calcule }));
+}
+
 export type KitItemAvecProduit = {
   id: number;
   produit_id: number;
   quantite_defaut: number;
   produit_nom: string;
   produit_prix: number;
+  produit_photo: string | null;
+  libelle_besoin: string | null;
+  groupe_affichage: string | null;
+  section: SectionKitItem;
+  coche_defaut: boolean;
+  ordre: number;
 };
 
 export async function getKitItemsAdmin(kitId: number): Promise<KitItemAvecProduit[]> {
   await requireAdmin();
   const { data, error } = await supabaseAdmin
     .from("kit_items")
-    .select("id, produit_id, quantite_defaut, produit:produits(nom, prix)")
-    .eq("kit_id", kitId);
+    .select(
+      "id, produit_id, quantite_defaut, libelle_besoin, groupe_affichage, section, coche_defaut, ordre, produit:produits(nom, prix, photo)",
+    )
+    .eq("kit_id", kitId)
+    .order("ordre", { ascending: true });
   if (error) return [];
 
   type Row = {
     id: number;
     produit_id: number;
     quantite_defaut: number;
-    produit: { nom: string; prix: number } | { nom: string; prix: number }[] | null;
+    libelle_besoin: string | null;
+    groupe_affichage: string | null;
+    section: SectionKitItem;
+    coche_defaut: boolean;
+    ordre: number;
+    produit: { nom: string; prix: number; photo: string | null } | { nom: string; prix: number; photo: string | null }[] | null;
   };
   const rows = (data ?? []) as unknown as Row[];
 
@@ -169,6 +274,12 @@ export async function getKitItemsAdmin(kitId: number): Promise<KitItemAvecProdui
         quantite_defaut: row.quantite_defaut,
         produit_nom: produit.nom,
         produit_prix: produit.prix,
+        produit_photo: produit.photo,
+        libelle_besoin: row.libelle_besoin,
+        groupe_affichage: row.groupe_affichage,
+        section: row.section,
+        coche_defaut: row.coche_defaut,
+        ordre: row.ordre,
       };
     })
     .filter((r): r is KitItemAvecProduit => r !== null);
@@ -208,9 +319,14 @@ export async function ajouterKitItem(
     return { ok: false, error: "Impossible d'ajouter un produit à variantes (taille/couleur) à un kit." };
   }
 
+  const { count: nbExistants } = await supabaseAdmin
+    .from("kit_items")
+    .select("id", { count: "exact", head: true })
+    .eq("kit_id", kitId);
+
   const { error } = await supabaseAdmin
     .from("kit_items")
-    .insert({ kit_id: kitId, produit_id: produitId, quantite_defaut: quantite });
+    .insert({ kit_id: kitId, produit_id: produitId, quantite_defaut: quantite, ordre: nbExistants ?? 0 });
   if (error) return { ok: false, error: "Impossible d'ajouter cet article (déjà présent ?)." };
   return { ok: true };
 }
@@ -228,5 +344,150 @@ export async function retirerKitItem(id: number): Promise<ActionResult> {
   await requireAdmin();
   const { error } = await supabaseAdmin.from("kit_items").delete().eq("id", id);
   if (error) return { ok: false, error: "Impossible de retirer cet article." };
+  return { ok: true };
+}
+
+export type KitItemPatch = {
+  libelle_besoin?: string | null;
+  groupe_affichage?: string | null;
+  section?: SectionKitItem;
+  coche_defaut?: boolean;
+};
+
+export async function modifierKitItem(id: number, patch: KitItemPatch): Promise<ActionResult> {
+  await requireAdmin();
+  const { error } = await supabaseAdmin.from("kit_items").update(patch).eq("id", id);
+  if (error) return { ok: false, error: "Impossible de modifier cet article." };
+  return { ok: true };
+}
+
+// Remplacer le produit d'une ligne (produit épuisé) en gardant ses réglages
+// (quantité, section, groupe, libellé, coché) : même garde-fous que l'ajout.
+export async function remplacerKitItemProduit(id: number, nouveauProduitId: number): Promise<ActionResult> {
+  await requireAdmin();
+
+  const { data: produit } = await supabaseAdmin
+    .from("produits")
+    .select("edition_statut")
+    .eq("id", nouveauProduitId)
+    .maybeSingle();
+  if (produit?.edition_statut === "ancienne") {
+    return { ok: false, error: "Impossible d'utiliser une ancienne édition dans un kit." };
+  }
+  const { count } = await supabaseAdmin
+    .from("produit_variantes")
+    .select("id", { count: "exact", head: true })
+    .eq("produit_id", nouveauProduitId);
+  if ((count ?? 0) > 0) {
+    return { ok: false, error: "Impossible d'utiliser un produit à variantes (taille/couleur) dans un kit." };
+  }
+
+  const { error } = await supabaseAdmin.from("kit_items").update({ produit_id: nouveauProduitId }).eq("id", id);
+  if (error) return { ok: false, error: "Impossible de remplacer cet article (déjà présent dans le kit ?)." };
+  return { ok: true };
+}
+
+// Monter/descendre une ligne : permute sa position dans la liste affichée
+// (déjà triée par `ordre`) puis réécrit `ordre` = position pour tous les
+// items du kit. Ne suppose pas des valeurs `ordre` distinctes au départ (les
+// lignes ajoutées via ajouterKitItem partagent parfois le même 0).
+export async function deplacerKitItem(kitId: number, idsOrdonnes: number[], id: number, direction: -1 | 1): Promise<ActionResult> {
+  await requireAdmin();
+  const index = idsOrdonnes.indexOf(id);
+  const cible = index + direction;
+  if (index === -1 || cible < 0 || cible >= idsOrdonnes.length) return { ok: true };
+
+  const reordonnes = [...idsOrdonnes];
+  [reordonnes[index], reordonnes[cible]] = [reordonnes[cible], reordonnes[index]];
+
+  const erreurs = await Promise.all(
+    reordonnes.map((itemId, ordre) =>
+      supabaseAdmin.from("kit_items").update({ ordre }).eq("id", itemId).eq("kit_id", kitId),
+    ),
+  );
+  if (erreurs.some((r) => r.error)) return { ok: false, error: "Impossible de réordonner." };
+  return { ok: true };
+}
+
+// --- Changements en masse (ADMIN.md Lot 2) -----------------------------
+
+// Liste des kits utilisant un produit — sert d'aperçu avant de valider un
+// remplacement global.
+export async function getKitsUtilisantProduit(produitId: number): Promise<{ id: number; nom: string }[]> {
+  await requireAdmin();
+  const { data: items } = await supabaseAdmin
+    .from("kit_items")
+    .select("kit_id")
+    .eq("produit_id", produitId);
+  const kitIds = [...new Set((items ?? []).map((i) => i.kit_id))];
+  if (kitIds.length === 0) return [];
+  const { data: kits } = await supabaseAdmin.from("kits").select("id, nom").in("id", kitIds);
+  return kits ?? [];
+}
+
+// Remplace un produit par un autre dans tous les kits où il apparaît (produit
+// épuisé/retiré du catalogue). Si le kit contient déjà le nouveau produit, la
+// ligne de l'ancien est simplement retirée (pas de doublon).
+export async function remplacerProduitPartout(
+  ancienProduitId: number,
+  nouveauProduitId: number,
+): Promise<ActionResult & { nb?: number }> {
+  await requireAdmin();
+  if (ancienProduitId === nouveauProduitId) return { ok: false, error: "Choisir un produit différent." };
+
+  const { data: produit } = await supabaseAdmin
+    .from("produits")
+    .select("edition_statut")
+    .eq("id", nouveauProduitId)
+    .maybeSingle();
+  if (produit?.edition_statut === "ancienne") {
+    return { ok: false, error: "Impossible d'utiliser une ancienne édition dans un kit." };
+  }
+  const { count } = await supabaseAdmin
+    .from("produit_variantes")
+    .select("id", { count: "exact", head: true })
+    .eq("produit_id", nouveauProduitId);
+  if ((count ?? 0) > 0) {
+    return { ok: false, error: "Impossible d'utiliser un produit à variantes (taille/couleur) dans un kit." };
+  }
+
+  const { data: lignes } = await supabaseAdmin
+    .from("kit_items")
+    .select("id, kit_id")
+    .eq("produit_id", ancienProduitId);
+  if (!lignes || lignes.length === 0) return { ok: true, nb: 0 };
+
+  const { data: lignesExistantes } = await supabaseAdmin
+    .from("kit_items")
+    .select("kit_id")
+    .eq("produit_id", nouveauProduitId)
+    .in(
+      "kit_id",
+      lignes.map((l) => l.kit_id),
+    );
+  const kitsAvecNouveauDeja = new Set((lignesExistantes ?? []).map((l) => l.kit_id));
+
+  const aSupprimer = lignes.filter((l) => kitsAvecNouveauDeja.has(l.kit_id)).map((l) => l.id);
+  const aRemplacer = lignes.filter((l) => !kitsAvecNouveauDeja.has(l.kit_id)).map((l) => l.id);
+
+  if (aSupprimer.length > 0) {
+    await supabaseAdmin.from("kit_items").delete().in("id", aSupprimer);
+  }
+  if (aRemplacer.length > 0) {
+    await supabaseAdmin.from("kit_items").update({ produit_id: nouveauProduitId }).in("id", aRemplacer);
+  }
+  return { ok: true, nb: lignes.length };
+}
+
+// Mosaïque d'images du kit (migration 0090) : jusqu'à 4 ids produits, choisis
+// parmi les articles du kit.
+export async function modifierImagesMosaique(kitId: number, produitIds: number[]): Promise<ActionResult> {
+  await requireAdmin();
+  if (produitIds.length > 4) return { ok: false, error: "4 images maximum." };
+  const { error } = await supabaseAdmin
+    .from("kits")
+    .update({ images_mosaique: produitIds.length > 0 ? produitIds : null })
+    .eq("id", kitId);
+  if (error) return { ok: false, error: "Impossible d'enregistrer la mosaïque." };
   return { ok: true };
 }

@@ -83,6 +83,8 @@ export type Produit = {
   // tableau standard tour de poitrine / longueur sur la fiche. Obligatoire sur
   // tout produit textile à variantes de taille.
   guide_tailles: boolean;
+  // Mise en avant sur l'accueil (migration 0097, ADMIN.md Lot 1).
+  mise_en_avant?: boolean;
   // Ordinateurs reconditionnés (migration 0070). Tous nullables : seuls les
   // produits informatiques de ce type de fournisseur les renseignent.
   processeur: string | null;

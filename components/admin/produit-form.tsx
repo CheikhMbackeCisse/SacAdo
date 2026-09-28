@@ -1,10 +1,19 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { creerProduit, modifierProduit, type ProduitInput } from "@/lib/admin/produits-actions";
+import Image from "next/image";
+import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from "lucide-react";
+import {
+  creerProduit,
+  modifierProduit,
+  televerserPhotoAdmin,
+  type ProduitInput,
+} from "@/lib/admin/produits-actions";
 import { creerSousCategorie } from "@/lib/admin/sous-categories-actions";
 import { creerSousSousCategorie } from "@/lib/admin/sous-sous-categories-actions";
+import { compresserImage } from "@/lib/images/compress-image";
+import { MAX_PHOTOS_PRODUIT } from "@/lib/vendeur/produits-shared";
 import { ChampSelect } from "@/components/ui/champ-select";
 import type { Categorie, Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
@@ -40,12 +49,17 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
   const [prix, setPrix] = useState(produit?.prix?.toString() ?? "");
   const [prixAchat, setPrixAchat] = useState(produit?.prix_achat?.toString() ?? "");
   const [delai, setDelai] = useState<ProduitInput["delai"] | "">(produit?.delai ?? "");
-  const [photo, setPhoto] = useState(produit?.photo ?? "");
+  const [photos, setPhotos] = useState<string[]>(
+    produit?.photos?.length ? produit.photos : produit?.photo ? [produit.photo] : [],
+  );
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [stock, setStock] = useState(produit?.stock?.toString() ?? "0");
   const [seuilAlerte, setSeuilAlerte] = useState(produit?.seuil_alerte?.toString() ?? "5");
   const [statut, setStatut] = useState<ProduitInput["statut"]>(produit?.statut ?? "dispo");
   const [motsCles, setMotsCles] = useState(produit?.mots_cles ?? "");
   const [guideTailles, setGuideTailles] = useState(produit?.guide_tailles ?? false);
+  const [miseEnAvant, setMiseEnAvant] = useState(produit?.mise_en_avant ?? false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -162,6 +176,43 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
     setNouvelleSousSousCat("");
   };
 
+  const placesLibres = MAX_PHOTOS_PRODUIT - photos.length;
+
+  const choisirPhotos = async (fichiers: File[]) => {
+    if (fichiers.length === 0 || placesLibres <= 0) return;
+    setUploading(true);
+    setError(null);
+    const aTraiter = fichiers.slice(0, placesLibres);
+    const urls: string[] = [];
+    for (const fichier of aTraiter) {
+      const compresse = await compresserImage(fichier);
+      const formData = new FormData();
+      formData.append("file", compresse);
+      const result = await televerserPhotoAdmin(formData);
+      if (!result.ok) {
+        setError(result.error);
+        break;
+      }
+      urls.push(result.url);
+    }
+    if (urls.length > 0) setPhotos((current) => [...current, ...urls]);
+    setUploading(false);
+  };
+
+  const retirerPhoto = (index: number) => {
+    setPhotos((current) => current.filter((_, i) => i !== index));
+  };
+
+  const deplacerPhoto = (index: number, direction: -1 | 1) => {
+    setPhotos((current) => {
+      const cible = index + direction;
+      if (cible < 0 || cible >= current.length) return current;
+      const copie = [...current];
+      [copie[index], copie[cible]] = [copie[cible], copie[index]];
+      return copie;
+    });
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -193,12 +244,14 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
       prix: Number(prix),
       prix_achat: prixAchat.trim() === "" ? null : Number(prixAchat),
       delai,
-      photo: photo.trim() || null,
+      photo: photos[0] ?? null,
+      photos,
       stock: Number(stock),
       seuil_alerte: Number(seuilAlerte),
       statut,
       mots_cles: motsCles.trim() || null,
       guide_tailles: guideTailles,
+      mise_en_avant: miseEnAvant,
     };
 
     const result = produit ? await modifierProduit(produit.id, input) : await creerProduit(input);
@@ -428,14 +481,95 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
         </span>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="text-xs font-medium text-ink/60">Photo (chemin, ex: /images/prod-x.jpg)</span>
+      <label className="flex items-center gap-2 text-sm">
         <input
-          value={photo}
-          onChange={(event) => setPhoto(event.target.value)}
-          className="min-h-11 rounded-xl border border-ink/15 px-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          type="checkbox"
+          checked={miseEnAvant}
+          onChange={(event) => setMiseEnAvant(event.target.checked)}
+          className="size-4 rounded border-ink/25"
         />
+        <span className="text-xs font-medium text-ink/60">Mettre en avant sur l&apos;accueil</span>
       </label>
+
+      <div className="flex flex-col gap-2 text-sm">
+        <span className="text-xs font-medium text-ink/60">
+          Photos <span className="text-ink/40">({photos.length}/{MAX_PHOTOS_PRODUIT})</span>
+        </span>
+
+        {photos.length > 0 && (
+          <div className="grid grid-cols-4 gap-2">
+            {photos.map((url, index) => (
+              <div
+                key={url}
+                className="relative aspect-square overflow-hidden rounded-xl border border-ink/10 bg-ink/5"
+              >
+                <Image src={url} alt="" fill sizes="120px" className="object-cover" />
+                {index === 0 && (
+                  <span className="absolute left-1 top-1 rounded-full bg-brand px-1.5 py-0.5 text-[9px] font-semibold text-surface">
+                    Principale
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => retirerPhoto(index)}
+                  className="absolute right-1 top-1 rounded-full bg-white/90 p-0.5 text-ink shadow"
+                  aria-label="Retirer cette photo"
+                >
+                  <X size={12} />
+                </button>
+                <div className="absolute inset-x-1 bottom-1 flex justify-between">
+                  <button
+                    type="button"
+                    onClick={() => deplacerPhoto(index, -1)}
+                    disabled={index === 0}
+                    className="rounded-full bg-white/90 p-0.5 text-ink shadow disabled:opacity-30"
+                    aria-label="Déplacer vers la gauche"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deplacerPhoto(index, 1)}
+                    disabled={index === photos.length - 1}
+                    className="rounded-full bg-white/90 p-0.5 text-ink shadow disabled:opacity-30"
+                    aria-label="Déplacer vers la droite"
+                  >
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {placesLibres > 0 && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex w-fit items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 hover:bg-ink/[0.04] disabled:opacity-50"
+          >
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
+            {photos.length === 0 ? "Ajouter des photos" : "Ajouter une photo"}
+          </button>
+        )}
+        <p className="text-[11px] text-ink/45">
+          JPG, PNG ou WebP — jusqu&apos;à {MAX_PHOTOS_PRODUIT} photos. La première est la photo
+          principale ; réordonnez avec les flèches.
+        </p>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          hidden
+          onChange={(event) => {
+            const fichiers = Array.from(event.target.files ?? []);
+            event.target.value = "";
+            void choisirPhotos(fichiers);
+          }}
+        />
+      </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
