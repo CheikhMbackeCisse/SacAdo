@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { ArrowLeft, Package } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
 import { getGammeDef, isGamme } from "@/lib/gammes";
@@ -18,10 +18,12 @@ import { tronquer } from "@/lib/format";
 import {
   aUneCleDesCracksAffichable,
   estClasseKitValide,
+  estClasseRetiree,
   kitEstAffichable,
   ligneEstAffichable,
   type LigneKit,
 } from "@/lib/kits";
+import { FondDecor, varianteFondDuCycle } from "@/components/ui/fond-decor";
 
 export const revalidate = 120;
 
@@ -30,6 +32,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { cycle, niveau: niveauParam, gamme } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
+  if (cycle === "lycee" && estClasseRetiree(niveau)) return {};
   const cycleDef = getCycleByValue(cycle);
   const classesDuCycle = await getClassesActives(cycle);
   if (!cycleDef || !estClasseKitValide(niveau, classesDuCycle) || !isGamme(gamme)) return {};
@@ -55,6 +58,9 @@ export async function generateMetadata(
 export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[niveau]/[gamme]">) {
   const { cycle, niveau: niveauParam, gamme } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
+  if (cycle === "lycee" && estClasseRetiree(niveau)) {
+    permanentRedirect(`/kits/${cycle}`);
+  }
   const cycleDef = getCycleByValue(cycle);
   const classesDuCycle = await getClassesActives(cycle);
   if (!cycleDef || !estClasseKitValide(niveau, classesDuCycle) || !isGamme(gamme)) notFound();
@@ -69,6 +75,7 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
   if (!kit || !kitEstAffichable(lignesKit)) {
     return (
       <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24 text-center">
+        <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
         <span className="flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand">
           <Package size={26} aria-hidden="true" />
         </span>
@@ -119,6 +126,7 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-1 py-4">
+      <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
       <Link
         href={retour}
         className="mx-4 mb-1 inline-flex w-fit items-center gap-1 text-xs font-medium text-ink/60 transition-colors hover:text-ink"

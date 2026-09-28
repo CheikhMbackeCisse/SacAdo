@@ -1,12 +1,20 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { ArrowRight, Check, Package } from "lucide-react";
 import { getCycleByValue } from "@/lib/cycles";
 import { GAMMES } from "@/lib/gammes";
 import { getKitsByCycleNiveau, getKitItemsAvecProduits, getClassesActives } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/format";
 import { DeclarerNiveau } from "@/components/kits/declarer-niveau";
-import { calculerPrixKit, estClasseKitValide, kitEstAffichable, lignesAffichables, type LigneKit } from "@/lib/kits";
+import {
+  calculerPrixKit,
+  estClasseKitValide,
+  estClasseRetiree,
+  kitEstAffichable,
+  lignesAffichables,
+  type LigneKit,
+} from "@/lib/kits";
+import { FondDecor, varianteFondDuCycle } from "@/components/ui/fond-decor";
 
 // ISR : le contenu des kits change rarement.
 export const revalidate = 120;
@@ -14,6 +22,10 @@ export const revalidate = 120;
 export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[niveau]">) {
   const { cycle, niveau: niveauParam } = await props.params;
   const niveau = decodeURIComponent(niveauParam);
+  // CORRECTIONS_V12 Lot 1 : anciennes adresses de la série T retirée -> 308.
+  if (cycle === "lycee" && estClasseRetiree(niveau)) {
+    permanentRedirect(`/kits/${cycle}`);
+  }
   const cycleDef = getCycleByValue(cycle);
   const classesDuCycle = await getClassesActives(cycle);
   if (!cycleDef || !estClasseKitValide(niveau, classesDuCycle)) notFound();
@@ -36,6 +48,7 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
   if (kits.length === 0) {
     return (
       <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24 text-center">
+        <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
         <span className="flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand">
           <Package size={26} aria-hidden="true" />
         </span>
@@ -58,6 +71,7 @@ export default async function GammeChoixPage(props: PageProps<"/kits/[cycle]/[ni
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
+      <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
       <DeclarerNiveau cycle={cycle} niveau={niveau} />
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-brand">{cycleDef.label}</span>

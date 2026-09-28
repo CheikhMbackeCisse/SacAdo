@@ -133,6 +133,17 @@ export type SerieAVenir = { serie: string; libelle: string; message: string };
 // scripts/importer-kits-final.mjs) — plus rien "à venir" à annoncer.
 export const SERIES_LYCEE_A_VENIR: SerieAVenir[] = [];
 
+// --- Série T retirée (CORRECTIONS_V12 Lot 1) --------------------------------
+// Le fondateur a retiré la série T (plus aucun nouveau kit). Les 9 kits
+// existants passent en statut "masque" (jamais supprimés : des commandes y
+// font référence), et les anciennes adresses redirigent en 308 vers
+// /kits/lycee plutôt que d'afficher "bientôt disponible".
+export const CLASSES_RETIREES: readonly string[] = ["Seconde T", "Première T", "Terminale T"];
+
+export function estClasseRetiree(niveau: string): boolean {
+  return CLASSES_RETIREES.includes(niveau);
+}
+
 // --- Classes du lycée (CORRECTIONS_KITS Lot 5 §3) ---------------------------
 // Ordre et groupement exacts de l'onglet "Écran lycée" de
 // kits_sacado_final.xlsx. Remplace "Terminale G" (n'existe plus, voir STEG).
