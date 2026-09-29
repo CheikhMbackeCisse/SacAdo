@@ -13,6 +13,7 @@ import { origineSite } from "@/lib/site-url";
 import { slugAvecId } from "@/lib/slug";
 import { tronquer } from "@/lib/format";
 import { breadcrumbJsonLd, itemListJsonLd, JsonLd } from "@/lib/seo/jsonld";
+import { FondDecor } from "@/components/ui/fond-decor";
 
 // ISR : la page est mise en cache par catégorie et régénérée au plus toutes
 // les 2 min, pour ne pas taper Supabase à chaque visite du catalogue (c'est le
@@ -72,22 +73,28 @@ export default async function CategoriePage(props: PageProps<"/categorie/[slug]"
   }));
 
   return (
-    <div className="animate-fade-in-up py-4">
-      <JsonLd data={breadcrumbJsonLd(fil)} />
-      {items.length > 0 && <JsonLd data={itemListJsonLd(items)} />}
-      <h1 className="px-4 pb-3 font-heading text-xl font-bold text-ink">{categorie.nom}</h1>
-      <Suspense fallback={null}>
-        <CategoryProductList
-          categorieId={categorie.id}
-          categorieSlug={categorie.slug}
-          produitsInitiaux={produits}
-          hasMoreInitial={hasMore}
-          totalInitial={total ?? produits.length}
-          sousCategories={sousCategories}
-          sousSousCategories={sousSousCategories}
-        />
-      </Suspense>
-      <DemanderProduit origine="categorie" variante="discret" />
-    </div>
+    // CORRECTIONS_V15 Lot 3 : FondDecor hors du div animé (même bug de
+    // position:fixed cassé par `animate-fade-in-up` que sur les pages kits,
+    // voir le commentaire détaillé dans app/(storefront)/kits/page.tsx).
+    <>
+      <FondDecor variante="general" />
+      <div className="animate-fade-in-up py-4">
+        <JsonLd data={breadcrumbJsonLd(fil)} />
+        {items.length > 0 && <JsonLd data={itemListJsonLd(items)} />}
+        <h1 className="px-4 pb-3 font-heading text-xl font-bold text-ink">{categorie.nom}</h1>
+        <Suspense fallback={null}>
+          <CategoryProductList
+            categorieId={categorie.id}
+            categorieSlug={categorie.slug}
+            produitsInitiaux={produits}
+            hasMoreInitial={hasMore}
+            totalInitial={total ?? produits.length}
+            sousCategories={sousCategories}
+            sousSousCategories={sousSousCategories}
+          />
+        </Suspense>
+        <DemanderProduit origine="categorie" variante="discret" />
+      </div>
+    </>
   );
 }

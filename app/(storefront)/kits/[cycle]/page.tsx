@@ -49,78 +49,82 @@ export default async function CycleClassesPage(props: PageProps<"/kits/[cycle]">
   }
 
   return (
-    <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
+    // CORRECTIONS_V15 Lot 3 : FondDecor hors du div animé (voir le commentaire
+    // détaillé dans app/(storefront)/kits/page.tsx).
+    <>
       <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
-      <div className="flex items-center gap-3">
-        <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl">
-          <Image
-            src={cycleDef.image}
-            alt={cycleDef.label}
-            fill
-            sizes="64px"
-            className="object-cover"
-          />
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs font-medium text-brand">Kits scolaires</span>
-          <h1 className="font-heading text-xl font-bold text-ink">{cycleDef.label}</h1>
-          <p className="text-sm text-ink/60">
-            {estLycee ? "Choisis la classe, puis la série." : "Choisis la classe."}
-          </p>
-        </div>
-      </div>
-
-      {estLycee ? (
-        <div className="flex flex-col gap-2.5">
-          {niveauxLycee.map((niveau) => (
-            <details key={niveau} className="group rounded-2xl border border-ink/10 bg-elevated">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
-                <span className="text-sm font-semibold text-ink">{niveau}</span>
-                <ChevronDown
-                  size={16}
-                  aria-hidden="true"
-                  className="shrink-0 text-ink/40 transition-transform group-open:rotate-180"
-                />
-              </summary>
-
-              <div className="flex flex-col gap-3 border-t border-ink/10 px-3 py-3">
-                {grouperParGroupe(parNiveauLycee.get(niveau) ?? []).map((g) => (
-                  <div key={g.groupe} className="flex flex-col gap-2">
-                    <span className="px-1 text-[11px] font-medium uppercase tracking-wide text-ink/40">
-                      {g.groupe}
-                    </span>
-                    {g.classes.map((c) => (
-                      <ClasseLien
-                        key={c.classe}
-                        href={`/kits/${cycleDef.value}/${encodeURIComponent(c.classe)}`}
-                        label={`Série ${c.classe.split(" ")[1]}`}
-                        ariaLabel={c.classe}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </details>
-          ))}
-
-          {SERIES_LYCEE_A_VENIR.map((s) => (
-            <p key={s.serie} className="px-4 py-1 text-sm text-ink/60">
-              <span className="font-medium">{s.libelle}</span> — {s.message}
-            </p>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {toutesLesClasses.map(({ classe: niveau }) => (
-            <ClasseLien
-              key={niveau}
-              href={`/kits/${cycleDef.value}/${encodeURIComponent(niveau)}`}
-              label={niveau}
+      <div className="animate-fade-in-up flex flex-col gap-5 px-4 py-6">
+        <div className="flex items-center gap-3">
+          <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl">
+            <Image
+              src={cycleDef.image}
+              alt={cycleDef.label}
+              fill
+              sizes="64px"
+              className="object-cover"
             />
-          ))}
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium text-brand">Kits scolaires</span>
+            <h1 className="font-heading text-xl font-bold text-ink">{cycleDef.label}</h1>
+            <p className="text-sm text-ink/60">
+              {estLycee ? "Choisis la classe, puis la série." : "Choisis la classe."}
+            </p>
+          </div>
         </div>
-      )}
-    </div>
+
+        {estLycee ? (
+          <div className="flex flex-col gap-2.5">
+            {niveauxLycee.map((niveau) => (
+              <details key={niveau} className="group rounded-2xl border border-ink/10 bg-elevated">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
+                  <span className="text-sm font-semibold text-ink">{niveau}</span>
+                  <ChevronDown
+                    size={16}
+                    aria-hidden="true"
+                    className="shrink-0 text-ink/40 transition-transform group-open:rotate-180"
+                  />
+                </summary>
+
+                <div className="flex flex-col gap-3 border-t border-ink/10 px-3 py-3">
+                  {grouperParGroupe(parNiveauLycee.get(niveau) ?? []).map((g) => (
+                    <div key={g.groupe} className="flex flex-col gap-2">
+                      <span className="px-1 text-[11px] font-medium uppercase tracking-wide text-ink/40">
+                        {g.groupe}
+                      </span>
+                      {g.classes.map((c) => (
+                        <ClasseLien
+                          key={c.classe}
+                          href={`/kits/${cycleDef.value}/${encodeURIComponent(c.classe)}`}
+                          label={`Série ${c.classe.split(" ")[1]}`}
+                          ariaLabel={c.classe}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ))}
+
+            {SERIES_LYCEE_A_VENIR.map((s) => (
+              <p key={s.serie} className="px-4 py-1 text-sm text-ink/60">
+                <span className="font-medium">{s.libelle}</span> — {s.message}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {toutesLesClasses.map(({ classe: niveau }) => (
+              <ClasseLien
+                key={niveau}
+                href={`/kits/${cycleDef.value}/${encodeURIComponent(niveau)}`}
+                label={niveau}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
