@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { slugAvecId } from "@/lib/slug";
@@ -26,9 +27,13 @@ export type LigneKitBuilder = {
 type EtatLigne = { checked: boolean; varianteId: number | null };
 
 type KitBuilderProps = {
+  kitId: number;
   kitNom: string;
   cycle: string;
   niveau: string;
+  gamme: string;
+  gammeLabel: string;
+  photoKit: string | null;
   lignes: LigneKitBuilder[];
 };
 
@@ -39,11 +44,40 @@ function varianteParDefaut(variantes: VarianteAvecAttributs[]): number | null {
   return dispo?.id ?? variantes[0]?.id ?? null;
 }
 
-export function KitBuilder({ kitNom, cycle, niveau, lignes: toutesLesLignes }: KitBuilderProps) {
-  const { ajouter } = usePanier();
+export function KitBuilder({
+  kitId,
+  kitNom,
+  cycle,
+  niveau,
+  gamme,
+  gammeLabel,
+  photoKit,
+  lignes: toutesLesLignes,
+}: KitBuilderProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Réouvert depuis « Modifier » sur une carte du panier (CORRECTIONS_V15
+  // Lot 2) : on repart de la sélection exacte de ce kit dans le panier, pas
+  // des coches par défaut.
+  const modifierGroupeId = searchParams.get("modifier");
+
+  const { ajouterKit, lignes: lignesPanier } = usePanier();
   const { enregistrer: enregistrerKitClasse } = useKitsPanier();
   const [added, setAdded] = useState(false);
-  const [beneficiaireId, setBeneficiaireId] = useState<number | null>(null);
+
+  const lignesExistantesDuGroupe = useMemo(
+    () => (modifierGroupeId ? lignesPanier.filter((l) => l.groupe?.id === modifierGroupeId) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const groupeExistant = lignesExistantesDuGroupe[0]?.groupe ?? null;
+
+  const [beneficiaireId, setBeneficiaireId] = useState<number | null>(
+    () => groupeExistant?.beneficiaireId ?? null,
+  );
+  const [beneficiairePrenom, setBeneficiairePrenom] = useState<string | null>(
+    () => groupeExistant?.beneficiairePrenom ?? null,
+  );
   // Ouvert par défaut (CORRECTIONS_KITS Lot 5 §1) : fermé, les cahiers
   // passaient inaperçus (ex. kits 3e Confort, CM2 Confort).
   const [cahiersOuverts, setCahiersOuverts] = useState(true);
@@ -55,10 +89,16 @@ export function KitBuilder({ kitNom, cycle, niveau, lignes: toutesLesLignes }: K
 
   const [etats, setEtats] = useState<Record<number, EtatLigne>>(() =>
     Object.fromEntries(
-      lignes.map((l) => [
-        l.id,
-        { checked: l.cocheDefaut, varianteId: varianteParDefaut(l.variantes) },
-      ]),
+      lignes.map((l) => {
+        if (lignesExistantesDuGroupe.length > 0) {
+          const existante = lignesExistantesDuGroupe.find((le) => le.produitId === l.produit.id);
+          return [
+            l.id,
+            { checked: Boolean(existante), varianteId: existante?.varianteId ?? varianteParDefaut(l.variantes) },
+          ];
+        }
+        return [l.id, { checked: l.cocheDefaut, varianteId: varianteParDefaut(l.variantes) }];
+      }),
     ),
   );
 
@@ -98,13 +138,34 @@ export function KitBuilder({ kitNom, cycle, niveau, lignes: toutesLesLignes }: K
 
   const handleAjouter = () => {
     const produitIds: number[] = [];
+    const items: { produitId: number; varianteId: number | null; quantite: number }[] = [];
     lignes.forEach((l) => {
       const etat = etats[l.id];
       if (!etat?.checked) return;
-      ajouter(l.produit.id, etat.varianteId, l.quantite);
+      items.push({ produitId: l.produit.id, varianteId: etat.varianteId, quantite: l.quantite });
       produitIds.push(l.produit.id);
     });
+
+    ajouterKit(
+      {
+        id: groupeExistant?.id,
+        kitId,
+        cycle,
+        niveau,
+        gamme,
+        gammeLabel,
+        photo: photoKit,
+        beneficiaireId,
+        beneficiairePrenom,
+      },
+      items,
+    );
     enregistrerKitClasse(cycle, niveau, { beneficiaireId, produitIds });
+
+    if (modifierGroupeId) {
+      router.push("/panier");
+      return;
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -115,7 +176,10 @@ export function KitBuilder({ kitNom, cycle, niveau, lignes: toutesLesLignes }: K
         cycle={cycle}
         niveau={niveau}
         value={beneficiaireId}
-        onChange={setBeneficiaireId}
+        onChange={(id, prenom) => {
+          setBeneficiaireId(id);
+          setBeneficiairePrenom(prenom);
+        }}
       />
 
       <ul className="flex flex-col divide-y divide-ink/10 px-4">

@@ -278,6 +278,12 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       produit_nom: produit?.nom ?? "Produit supprimé",
       composants: produit?.est_kit ? compositionsParKit.get(row.produit_id) : undefined,
       photo_a_ameliorer: produit?.photo_a_ameliorer ?? false,
+      kit_groupe_id: row.kit_groupe_id,
+      kit_id: row.kit_id,
+      kit_nom: row.kit_nom,
+      kit_classe: row.kit_classe,
+      kit_gamme: row.kit_gamme,
+      kit_beneficiaire_prenom: row.kit_beneficiaire_prenom,
     };
   });
 }

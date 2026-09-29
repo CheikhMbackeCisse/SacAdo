@@ -475,6 +475,15 @@ export type CommandeItem = {
   // Fin de garantie (migration 0070), figée à la livraison : date de livraison
   // + produits.garantie_mois. NULL = pas encore livrée, ou produit sans garantie.
   garantie_fin: string | null;
+  // Groupe kit scolaire (migration 0100, CORRECTIONS_V15 Lot 2) : identifiant
+  // d'instance commun à toutes les lignes d'un même kit ajouté au panier.
+  // NULL pour un produit ajouté hors kit.
+  kit_groupe_id: string | null;
+  kit_id: number | null;
+  kit_nom: string | null;
+  kit_classe: string | null;
+  kit_gamme: string | null;
+  kit_beneficiaire_prenom: string | null;
 };
 
 // Suivi de trésorerie admin (GROUPE_B §2, migration 0032 ; catégories revues en

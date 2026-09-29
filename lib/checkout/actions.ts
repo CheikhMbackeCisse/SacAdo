@@ -17,7 +17,7 @@ import { calculerDateLivraison } from "@/lib/checkout/date-livraison";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { origineSite } from "@/lib/site-url";
-import type { LignePanier } from "@/lib/local/panier";
+import type { GroupeKitPanier, LignePanier } from "@/lib/local/panier";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
 
 // Formats larges exprès (numéros sénégalais et internationaux varient), mais
@@ -132,6 +132,10 @@ type LigneResolue = {
   // pour le calcul du bénéfice, migration 0055). null si non renseigné.
   prixAchat: number | null;
   nom: string;
+  // Kit scolaire d'où vient la ligne (CORRECTIONS_V15 Lot 2), pour regrouper
+  // l'affichage de la commande (admin, WhatsApp) sans exploser en produits un
+  // par un. null pour un produit ajouté hors kit.
+  groupe: GroupeKitPanier | null;
 };
 
 type CommandeResolue = {
@@ -312,6 +316,7 @@ async function resoudreCommande(
       prixUnitaire: variante?.prix ?? produit.prix,
       prixAchat: produit.prix_achat ?? null,
       nom: produit.nom,
+      groupe: ligne.groupe ?? null,
     });
   }
 
@@ -549,6 +554,14 @@ function lignesPourRpc(lignesResolues: LigneResolue[]) {
     variante_id: l.varianteId,
     quantite: l.quantite,
     prix_unitaire: l.prixUnitaire,
+    // Regroupement kit (CORRECTIONS_V15 Lot 2, migration 0100) : dénormalisé
+    // sur chaque ligne pour n'avoir besoin d'aucune jointure côté admin/WhatsApp.
+    kit_groupe_id: l.groupe?.id ?? null,
+    kit_id: l.groupe?.kitId ?? null,
+    kit_nom: l.groupe ? `${l.groupe.niveau} · ${l.groupe.gammeLabel}` : null,
+    kit_classe: l.groupe?.niveau ?? null,
+    kit_gamme: l.groupe?.gammeLabel ?? null,
+    kit_beneficiaire_prenom: l.groupe?.beneficiairePrenom ?? null,
   }));
 }
 

@@ -20,7 +20,7 @@ export function KitBeneficiairePicker({
   cycle: string;
   niveau: string;
   value: number | null;
-  onChange: (id: number | null) => void;
+  onChange: (id: number | null, prenom: string | null) => void;
 }) {
   const { identite } = useIdentite();
   const connecte = Boolean(identite?.telephone && identite?.jeton);
@@ -58,7 +58,7 @@ export function KitBeneficiairePicker({
     setBusy(false);
     if (r.ok) {
       setBenefs(r.beneficiaires);
-      if (r.id) onChange(r.id);
+      if (r.id) onChange(r.id, p);
       setPrenom("");
       setOuvert(false);
     }
@@ -68,11 +68,11 @@ export function KitBeneficiairePicker({
     <div className="mx-4 mb-1 flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3">
       <span className="text-xs font-medium text-ink/60">Pour qui ce kit&nbsp;?</span>
       <div className="flex flex-wrap gap-2">
-        <Puce active={value === null} onClick={() => onChange(null)}>
+        <Puce active={value === null} onClick={() => onChange(null, null)}>
           Sans préciser
         </Puce>
         {benefs.map((b) => (
-          <Puce key={b.id} active={value === b.id} onClick={() => onChange(b.id)}>
+          <Puce key={b.id} active={value === b.id} onClick={() => onChange(b.id, b.prenom)}>
             {b.prenom}
           </Puce>
         ))}

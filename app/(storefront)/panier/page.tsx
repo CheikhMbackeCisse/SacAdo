@@ -1,16 +1,75 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
-import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
+import { usePanierDetaille, type LigneDetaillee } from "@/lib/local/use-panier-detaille";
+import type { GroupeKitPanier, LignePanier } from "@/lib/local/panier";
 import { PanierLine } from "@/components/panier/panier-line";
+import { PanierKitCard } from "@/components/panier/panier-kit-card";
 import { FreeShippingProgress } from "@/components/panier/free-shipping-progress";
 import { formatPrice } from "@/lib/format";
 
+type GroupeAffichage = { groupe: GroupeKitPanier; lignes: LigneDetaillee[] };
+
+function regrouperParKit(detail: LigneDetaillee[]): {
+  groupes: GroupeAffichage[];
+  horsGroupe: LigneDetaillee[];
+} {
+  const groupesMap = new Map<string, GroupeAffichage>();
+  const horsGroupe: LigneDetaillee[] = [];
+  for (const ligne of detail) {
+    if (ligne.groupe) {
+      const existant = groupesMap.get(ligne.groupe.id);
+      if (existant) {
+        existant.lignes.push(ligne);
+      } else {
+        groupesMap.set(ligne.groupe.id, { groupe: ligne.groupe, lignes: [ligne] });
+      }
+    } else {
+      horsGroupe.push(ligne);
+    }
+  }
+  return { groupes: [...groupesMap.values()], horsGroupe };
+}
+
 export default function PanierPage() {
   const router = useRouter();
-  const { detail, sousTotal, loading, retirer, setQuantite } = usePanierDetaille();
+  const { detail, sousTotal, loading, retirer, retirerGroupe, restaurerLignes, setQuantite } =
+    usePanierDetaille();
+  const [kitRetire, setKitRetire] = useState<{ groupe: GroupeKitPanier; lignes: LignePanier[] } | null>(
+    null,
+  );
+
+  const { groupes, horsGroupe } = useMemo(() => regrouperParKit(detail), [detail]);
+
+  // Retirer le dernier kit du panier vide la liste : l'écran "panier vide"
+  // ne doit pas pour autant avaler la bannière d'annulation, sinon "Annuler"
+  // devient impossible à atteindre (CORRECTIONS_V15 Lot 2, bug constaté).
+  const retirerKit = (groupe: GroupeKitPanier) => {
+    const lignesRetirees = retirerGroupe(groupe.id);
+    setKitRetire({ groupe, lignes: lignesRetirees });
+    setTimeout(() => setKitRetire((c) => (c?.groupe.id === groupe.id ? null : c)), 5000);
+  };
+
+  const annulerRetrait = () => {
+    if (!kitRetire) return;
+    restaurerLignes(kitRetire.lignes);
+    setKitRetire(null);
+  };
+
+  const bandeauAnnulation = kitRetire && (
+    <div
+      role="status"
+      className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-elevated px-4 py-2.5 text-sm text-ink"
+    >
+      <span>Kit retiré</span>
+      <button type="button" onClick={annulerRetrait} className="font-semibold text-brand">
+        Annuler
+      </button>
+    </div>
+  );
 
   if (loading) {
     return <p className="px-4 py-12 text-center text-sm text-ink/50">Chargement…</p>;
@@ -19,6 +78,7 @@ export default function PanierPage() {
   if (detail.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24 text-center">
+        {bandeauAnnulation && <div className="mb-2 w-full max-w-xs">{bandeauAnnulation}</div>}
         <span className="flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand">
           <ShoppingCart size={26} aria-hidden="true" />
         </span>
@@ -42,16 +102,33 @@ export default function PanierPage() {
 
       <FreeShippingProgress sousTotal={sousTotal} />
 
-      <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated px-3">
-        {detail.map((ligne) => (
-          <PanierLine
-            key={`${ligne.produit.id}-${ligne.variante?.id ?? "base"}`}
-            ligne={ligne}
-            onQuantiteChange={(q) => setQuantite(ligne.produit.id, ligne.variante?.id ?? null, q)}
-            onRetirer={() => retirer(ligne.produit.id, ligne.variante?.id ?? null)}
-          />
-        ))}
-      </div>
+      {bandeauAnnulation}
+
+      {groupes.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          {groupes.map(({ groupe, lignes }) => (
+            <PanierKitCard
+              key={groupe.id}
+              groupe={groupe}
+              lignes={lignes}
+              onRetirer={() => retirerKit(groupe)}
+            />
+          ))}
+        </div>
+      )}
+
+      {horsGroupe.length > 0 && (
+        <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated px-3">
+          {horsGroupe.map((ligne) => (
+            <PanierLine
+              key={`${ligne.produit.id}-${ligne.variante?.id ?? "base"}`}
+              ligne={ligne}
+              onQuantiteChange={(q) => setQuantite(ligne.produit.id, ligne.variante?.id ?? null, q)}
+              onRetirer={() => retirer(ligne.produit.id, ligne.variante?.id ?? null)}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="sticky bottom-16 z-30 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:bottom-0">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">

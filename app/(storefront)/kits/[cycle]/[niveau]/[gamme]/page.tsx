@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ArrowLeft, Package } from "lucide-react";
@@ -73,19 +74,23 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
   const lignesKit: LigneKit[] = items.map((it) => ({ item: it, produit: it.produit }));
 
   if (!kit || !kitEstAffichable(lignesKit)) {
+    // CORRECTIONS_V15 Lot 3 : FondDecor hors du div animé (voir le commentaire
+    // détaillé dans app/(storefront)/kits/page.tsx).
     return (
-      <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24 text-center">
+      <>
         <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
-        <span className="flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand">
-          <Package size={26} aria-hidden="true" />
-        </span>
-        <h1 className="font-heading text-lg font-semibold text-ink">
-          Gamme {gammeDef?.label} indisponible
-        </h1>
-        <Link href={retour} className="text-sm font-medium text-brand">
-          Voir les autres gammes
-        </Link>
-      </div>
+        <div className="animate-fade-in-up flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand">
+            <Package size={26} aria-hidden="true" />
+          </span>
+          <h1 className="font-heading text-lg font-semibold text-ink">
+            Gamme {gammeDef?.label} indisponible
+          </h1>
+          <Link href={retour} className="text-sm font-medium text-brand">
+            Voir les autres gammes
+          </Link>
+        </div>
+      </>
     );
   }
 
@@ -123,52 +128,63 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
     ...new Set(lignes.filter((l) => l.section === "principal").map((l) => l.produit.photo)),
   ].filter((p): p is string => !!p);
   const photosMosaique = [...new Set(photosCurees.length > 0 ? photosCurees : photosGenerique)].slice(0, 4);
+  const photoKit = photosMosaique[0] ?? null;
 
   return (
-    <div className="animate-fade-in-up flex flex-col gap-1 py-4">
+    // CORRECTIONS_V15 Lot 3 : FondDecor hors du div animé (voir le commentaire
+    // détaillé dans app/(storefront)/kits/page.tsx).
+    <>
       <FondDecor variante={varianteFondDuCycle(cycleDef.value)} />
-      <Link
-        href={retour}
-        className="mx-4 mb-1 inline-flex w-fit items-center gap-1 text-xs font-medium text-ink/60 transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={14} aria-hidden="true" />
-        Gammes du Kit {niveau}
-      </Link>
+      <div className="animate-fade-in-up flex flex-col gap-1 py-4">
+        <Link
+          href={retour}
+          className="mx-4 mb-1 inline-flex w-fit items-center gap-1 text-xs font-medium text-ink/60 transition-colors hover:text-ink"
+        >
+          <ArrowLeft size={14} aria-hidden="true" />
+          Gammes du Kit {niveau}
+        </Link>
 
-      {photosMosaique.length > 0 ? (
-        <div className="mx-4 mb-1 grid aspect-[2/1] grid-cols-2 gap-1 overflow-hidden rounded-2xl">
-          {photosMosaique.map((photo) => (
-            <div key={photo} className="relative bg-elevated">
-              <ProductImage src={photo} alt="" className="h-full w-full" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="mx-4 mb-1 flex aspect-[2/1] flex-col items-center justify-center gap-1 rounded-2xl bg-brand/10">
-          <span className="font-heading text-lg font-bold text-brand">{niveau}</span>
-          <span className="text-sm text-brand/70">{gammeDef?.label}</span>
-        </div>
-      )}
+        {photosMosaique.length > 0 ? (
+          <div className="mx-4 mb-1 grid aspect-[2/1] grid-cols-2 gap-1 overflow-hidden rounded-2xl">
+            {photosMosaique.map((photo) => (
+              <div key={photo} className="relative bg-elevated">
+                <ProductImage src={photo} alt="" className="h-full w-full" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mx-4 mb-1 flex aspect-[2/1] flex-col items-center justify-center gap-1 rounded-2xl bg-brand/10">
+            <span className="font-heading text-lg font-bold text-brand">{niveau}</span>
+            <span className="text-sm text-brand/70">{gammeDef?.label}</span>
+          </div>
+        )}
 
-      <div className="flex items-start justify-between gap-3 px-4">
-        <h1 className="font-heading text-xl font-bold text-ink">
-          Kit {niveau} · {gammeDef?.label}
-        </h1>
-        <ShareButton
-          path={`/kits/${cycle}/${encodeURIComponent(niveau)}/${gamme}`}
-          title={`Kit ${niveau} ${gammeDef?.label ?? ""}`.trim()}
-          className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-ink/15 text-ink/70 transition-transform active:scale-90"
-          size={17}
-        />
+        <div className="flex items-start justify-between gap-3 px-4">
+          <h1 className="font-heading text-xl font-bold text-ink">
+            Kit {niveau} · {gammeDef?.label}
+          </h1>
+          <ShareButton
+            path={`/kits/${cycle}/${encodeURIComponent(niveau)}/${gamme}`}
+            title={`Kit ${niveau} ${gammeDef?.label ?? ""}`.trim()}
+            className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-ink/15 text-ink/70 transition-transform active:scale-90"
+            size={17}
+          />
+        </div>
+        {description && <p className="mx-4 mb-1 mt-1 text-sm text-ink/70">{description}</p>}
+
+        <Suspense fallback={null}>
+          <KitBuilder
+            kitId={kit.id}
+            kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()}
+            cycle={cycle}
+            niveau={niveau}
+            gamme={gamme}
+            gammeLabel={gammeDef?.label ?? ""}
+            photoKit={photoKit}
+            lignes={lignes}
+          />
+        </Suspense>
       </div>
-      {description && <p className="mx-4 mb-1 mt-1 text-sm text-ink/70">{description}</p>}
-
-      <KitBuilder
-        kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()}
-        cycle={cycle}
-        niveau={niveau}
-        lignes={lignes}
-      />
-    </div>
+    </>
   );
 }

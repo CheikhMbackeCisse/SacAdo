@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePanier } from "./panier";
+import { usePanier, type GroupeKitPanier, type LignePanier } from "./panier";
 import { getProduitsByIds, getVariantesByIds } from "@/lib/supabase/queries";
 import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
@@ -11,13 +11,14 @@ export type LigneDetaillee = {
   quantite: number;
   prixUnitaire: number;
   totalLigne: number;
+  groupe: GroupeKitPanier | null;
 };
 
 // Le panier local ne stocke que des ids + quantités ; ce hook va chercher les
 // produits/variantes correspondants (lecture publique) pour afficher photo,
 // nom et prix à jour dans /panier et /checkout.
 export function usePanierDetaille() {
-  const { lignes, retirer, setQuantite, vider } = usePanier();
+  const { lignes, retirer, retirerGroupe, restaurerLignes, setQuantite, vider } = usePanier();
   const [produits, setProduits] = useState<Produit[]>([]);
   const [variantes, setVariantes] = useState<VarianteAvecAttributs[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,11 +59,23 @@ export function usePanierDetaille() {
         quantite: ligne.quantite,
         prixUnitaire,
         totalLigne: prixUnitaire * ligne.quantite,
+        groupe: ligne.groupe ?? null,
       };
     })
     .filter((d): d is LigneDetaillee => d !== null);
 
   const sousTotal = detail.reduce((sum, d) => sum + d.totalLigne, 0);
 
-  return { detail, sousTotal, loading, retirer, setQuantite, vider };
+  return {
+    detail,
+    sousTotal,
+    loading,
+    retirer,
+    retirerGroupe,
+    restaurerLignes,
+    setQuantite,
+    vider,
+  };
 }
+
+export type { LignePanier };

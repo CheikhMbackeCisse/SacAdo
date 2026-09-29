@@ -76,16 +76,34 @@ export async function getBlocWhatsApp(commandeId: number): Promise<BlocWhatsApp 
 
   const { data: items } = await supabaseAdmin
     .from("commande_items")
-    .select("produit:produits(nom)")
+    .select("quantite, kit_groupe_id, kit_nom, produit:produits(nom)")
     .eq("commande_id", commandeId);
+
+  // Un kit scolaire ne doit pas exploser en 20+ noms de produits dans le
+  // message WhatsApp (CORRECTIONS_V15 Lot 2) : une seule mention par kit.
+  type ItemRow = {
+    quantite: number;
+    kit_groupe_id: string | null;
+    kit_nom: string | null;
+    produit: { nom: string } | { nom: string }[] | null;
+  };
+  const kits = new Map<string, { nom: string; nbArticles: number }>();
+  const articlesHorsKit: string[] = [];
+  for (const row of (items ?? []) as unknown as ItemRow[]) {
+    if (row.kit_groupe_id) {
+      const kit = kits.get(row.kit_groupe_id) ?? { nom: row.kit_nom ?? "Kit", nbArticles: 0 };
+      kit.nbArticles += row.quantite;
+      kits.set(row.kit_groupe_id, kit);
+      continue;
+    }
+    const nomProduit = Array.isArray(row.produit) ? row.produit[0]?.nom : row.produit?.nom;
+    if (nomProduit) articlesHorsKit.push(nomProduit);
+  }
   const articles =
-    (items ?? [])
-      .map((row) => {
-        const p = (row as { produit: { nom: string } | { nom: string }[] | null }).produit;
-        return Array.isArray(p) ? p[0]?.nom : p?.nom;
-      })
-      .filter(Boolean)
-      .join(", ") || "un article";
+    [
+      ...[...kits.values()].map((k) => `Kit ${k.nom} (${k.nbArticles} articles)`),
+      ...articlesHorsKit,
+    ].join(", ") || "un article";
 
   const lienCommande = `${await origineSite()}/suivi/${commande.id}?t=${jetonClient(commande.client_id)}`;
 

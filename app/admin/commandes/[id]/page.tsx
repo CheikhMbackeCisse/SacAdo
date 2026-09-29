@@ -1,6 +1,11 @@
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getCommandeAdmin, getCommandeItemsAdmin } from "@/lib/admin/commandes-actions";
+import {
+  getCommandeAdmin,
+  getCommandeItemsAdmin,
+  type CommandeItemAvecProduit,
+} from "@/lib/admin/commandes-actions";
 import { getBlocWhatsApp } from "@/lib/admin/whatsapp-actions";
 import { Download } from "lucide-react";
 import { formatDateLivraison, formatPrice } from "@/lib/format";
@@ -19,6 +24,40 @@ function formatDateGarantie(date: string): string {
   return new Date(`${date}T00:00:00`).toLocaleDateString("fr-FR");
 }
 
+// Regroupe les lignes d'un même kit scolaire (CORRECTIONS_V15 Lot 2) : l'admin
+// prépare la commande, il lui faut le détail produit par produit, mais rangé
+// sous le nom du kit plutôt que noyé dans la liste.
+type GroupeItemsAdmin = {
+  id: string | null;
+  nom: string | null;
+  prenom: string | null;
+  items: CommandeItemAvecProduit[];
+};
+
+function regrouperItemsParKit(items: CommandeItemAvecProduit[]): GroupeItemsAdmin[] {
+  const groupes: GroupeItemsAdmin[] = [];
+  const parGroupeId = new Map<string, GroupeItemsAdmin>();
+  let horsGroupe: GroupeItemsAdmin | null = null;
+  for (const item of items) {
+    if (item.kit_groupe_id) {
+      let g = parGroupeId.get(item.kit_groupe_id);
+      if (!g) {
+        g = { id: item.kit_groupe_id, nom: item.kit_nom, prenom: item.kit_beneficiaire_prenom, items: [] };
+        parGroupeId.set(item.kit_groupe_id, g);
+        groupes.push(g);
+      }
+      g.items.push(item);
+    } else {
+      if (!horsGroupe) {
+        horsGroupe = { id: null, nom: null, prenom: null, items: [] };
+        groupes.push(horsGroupe);
+      }
+      horsGroupe.items.push(item);
+    }
+  }
+  return groupes;
+}
+
 export default async function AdminCommandeDetailPage(props: PageProps<"/admin/commandes/[id]">) {
   const { id } = await props.params;
   const commandeId = Number(id);
@@ -30,6 +69,8 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
     getBlocWhatsApp(commandeId),
   ]);
   if (!commande) notFound();
+
+  const groupesItems = regrouperItemsParKit(items);
 
   return (
     <div className="flex flex-col gap-4">
@@ -144,40 +185,52 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
 
       {blocWhatsApp && <BlocWhatsAppFiche commandeId={commande.id} bloc={blocWhatsApp} />}
 
-      <ul className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white px-4 text-sm lg:hidden">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-baseline justify-between gap-3 py-3">
-            <span className="min-w-0 text-ink">
-              {item.produit_nom}
-              <span className="block text-xs text-ink/45">
-                {item.quantite} × {formatPrice(item.prix_unitaire)}
-              </span>
-              {item.composants && item.composants.length > 0 && (
-                <ul className="mt-1 border-l-2 border-ink/10 pl-2 text-xs text-ink/55">
-                  {item.composants.map((c, i) => (
-                    <li key={i}>
-                      {c.nom} × {c.quantite}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {item.garantie_fin && (
-                <span className="block text-xs font-medium text-[#16A34A]">
-                  Garantie jusqu&apos;au {formatDateGarantie(item.garantie_fin)}
-                </span>
-              )}
-              {item.photo_a_ameliorer && (
-                <span className="mt-1 block rounded border border-brand/30 bg-brand/5 px-1.5 py-0.5 text-xs font-medium text-ink">
-                  Photographier avant l&apos;emballage (fond neutre, lumière du jour)
-                </span>
-              )}
-            </span>
-            <span className="shrink-0 font-medium text-ink">
-              {formatPrice(item.prix_unitaire * item.quantite)}
-            </span>
-          </li>
+      <div className="flex flex-col gap-3 lg:hidden">
+        {groupesItems.map((groupe) => (
+          <div key={groupe.id ?? "hors-groupe"} className="flex flex-col gap-1">
+            {groupe.nom && (
+              <p className="px-1 text-xs font-semibold text-ink/70">
+                Kit {groupe.nom}
+                {groupe.prenom ? ` — pour ${groupe.prenom}` : ""}
+              </p>
+            )}
+            <ul className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white px-4 text-sm">
+              {groupe.items.map((item) => (
+                <li key={item.id} className="flex items-baseline justify-between gap-3 py-3">
+                  <span className="min-w-0 text-ink">
+                    {item.produit_nom}
+                    <span className="block text-xs text-ink/45">
+                      {item.quantite} × {formatPrice(item.prix_unitaire)}
+                    </span>
+                    {item.composants && item.composants.length > 0 && (
+                      <ul className="mt-1 border-l-2 border-ink/10 pl-2 text-xs text-ink/55">
+                        {item.composants.map((c, i) => (
+                          <li key={i}>
+                            {c.nom} × {c.quantite}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {item.garantie_fin && (
+                      <span className="block text-xs font-medium text-[#16A34A]">
+                        Garantie jusqu&apos;au {formatDateGarantie(item.garantie_fin)}
+                      </span>
+                    )}
+                    {item.photo_a_ameliorer && (
+                      <span className="mt-1 block rounded border border-brand/30 bg-brand/5 px-1.5 py-0.5 text-xs font-medium text-ink">
+                        Photographier avant l&apos;emballage (fond neutre, lumière du jour)
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-medium text-ink">
+                    {formatPrice(item.prix_unitaire * item.quantite)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
 
       <TableauDesktop>
         <table className="w-full text-sm">
@@ -191,40 +244,52 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b border-ink/5 last:border-0">
-                <td className="px-4 py-3 text-ink">
-                  {item.produit_nom}
-                  {item.composants && item.composants.length > 0 && (
-                    <ul className="mt-1 border-l-2 border-ink/10 pl-2 text-xs font-normal text-ink/55">
-                      {item.composants.map((c, i) => (
-                        <li key={i}>
-                          {c.nom} × {c.quantite}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {item.photo_a_ameliorer && (
-                    <span className="mt-1 block w-fit rounded border border-brand/30 bg-brand/5 px-1.5 py-0.5 text-xs font-medium text-ink">
-                      Photographier avant l&apos;emballage (fond neutre, lumière du jour)
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-ink/60">{item.quantite}</td>
-                <td className="px-4 py-3 text-ink/60">{formatPrice(item.prix_unitaire)}</td>
-                <td className="px-4 py-3 font-medium text-ink">
-                  {formatPrice(item.prix_unitaire * item.quantite)}
-                </td>
-                <td className="px-4 py-3 text-ink/60">
-                  {item.garantie_fin ? (
-                    <span className="font-medium text-[#16A34A]">
-                      {formatDateGarantie(item.garantie_fin)}
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              </tr>
+            {groupesItems.map((groupe) => (
+              <Fragment key={groupe.id ?? "hors-groupe"}>
+                {groupe.nom && (
+                  <tr key={`${groupe.id}-titre`} className="border-b border-ink/5">
+                    <td colSpan={5} className="px-4 pt-3 text-xs font-semibold text-ink/70">
+                      Kit {groupe.nom}
+                      {groupe.prenom ? ` — pour ${groupe.prenom}` : ""}
+                    </td>
+                  </tr>
+                )}
+                {groupe.items.map((item) => (
+                  <tr key={item.id} className="border-b border-ink/5 last:border-0">
+                    <td className="px-4 py-3 text-ink">
+                      {item.produit_nom}
+                      {item.composants && item.composants.length > 0 && (
+                        <ul className="mt-1 border-l-2 border-ink/10 pl-2 text-xs font-normal text-ink/55">
+                          {item.composants.map((c, i) => (
+                            <li key={i}>
+                              {c.nom} × {c.quantite}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {item.photo_a_ameliorer && (
+                        <span className="mt-1 block w-fit rounded border border-brand/30 bg-brand/5 px-1.5 py-0.5 text-xs font-medium text-ink">
+                          Photographier avant l&apos;emballage (fond neutre, lumière du jour)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-ink/60">{item.quantite}</td>
+                    <td className="px-4 py-3 text-ink/60">{formatPrice(item.prix_unitaire)}</td>
+                    <td className="px-4 py-3 font-medium text-ink">
+                      {formatPrice(item.prix_unitaire * item.quantite)}
+                    </td>
+                    <td className="px-4 py-3 text-ink/60">
+                      {item.garantie_fin ? (
+                        <span className="font-medium text-[#16A34A]">
+                          {formatDateGarantie(item.garantie_fin)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </Fragment>
             ))}
           </tbody>
         </table>

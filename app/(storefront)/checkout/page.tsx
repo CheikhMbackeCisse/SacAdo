@@ -208,6 +208,7 @@ export default function CheckoutPage() {
       produitId: d.produit.id,
       varianteId: d.variante?.id ?? null,
       quantite: d.quantite,
+      groupe: d.groupe,
     }));
     const commandeInput = {
       nom,
