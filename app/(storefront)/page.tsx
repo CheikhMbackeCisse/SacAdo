@@ -18,7 +18,7 @@ export default async function Home() {
       <FondDecor variante="general" />
       <HeroCarousel />
       <CategoryScroll categories={categories} />
-      <h1 className="px-4 pt-4 font-heading text-sm font-medium text-ink/70">
+      <h1 className="sr-only">
         Fournitures scolaires et kits scolaires à Dakar et partout au Sénégal
       </h1>
       <section className="mt-2">
