@@ -164,6 +164,7 @@ export function ProductDetail({
               className="h-full w-full"
               sizes="100vw"
               fit="contain"
+              priority
             />
           </div>
         ) : (
@@ -184,6 +185,9 @@ export function ProductDetail({
                     className="h-full w-full"
                     sizes="100vw"
                     fit="contain"
+                    // Seule la 1re photo (visible au chargement, candidate LCP)
+                    // est préchargée en priorité — audit perf 2026-09-28, LOT 7.
+                    priority={index === 0}
                   />
                 </div>
               ))}

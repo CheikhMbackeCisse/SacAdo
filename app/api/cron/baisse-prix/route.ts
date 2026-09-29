@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notifierEvenementClient } from "@/lib/messages/notifier-evenement";
 import { origineSite } from "@/lib/site-url";
+import { slugAvecId } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -43,19 +44,26 @@ export async function POST(request: NextRequest) {
     .select("client_id, produit_id")
     .in("produit_id", produitIds);
 
+  // Nom du produit nécessaire pour construire le lien canonique /produits/
+  // [slug-id] directement (évite le 308 de /produit/[id] sur un lien envoyé
+  // en masse à des clients réels — audit perf 2026-09-28, LOT 7).
+  const { data: produitsNoms } = await supabaseAdmin.from("produits").select("id, nom").in("id", produitIds);
+  const nomParProduit = new Map((produitsNoms ?? []).map((p) => [p.id as number, p.nom as string]));
+
   const origine = await origineSite();
   let notifies = 0;
 
   for (const v of vues ?? []) {
     const produitId = v.produit_id as number;
     const prix = dernierPrixParProduit.get(produitId);
-    if (prix == null) continue;
+    const nom = nomParProduit.get(produitId);
+    if (prix == null || !nom) continue;
 
     await notifierEvenementClient({
       clientId: v.client_id as number,
       code: "baisse_prix",
       variables: { montant: Math.round(prix).toLocaleString("fr-FR") },
-      lien: `${origine}/produit/${produitId}`,
+      lien: `${origine}/produits/${slugAvecId(nom, produitId)}`,
     });
     notifies += 1;
   }

@@ -19,7 +19,16 @@
 // d'origine, sans transformation.
 
 const SUPABASE_PRODUCT_PHOTO_PATH = "/storage/v1/object/public/produits/";
-const VARIANT_SUFFIX = /-(\d+)(\.webp)$/i;
+// Ancrée sur les seules largeurs réellement produites par optimiser_images.py
+// (400/800/1200), jamais sur "n'importe quelle suite de chiffres" : un fichier
+// téléversé à la main (UUID, numéro de modèle, "-1"/"-2" de numérotation) peut
+// légitimement se terminer par des chiffres sans être une variante de taille.
+// Bug réel corrigé le 2026-09-28 (voir AUDIT_SEO_2026-09-27.md, préambule) :
+// avec `/-(\d+)(\.webp)$/i`, un UUID terminé par des chiffres (#1506, #1488),
+// un "-1.webp"/"-2.webp" de numérotation (#1577) ou un numéro de modèle produit
+// ("Stick 430" -> #1721) étaient pris à tort pour une variante -800, qui
+// n'existait pas -> image cassée pour le visiteur.
+const VARIANT_SUFFIX = /-(400|800|1200)(\.webp)$/i;
 const KNOWN_WIDTHS = [400, 800] as const;
 
 type LoaderParams = {

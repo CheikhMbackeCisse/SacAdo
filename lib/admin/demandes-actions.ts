@@ -6,6 +6,7 @@ import { origineSite } from "@/lib/site-url";
 import { normaliserTelephoneSN } from "@/lib/whatsapp";
 import { rendreModele } from "@/lib/messages/modeles";
 import { notifierEvenementClient } from "@/lib/messages/notifier-evenement";
+import { slugAvecId } from "@/lib/slug";
 import type { ActionResult } from "./produits-actions";
 
 // « Ce que les clients cherchent » — volet demandes explicites (le volet
@@ -107,7 +108,9 @@ export async function rattacherProduitDemande(
   const r = await maj(id, { statut: "trouve", produit_id: produitId });
   if (!r.ok) return r;
 
-  const lien = `${await origineSite()}/produit/${produit.id}`;
+  // Lien canonique /produits/[slug-id] direct (pas de 308 au clic) — audit
+  // perf 2026-09-28, LOT 7.
+  const lien = `${await origineSite()}/produits/${slugAvecId(produit.nom, produit.id)}`;
 
   // Le numéro de la demande correspond peut-être à un client déjà connu
   // (commande passée un jour) : on le retrouve pour le prévenir en push +

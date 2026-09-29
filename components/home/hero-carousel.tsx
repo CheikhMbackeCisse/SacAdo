@@ -22,40 +22,43 @@ const SLIDES: Slide[] = [
     subtitle: "Pour chaque niveau, de la maternelle à l'université",
     cta: "Découvrir",
     href: "/categories",
-    image: "/images/hero-marque.jpg",
-    blur: "data:image/webp;base64,UklGRkQAAABXRUJQVlA4IDgAAADwAQCdASoMAAwAA4BaJbACdAELz4SBaYAA/vPIifajCzd3NzQnnTdUL/7XnNJqPoKhGy0h7XEwAA==",
+    image: "/images/hero-marque.webp",
+    blur: "data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAADwAQCdASoMAAwAA4BaJbACdADc+G0ghwAA/vUd7sPBnz2c8sf3qkxeKN3cNZ+z63d6/eIJhhxxLzTuYTWc0J1NqKjqg5rP8ziOJ8B5ejjhmIimxvbYRkfAA7ymAAAA",
   },
   {
     title: "Sa classe, son kit prêt à commander",
     subtitle: "Une liste ajustable, livrée partout au Sénégal",
     cta: "Composer mon kit",
     href: "/kits",
-    image: "/images/cat-kits.png",
-    blur: "data:image/webp;base64,UklGRj4AAABXRUJQVlA4IDIAAADQAQCdASoMAAoAA4BaJYgCdAD0dnQ9AAD+7lf5cLg8/AOmW/3kXPx1q+qNDT+N7/oAAA==",
+    // Fichier dédié à cette bannière (recompressé), distinct de
+    // /images/cat-kits.png qui reste utilisé tel quel comme placeholder de
+    // la catégorie Kits et de plusieurs produits en base.
+    image: "/images/hero-kits.webp",
+    blur: "data:image/webp;base64,UklGRnQAAABXRUJQVlA4IGgAAACQAgCdASoMAAoAA4BaJbACdH8D2MyIcMA28sFTwAD+7mzkMi7atam6shF27UXwjYoahJ05c8ia6JgZj8yr7W+xz73BhYTVGYzS1VqJfz3FRp4dU92GHapJz54X3cPrHNAz13PIjrksAA==",
   },
   {
     title: "Vous commandez, on vous l'apporte",
     subtitle: "Livré partout au Sénégal, en express ou à la date de ton choix",
     cta: "Commander",
     href: "/categories",
-    image: "/images/hero-livraison.jpg",
-    blur: "data:image/webp;base64,UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoMAAgAA4BaJYgCdACRpiZ4AAD9+X8xX/Ht9OCqxPQZ+MUQhVEqTCQgwAA=",
+    image: "/images/hero-livraison.webp",
+    blur: "data:image/webp;base64,UklGRmAAAABXRUJQVlA4IFQAAACwAQCdASoMAAgAA4BaJZACdADZjbz0APzYnSP/GWbUSy2aiUv4POwmJoHzBiHFoKdggOUeqnYSZno9WPoEK+q0MiUDhYRW+MhJfJNXFlyUWIvoAAA=",
   },
   {
     title: "Un endroit rien qu'à lui pour apprendre",
     subtitle: "Le bureau, la chaise, tout pour se concentrer",
     cta: "Aménager son espace",
     href: "/categorie/mobilier",
-    image: "/images/hero-coin-etude.jpg",
-    blur: "data:image/webp;base64,UklGRj4AAABXRUJQVlA4IDIAAADwAQCdASoMAAwAA4BaJQBOgBuKByxGGAAA/uc/GVE9IjhUEjVZ0PyNy5wtubrZO/WAAA==",
+    image: "/images/hero-coin-etude.webp",
+    blur: "data:image/webp;base64,UklGRmgAAABXRUJQVlA4IFwAAAAQAgCdASoMAAwAA4BaJZgCdADdYtA9akQAAP7qqRleAtAHfbFoAdu/x6UqL1fS4aRSKf6y+5c+yJWKBXU/bp83FKVfDUkwbgESWWMmdCdwpc4W6Cb+usrrr3QAAA==",
   },
   {
     title: "Les outils du numérique à votre portée",
     subtitle: "Pour apprendre, créer et grandir avec le temps",
     cta: "Voir le matériel",
     href: "/categorie/ordinateurs",
-    image: "/images/hero-informatique.jpg",
-    blur: "data:image/webp;base64,UklGRkQAAABXRUJQVlA4IDgAAADwAQCdASoMAAcAA4BaJQBOgBuEXyQ24AAA/vCugYXuDrm2HYrgN1yXXbhcVSoKNMl5bS08KQAAAA==",
+    image: "/images/hero-informatique.webp",
+    blur: "data:image/webp;base64,UklGRmIAAABXRUJQVlA4IFYAAADQAQCdASoMAAcAA4BaJaACdACzw/wwAAD+9V54CkH2LcpYilmv4jBPWfNLb5NZ/noN596XTnief981ybrHXMhhbVr3MqUvecqLSSAe115QDaUTHAAAAA==",
   },
 ];
 
@@ -216,9 +219,13 @@ export function HeroCarousel() {
                 src={slide.image}
                 alt={slide.title}
                 fill
-                // Les 5 vraies slides sont préchargées (vues tout de suite au
-                // défilement auto). La 6e est le clone de la 1re, déjà chargée.
-                priority={i < SLIDES.length}
+                // Seule la 1re slide (visible au chargement) est préchargée en
+                // priorité. Les autres, invisibles tant qu'on n'a pas fait
+                // défiler, chargent en lazy : les précharger toutes les 5 en
+                // même temps retardait le LCP (audit perf mobile 2026-09-28,
+                // LOT 7 : jusqu'à ~840 Kio d'images en concurrence avec la
+                // bannière réellement affichée, sur un réseau 4G lent).
+                priority={i === 0}
                 sizes="100vw"
                 placeholder={slide.blur ? "blur" : "empty"}
                 blurDataURL={slide.blur}

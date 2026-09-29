@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notifierEvenementClient } from "@/lib/messages/notifier-evenement";
 import { origineSite } from "@/lib/site-url";
+import { slugAvecId } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -51,8 +52,12 @@ export async function POST(request: NextRequest) {
       .select("id, nom")
       .in("id", produitIdsClient);
     const noms = (produits ?? []).map((p) => p.nom as string);
+    // Lien canonique /produits/[slug-id] direct (pas de 308 au clic) — audit
+    // perf 2026-09-28, LOT 7.
     const lien =
-      produitIdsClient.length === 1 ? `${origine}/produit/${produitIdsClient[0]}` : `${origine}/favoris`;
+      produitIdsClient.length === 1 && produits?.[0]
+        ? `${origine}/produits/${slugAvecId(produits[0].nom as string, produits[0].id as number)}`
+        : `${origine}/favoris`;
 
     await notifierEvenementClient({
       clientId,
