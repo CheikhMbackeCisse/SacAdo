@@ -3,22 +3,30 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { Check, Copy, Download, Menu, MoreVertical } from "lucide-react";
+import { Download } from "lucide-react";
 import { promptInstall, useInstallState } from "@/lib/pwa/install-prompt";
-import {
-  detecterNavigateurAndroid,
-  estAndroid,
-  estNavigateurEmbarque,
-  type NavigateurAndroid,
-} from "@/lib/pwa/platform";
+import { estAndroid } from "@/lib/pwa/platform";
+import { estRobot } from "@/lib/pwa/bot-detection";
+import { compterPageVue, estVisitePub, marquerVisitePub } from "@/lib/pwa/ads-session";
 
-// Invitation d'installation Android (CORRECTIONS_V11 lot 3) : à l'arrivée
-// dans l'app, sur Android uniquement, tant qu'elle n'est pas déjà installée.
+// Invitation d'installation Android (CORRECTIONS_V11 lot 3, réécrite pour les
+// pubs Google Ads — LOT_PUB_ANDROID §1) : à l'arrivée dans l'app, sur Android
+// uniquement, tant qu'elle n'est pas déjà installée.
 // Distincte de InstallBanner (bandeau bas, iOS/desktop/repli général) — les
 // deux ne doivent jamais se superposer : InstallBanner s'efface sur Android
 // (voir lib/pwa/platform.ts + install-banner.tsx).
+//
+// Règle stricte (audit Google Ads) : cette fenêtre ne montre JAMAIS d'étapes
+// ni d'explication. Elle ne s'affiche QUE si le navigateur a réellement
+// déclenché `beforeinstallprompt` (bouton = installation native en un
+// toucher) ; sinon rien n'apparaît du tout — l'explication détaillée reste
+// disponible derrière le bouton d'installation du header (InstallHeaderButton),
+// que l'utilisateur ouvre lui-même.
 const REPORTE_KEY = "sacado_install_android_reporte";
 const RAPPEL_MS = 7 * 24 * 60 * 60 * 1000;
+// Délai d'attente de `beforeinstallprompt` après le démarrage : au-delà,
+// on abandonne pour cette visite plutôt que d'attendre indéfiniment.
+const ATTENTE_PROMPT_MS = 5000;
 
 function reporteRecemment(): boolean {
   try {
@@ -36,7 +44,15 @@ export function AndroidInstallInvite() {
   const pathname = usePathname();
   const { canPrompt, installed } = useInstallState();
   const [ferme, setFerme] = useState(false);
-  const [copie, setCopie] = useState(false);
+  const [essaiExpire, setEssaiExpire] = useState(false);
+  const [bloqueParPub, setBloqueParPub] = useState(false);
+  // Robots/outils de test (Search Console, Lighthouse, crawlers pub) : jamais
+  // cette fenêtre, quelle que soit la plateforme.
+  const robot = useSyncExternalStore(
+    EMPTY_SUBSCRIBE,
+    () => estRobot(navigator.userAgent, navigator.webdriver === true),
+    () => false,
+  );
 
   // Rendu client uniquement : l'user-agent n'existe pas côté serveur, et on
   // évite un flash pour les visiteurs iOS/desktop (jamais concernés).
@@ -46,16 +62,41 @@ export function AndroidInstallInvite() {
     () => estAndroid(navigator.userAgent),
     () => false,
   );
-  const navigateur = useSyncExternalStore(
-    EMPTY_SUBSCRIBE,
-    () => detecterNavigateurAndroid(navigator.userAgent),
-    () => "chrome" as NavigateurAndroid,
-  );
+
+  // Visiteur venu d'une pub (gclid/gbraid/wbraid/utm_source) : jamais sur la
+  // 1re page vue de la session, au plus tôt à partir de la 2e. setTimeout :
+  // évite un setState synchrone dans le corps de l'effet.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      marquerVisitePub(window.location.search);
+      const pageVues = compterPageVue(pathname ?? "/");
+      setBloqueParPub(estVisitePub() && pageVues < 2);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [pathname]);
+
+  // Attente de `beforeinstallprompt` : si rien n'arrive dans les 5 s, on
+  // abandonne pour cette visite (jamais de repli avec des étapes).
+  useEffect(() => {
+    if (canPrompt || essaiExpire) return;
+    const t = setTimeout(() => setEssaiExpire(true), ATTENTE_PROMPT_MS);
+    return () => clearTimeout(t);
+  }, [canPrompt, essaiExpire]);
 
   // Jamais pendant une commande ou un paiement.
   const dansCommande = pathname?.startsWith("/checkout") || pathname?.startsWith("/paiement");
 
-  const ouvert = monte && android && !installed && !ferme && !dansCommande && !reporteRecemment();
+  const ouvert =
+    monte &&
+    android &&
+    !robot &&
+    canPrompt &&
+    !essaiExpire &&
+    !installed &&
+    !ferme &&
+    !dansCommande &&
+    !bloqueParPub &&
+    !reporteRecemment();
 
   const reporter = useCallback(() => {
     try {
@@ -88,16 +129,6 @@ export function AndroidInstallInvite() {
     if (resultat === "accepted") setFerme(true);
   };
 
-  const copierLien = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopie(true);
-      window.setTimeout(() => setCopie(false), 2000);
-    } catch {
-      // presse-papier indisponible : le lien reste affiché, copiable à la main
-    }
-  };
-
   return (
     <div
       role="dialog"
@@ -118,22 +149,14 @@ export function AndroidInstallInvite() {
           Téléchargez l&apos;application pour une meilleure expérience d&apos;utilisation
         </h2>
 
-        <div className="mt-4">
-          {estNavigateurEmbarque(navigateur) ? (
-            <NavigateurEmbarqueEtapes copie={copie} onCopier={copierLien} />
-          ) : canPrompt ? (
-            <button
-              type="button"
-              onClick={installer}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-on-brand transition-transform active:scale-95"
-            >
-              <Download size={16} aria-hidden="true" />
-              Installer
-            </button>
-          ) : (
-            <NavigateurEtapes navigateur={navigateur} />
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={installer}
+          className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-on-brand transition-transform active:scale-95"
+        >
+          <Download size={16} aria-hidden="true" />
+          Télécharger l&apos;application
+        </button>
 
         <button
           type="button"
@@ -143,95 +166,6 @@ export function AndroidInstallInvite() {
           Plus tard
         </button>
       </div>
-    </div>
-  );
-}
-
-function Etape({ n }: { n: number }) {
-  return (
-    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[11px] font-semibold text-brand">
-      {n}
-    </span>
-  );
-}
-
-// Marche à suivre propre à chaque navigateur (repli quand beforeinstallprompt
-// n'est pas disponible). Libellés à revérifier sur les versions actuelles des
-// navigateurs avant de les figer définitivement (CORRECTIONS_V11 lot 3).
-function NavigateurEtapes({ navigateur }: { navigateur: NavigateurAndroid }) {
-  const etapes: { icon: React.ReactNode; texte: string }[] =
-    navigateur === "samsung"
-      ? [
-          { icon: <Menu size={15} className="text-brand" aria-hidden="true" />, texte: "Touchez ≡ en bas de l'écran" },
-          { icon: null, texte: "Choisissez « Ajouter la page à »" },
-          { icon: null, texte: "Puis « Écran d'accueil »" },
-        ]
-      : navigateur === "firefox"
-        ? [
-            { icon: <MoreVertical size={15} className="text-brand" aria-hidden="true" />, texte: "Touchez ⋮ en haut à droite" },
-            { icon: null, texte: "Choisissez « Installer »" },
-          ]
-        : navigateur === "opera"
-          ? [
-              { icon: <MoreVertical size={15} className="text-brand" aria-hidden="true" />, texte: "Touchez ⋮ en haut à droite" },
-              { icon: null, texte: "Choisissez « Ajouter à l'écran d'accueil »" },
-            ]
-          : [
-              // Chrome, Edge : même menu ⋮ Chromium.
-              { icon: <MoreVertical size={15} className="text-brand" aria-hidden="true" />, texte: "Touchez ⋮ en haut à droite" },
-              { icon: null, texte: "Choisissez « Installer l'application » (ou « Ajouter à l'écran d'accueil »)" },
-            ];
-
-  return (
-    <ol className="flex flex-col gap-2 text-left text-xs text-ink/75">
-      {etapes.map((etape, i) => (
-        <li key={i} className="flex items-center gap-2">
-          <Etape n={i + 1} />
-          <span className="flex items-center gap-1.5">
-            {etape.icon}
-            {etape.texte}
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-// Navigateur intégré (Facebook, Instagram, TikTok…) : l'installation y est
-// techniquement impossible, on explique comment ouvrir la page dans Chrome.
-function NavigateurEmbarqueEtapes({ copie, onCopier }: { copie: boolean; onCopier: () => void }) {
-  return (
-    <div className="flex flex-col gap-3 text-left">
-      <ol className="flex flex-col gap-2 text-xs text-ink/75">
-        <li className="flex items-center gap-2">
-          <Etape n={1} />
-          <span className="flex items-center gap-1.5">
-            <MoreVertical size={15} className="text-brand" aria-hidden="true" />
-            Touchez ⋮ en haut à droite
-          </span>
-        </li>
-        <li className="flex items-center gap-2">
-          <Etape n={2} />
-          <span>Choisissez « Ouvrir dans le navigateur »</span>
-        </li>
-      </ol>
-      <button
-        type="button"
-        onClick={onCopier}
-        className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-ink/15 text-sm font-medium text-ink/70 transition-colors active:scale-95"
-      >
-        {copie ? (
-          <>
-            <Check size={15} className="text-success" aria-hidden="true" />
-            Lien copié
-          </>
-        ) : (
-          <>
-            <Copy size={15} aria-hidden="true" />
-            Copier le lien
-          </>
-        )}
-      </button>
     </div>
   );
 }
