@@ -1,103 +1,84 @@
-# CORRECTIONS V16 : nouveaux kits (préscolaire → Terminale)
+# CORRECTIONS_V16 : cahiers du préscolaire, éponges, version ordinateur
 
-Lis d'abord `CLAUDE_SacAdo.md` et `ETAT_KITS.md`. Ce chantier remplace le contenu de 69 kits
-par la composition validée par le fondateur. Travaille lot par lot et **arrête-toi après chaque
-lot** pour me montrer le résultat avant de passer au suivant.
-
-## Fichiers fournis (à copier dans le repo)
-- `SacAdo_nouveaux_kits_V2.xlsx` → `data/kits/SacAdo_nouveaux_kits_V2.xlsx`
-- `prod-je-me-debrouille-en-anglais.webp` → `public/images/prod-je-me-debrouille-en-anglais.webp`
-- `prod-dictionnaire-larousse-poche.webp` → `public/images/prod-dictionnaire-larousse-poche.webp`
-
-Les deux images font moins de 200 Ko. Envoie-les aussi dans le stockage Supabase des photos
-produits, comme pour les autres produits.
-
-## Le fichier Excel
-- Onglet **Contenu des kits** (en-têtes ligne 1) : une ligne par article de kit. C'est la seule
-  source pour l'import. Colonnes utilisées :
-  B Classe, C Gamme, D Ordre, E Groupe d'affichage, F Libellé (vu par le client), G ID produit,
-  I Quantité, J Prix unitaire, K Section, L Coché, N Statut, R Prix d'achat.
-- Onglet **Récap par kit** (en-têtes ligne 4) : B Classe, C Gamme, D ID du kit dans l'app,
-  F Nouveau prix attendu. Sert au contrôle.
-- Correspondances :
-  - Section : `Principal` → `principal`, `Livres proposés` → `livres_proposes`, `Option` → `option`.
-  - Coché : `Oui` / `Non` → le type de la colonne `coche_par_defaut`.
-  - Statut `MANQUE` (colonne G vide) : **ne pas importer** ces lignes (produit absent du
-    catalogue). Les lister dans le rapport.
-  - Les autres statuts (`OK`, `À CONFIRMER`, `SUBSTITUT`, `À CRÉER`) s'importent normalement.
-  - Codes provisoires dans la colonne G : `CRAIE-U`, `ANGLAIS-JMD`, `LAROUSSE-60`. Ils seront
-    remplacés par les vrais ID créés au lot B.
+Méthode habituelle : par lots, point de contrôle après chaque lot.
 
 ---
 
-## Lot A : sauvegarde et vérifications (lecture seule)
-1. Sauvegarde les tables `kits` et `kit_items` complètes (avec pagination par 1 000) dans
-   `backups/2026-09-30_kits_avant_V16/` (JSON).
-2. Vérifie comment les commandes gardent la trace des kits. Si une table de commande
-   référence `kit_items` par clé étrangère, **ne supprime pas** les anciennes lignes : propose
-   une autre méthode (archivage ou version) et attends mon accord.
-3. Vérifie que les 69 couples (Classe, Gamme) du Récap existent dans `kits` avec l'ID indiqué.
-4. Vérifie que chaque ID produit de l'Excel existe. Liste :
-   - les produits introuvables ;
-   - les produits non publiés (1509 est en attente de modération : c'est connu) ;
-   - les produits dont le prix en base diffère de la colonne J (sauf 1287, traité au lot B).
-5. Vérifie que les groupes d'affichage de l'Excel sont acceptés par l'app (si c'est une liste
-   fermée, dis-moi lesquels manquent) : Cahiers, Écriture, Petit matériel, Géométrie,
-   Art & dessin, Ardoise, Protège-cahiers, Papier, Rangement, Accessoires, Manuels au programme,
-   Manuels scolaires, Œuvres au programme, Parascolaire, Cahiers d'activités et compléments, Option.
+## Lot 1 : kits (script `scripts/corriger-kits-v16.mjs`, `--dry-run` d'abord)
 
-**Point de contrôle A** : montre-moi le rapport. N'écris rien en base.
+Sauvegarder `kit_items` avant (`backups/kit_items_avant_v16_<date>.json`).
 
-## Lot B : produits et kits masqués
-Script `scripts/v16_produits.ts` avec `--dry-run` par défaut, `--apply` pour écrire.
-1. Créer 3 produits :
-   - « Craie blanche Giotto Robercolor (à l'unité) » : vendeur LPD, prix 25 FCFA, prix d'achat
-     25 FCFA, même catégorie, sous-catégorie et photo que le produit 1299, délai 6j.
-   - « Je me débrouille en anglais » (auteur John Smith) : vendeur LPD, prix 3 000 FCFA, prix
-     d'achat 2 000 FCFA, catégorie Livres et annales, niveau Lycée, photo
-     `prod-je-me-debrouille-en-anglais.webp`, délai 6j.
-   - « Dictionnaire Larousse de français de poche, 60 000 mots » : vendeur LPD, prix
-     2 750 FCFA, prix d'achat 2 000 FCFA, même catégorie et sous-catégorie que 1682, photo
-     `prod-dictionnaire-larousse-poche.webp`, délai 6j.
-   Stock et statut de publication : comme les autres produits LPD.
-2. Produit 1287 « Gourde Drink violette » : prix 2 500 FCFA (au lieu de 2 000).
-3. Masquer les 9 kits de la série T, encore publiés : 502, 503, 504, 517, 518, 519, 538, 539, 540.
-   Ne pas les supprimer.
-4. Écrire la correspondance code → ID dans `data/kits/v16_nouveaux_produits.json`.
-5. La page produit et le sitemap doivent se régénérer pour les nouveaux produits (mécanisme
-   déjà en place).
+**A. Préscolaire (9 kits : Petite, Moyenne, Grande section × 3 gammes)**
+Au préscolaire, pas de cahiers de 100 pages : des cahiers de 48 pages et des cahiers de
+dessin de 32 pages.
+- Supprimer les lignes du produit 1618 (cahier 96 pages) et du produit 1286 (cahier de
+  dessin TPG) dans ces kits.
+- Ajouter ou mettre à jour, dans les 3 gammes :
+  | Classe | 1575 « Cahier L'écolier 48 pages » | 1572 « Cahier de dessin L'écolier 32 pages » |
+  |---|---|---|
+  | Petite section | 1 | 1 |
+  | Moyenne section | 2 | 1 |
+  | Grande section | 3 | 2 |
+  Groupes : 1575 dans « Cahiers » (libellé « Cahier 48 pages »), 1572 dans « Art &
+  dessin » (libellé « Cahier de dessin 32 pages »). Section Principal, cochés.
+- Garder le cahier de travaux pratiques 200 pages.
 
-**Point de contrôle B** : dry-run d'abord, puis `--apply` après mon accord. Donne les 3 ID créés.
+**B. Éponges (préscolaire et élémentaire)**
+- Remplacer le produit 1224 « Eponge Expanding Sponge » (éponge pour tableau blanc) par le
+  produit **1202 « Boîte à éponge »** (petite boîte ronde, pour l'ardoise), dans tous les
+  kits de ces deux cycles et dans les 3 gammes. Libellé « Éponge », quantité 1.
+- Vérifier que 1202 est publié et visible.
 
-## Lot C : import des kits
-Script `scripts/v16_import_kits.ts` avec `--dry-run` par défaut, `--apply` pour écrire.
-1. Lit l'onglet Contenu des kits, remplace les codes provisoires par les ID du lot B.
-2. Pour chacun des 69 kits, dans **une transaction par kit** : remplace les `kit_items` par les
-   lignes de l'Excel (méthode validée au lot A), avec ordre, groupe, libellé, produit, quantité,
-   section et coché par défaut.
-3. Si le prix du kit est stocké dans une colonne, recalcule-le. Sinon ne fais rien.
-4. Contrôle avant d'écrire, pour chaque kit : total des lignes `principal` cochées (prix en base
-   × quantité) = colonne F du Récap. Si un seul kit ne correspond pas, le script s'arrête et
-   affiche l'écart.
-5. Rapport du dry-run, par kit : nombre de lignes avant et après, prix avant et après, lignes
-   `MANQUE` ignorées. Vérifie aussi que l'ordre Essentiel < Complet < Confort est respecté
-   dans chaque classe.
-6. Images du kit (4 par kit : un cahier, la géométrie, un livre, le pack Schneider) : la
-   géométrie est maintenant le produit 1229 (boîte d'instruments Marshal). S'il n'a pas de
-   photo, dis-le-moi et garde l'ancienne image de géométrie en attendant.
+**Contrôles** : rapport kit par kit (avant / après), puis total de chaque kit ; l'ordre
+Essentiel < Complet < Confort doit rester respecté dans chaque classe.
 
-**Point de contrôle C** : dry-run d'abord, puis `--apply` après mon accord.
+---
 
-## Lot D : vérification dans l'app
-Sur mobile et sur desktop, avec des captures, vérifie :
-- Kit CE1 Essentiel : une seule ligne « Matériel géométrique », « Craies blanches » en
-  quantité 20, livres proposés décochés.
-- Kit 3e Confort, Terminale S1 Complet et Première L1 Confort : groupes affichés, livres
-  cochés, Larousse et « Je me débrouille en anglais » présents en Première L1 Confort.
-- Ajout au panier d'un kit : une seule carte « Votre kit … », total égal au prix du Récap.
-- Les kits de la série T n'apparaissent plus pour un visiteur.
-- Aucune page 404 sur les écrans kits.
+## Lot 2 : version ordinateur (à partir de 1024 px de large)
 
-## Fin
-`tsc`, `eslint`, `npm test`, `next build`, puis `vercel --prod --yes`. Donne-moi l'URL déployée
-et le récapitulatif de ce qui a été écrit en base.
+Le mobile ne change pas. Sur ordinateur, l'app reprend aujourd'hui la mise en page mobile
+étirée : par exemple, une fiche produit prend toute la largeur avec une image géante.
+
+### 2.1 Regarder un produit sans quitter la liste
+- Depuis une liste (accueil, catégorie, recherche, favoris), cliquer sur un produit ouvre un
+  **panneau d'aperçu à droite** (environ 440 px de large) : photos, nom, prix, délai,
+  variantes, quantité, bouton « Ajouter au panier », lien « Voir la fiche complète ». La
+  grille reste visible et cliquable à gauche : cliquer sur un autre produit remplace
+  l'aperçu.
+- L'adresse change (`/produits/<slug>`) pour pouvoir partager ou revenir en arrière (route
+  interceptée et slot parallèle de l'App Router). Échap et le bouton × ferment le panneau.
+  Recharger la page ou ouvrir le lien directement affiche la fiche complète.
+
+### 2.2 Fiche produit complète
+- Largeur de contenu limitée (environ 1 200 px), centrée.
+- Deux colonnes : galerie à gauche (image principale limitée à 520 px, miniatures
+  dessous), informations et achat à droite, bloc d'achat qui reste visible au défilement.
+- **Colonne « Produits similaires » à droite ou juste sous la zone d'achat, visible sans
+  défiler** : même sous-catégorie d'abord, avec image, prix et bouton « + ».
+- Images jamais agrandies au-delà de leur taille réelle (pas de flou).
+
+### 2.3 Autres pages
+- **Accueil** : bannière moins haute ; toutes les catégories visibles d'un coup (pas de
+  défilement horizontal) ; « À découvrir » sur 5 à 6 colonnes.
+- **Grilles produits** : 4 à 6 colonnes selon la largeur ; au survol d'une carte, légère
+  ombre et bouton « + » bien visible.
+- **Catégories** : grille de 4 à 6 colonnes.
+- **Page d'un kit** : deux colonnes, la liste des articles à gauche, un récapitulatif fixe à
+  droite (total, nombre d'articles, pour qui, bouton « Ajouter le kit »).
+- **Panier et commande** : deux colonnes, articles ou formulaire à gauche, récapitulatif fixe
+  à droite.
+- **Bandeau « Pour une meilleure expérience, téléchargez l'app »** : ne pas l'afficher sur
+  ordinateur (l'icône d'installation du header suffit).
+- Barre de recherche : touche « / » pour y placer le curseur.
+- Contenu toujours centré avec une largeur maximale, jamais collé aux bords sur un écran
+  large.
+
+### 2.4 Vérification
+Captures à 1024, 1280, 1440 et 1920 px : accueil, catégorie, aperçu produit ouvert, fiche
+produit complète, page d'un kit, panier, commande. Vérifier aussi qu'à 360 px rien n'a
+changé.
+
+---
+
+## Déploiement
+`tsc`, `eslint`, `npm test`, `next build`, puis `vercel --prod --yes`.
