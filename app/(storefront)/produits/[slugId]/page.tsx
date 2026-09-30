@@ -124,10 +124,14 @@ export default async function ProduitPage(props: PageProps<"/produits/[slugId]">
         autresEditions={autresEditions}
         composantsKit={composantsKit}
         documents={documents}
+        similaires={similaires}
       />
 
       {similaires.length > 0 && (
-        <section>
+        // Desktop (lg+) : ProductDetail affiche sa propre colonne "Vous aimerez
+        // aussi" à côté du bloc d'achat (CORRECTIONS_V16 §2.2) — celle-ci reste
+        // réservée au mobile.
+        <section className="lg:hidden">
           <h2 className="px-4 pb-3 font-heading text-base font-semibold text-ink">
             Vous aimerez aussi
           </h2>

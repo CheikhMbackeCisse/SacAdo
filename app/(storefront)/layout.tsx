@@ -7,6 +7,8 @@ import { Header } from "@/components/layout/header";
 import { AppMain } from "@/components/layout/app-main";
 import { CartToast } from "@/components/panier/cart-toast";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { ProductPreviewProvider } from "@/components/product/product-preview-context";
+import { ProductPreviewPanel } from "@/components/product/product-preview-panel";
 import { WelcomeScreen } from "@/components/onboarding/welcome-screen";
 import { NavigationGuardProvider } from "@/components/ui/navigation-guard";
 import { InstallBanner } from "@/components/pwa/install-banner";
@@ -94,16 +96,19 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
           Aller au contenu principal
         </a>
         <AppBehavior />
-        <Header />
-        <CartToast />
-        <AppMain>
-          <NavigationGuardProvider>{children}</NavigationGuardProvider>
-        </AppMain>
-        <BottomNav />
-        <WelcomeScreen />
-        <AndroidInstallInvite />
-        <InstallBanner />
-        <ServiceWorkerRegister />
+        <ProductPreviewProvider>
+          <Header />
+          <CartToast />
+          <AppMain>
+            <NavigationGuardProvider>{children}</NavigationGuardProvider>
+          </AppMain>
+          <BottomNav />
+          <WelcomeScreen />
+          <AndroidInstallInvite />
+          <InstallBanner />
+          <ServiceWorkerRegister />
+          <ProductPreviewPanel />
+        </ProductPreviewProvider>
       </body>
     </html>
   );

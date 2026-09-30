@@ -10,6 +10,7 @@ import { formatPrice } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { slugAvecId } from "@/lib/slug";
 import { logoMarque } from "@/lib/marques";
+import { useProductPreview } from "@/components/product/product-preview-context";
 import type { Produit } from "@/lib/supabase/types";
 
 export function ProductCard({
@@ -21,6 +22,7 @@ export function ProductCard({
   etiquette?: string | null;
 }) {
   const { ajouter } = usePanier();
+  const { ouvrir } = useProductPreview();
   const [added, setAdded] = useState(false);
   const epuise = produit.statut === "epuise";
   const logo = logoMarque(produit.marque);
@@ -28,6 +30,16 @@ export function ProductCard({
   return (
     <Link
       href={`/produits/${slugAvecId(produit.nom, produit.id)}`}
+      onClick={(event) => {
+        // Desktop (>= 1024 px, breakpoint lg) : ouvre le panneau d'aperçu sans
+        // quitter la liste (CORRECTIONS_V16 §2.1). Mobile : navigation normale,
+        // inchangée — c'est le clic qui décide, pas une route interceptée qui
+        // s'appliquerait aussi (à tort) au mobile.
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+        if (!window.matchMedia("(min-width: 1024px)").matches) return;
+        event.preventDefault();
+        ouvrir(produit.id, produit.nom);
+      }}
       className={`group flex flex-col overflow-hidden rounded-2xl border border-ink/10 bg-elevated transition-shadow hover:shadow-md ${
         epuise ? "opacity-60" : ""
       }`}

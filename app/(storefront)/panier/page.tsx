@@ -97,41 +97,43 @@ export default function PanierPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-4 pb-6">
-      <h1 className="font-heading text-xl font-bold text-ink">Mon panier</h1>
+    <div className="flex flex-col gap-4 px-4 py-4 pb-6 lg:mx-auto lg:w-full lg:max-w-5xl lg:flex-row lg:items-start lg:gap-8">
+      <div className="flex flex-1 flex-col gap-4">
+        <h1 className="font-heading text-xl font-bold text-ink">Mon panier</h1>
 
-      <FreeShippingProgress sousTotal={sousTotal} />
+        <FreeShippingProgress sousTotal={sousTotal} />
 
-      {bandeauAnnulation}
+        {bandeauAnnulation}
 
-      {groupes.length > 0 && (
-        <div className="flex flex-col gap-2.5">
-          {groupes.map(({ groupe, lignes }) => (
-            <PanierKitCard
-              key={groupe.id}
-              groupe={groupe}
-              lignes={lignes}
-              onRetirer={() => retirerKit(groupe)}
-            />
-          ))}
-        </div>
-      )}
+        {groupes.length > 0 && (
+          <div className="flex flex-col gap-2.5">
+            {groupes.map(({ groupe, lignes }) => (
+              <PanierKitCard
+                key={groupe.id}
+                groupe={groupe}
+                lignes={lignes}
+                onRetirer={() => retirerKit(groupe)}
+              />
+            ))}
+          </div>
+        )}
 
-      {horsGroupe.length > 0 && (
-        <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated px-3">
-          {horsGroupe.map((ligne) => (
-            <PanierLine
-              key={`${ligne.produit.id}-${ligne.variante?.id ?? "base"}`}
-              ligne={ligne}
-              onQuantiteChange={(q) => setQuantite(ligne.produit.id, ligne.variante?.id ?? null, q)}
-              onRetirer={() => retirer(ligne.produit.id, ligne.variante?.id ?? null)}
-            />
-          ))}
-        </div>
-      )}
+        {horsGroupe.length > 0 && (
+          <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated px-3">
+            {horsGroupe.map((ligne) => (
+              <PanierLine
+                key={`${ligne.produit.id}-${ligne.variante?.id ?? "base"}`}
+                ligne={ligne}
+                onQuantiteChange={(q) => setQuantite(ligne.produit.id, ligne.variante?.id ?? null, q)}
+                onRetirer={() => retirer(ligne.produit.id, ligne.variante?.id ?? null)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
-      <div className="sticky bottom-16 z-30 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:bottom-0">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+      <div className="sticky bottom-16 z-30 -mx-4 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:sticky lg:top-20 lg:mx-0 lg:w-80 lg:shrink-0 lg:rounded-2xl lg:border lg:bg-elevated lg:backdrop-blur-none">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 lg:flex-col lg:items-stretch lg:gap-2">
           <div className="flex flex-col">
             <span className="text-xs text-ink/50">Sous-total</span>
             <span className="text-sm font-semibold text-ink">{formatPrice(sousTotal)}</span>
@@ -139,7 +141,7 @@ export default function PanierPage() {
           <button
             type="button"
             onClick={() => router.push("/checkout")}
-            className="flex h-11 items-center justify-center rounded-full bg-action px-6 text-sm font-semibold text-on-action transition-transform active:scale-95"
+            className="flex h-11 items-center justify-center rounded-full bg-action px-6 text-sm font-semibold text-on-action transition-transform active:scale-95 lg:mt-1 lg:w-full"
           >
             Commander
           </button>

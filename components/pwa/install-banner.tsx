@@ -69,7 +69,9 @@ export function InstallBanner() {
   if (installed || !canPrompt || masquee || android) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-16 z-40 px-4 pb-2 lg:bottom-0">
+    // Desktop (lg+) : l'icône d'installation du header suffit, pas de bandeau
+    // (CORRECTIONS_V16 §2.3).
+    <div className="fixed inset-x-0 bottom-16 z-40 px-4 pb-2 lg:hidden">
       <div className="mx-auto flex max-w-6xl items-center gap-3 rounded-2xl border border-ink/10 bg-elevated p-3 shadow-lg">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
           <Download size={18} aria-hidden="true" />

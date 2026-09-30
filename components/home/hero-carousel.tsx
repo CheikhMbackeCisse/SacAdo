@@ -212,7 +212,7 @@ export function HeroCarousel() {
         {LOOP_SLIDES.map((slide, i) => (
           <div
             key={i}
-            className="relative flex min-h-[18rem] w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-black sm:min-h-[21.6rem] lg:min-h-[25.2rem]"
+            className="relative flex min-h-[18rem] w-full shrink-0 snap-center flex-col justify-end overflow-hidden bg-black sm:min-h-[21.6rem] lg:min-h-[15rem]"
           >
             {slide.image ? (
               <Image

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Minus, Plus, ZoomIn } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
+import { ProductGrid } from "@/components/product/product-grid";
 import { ProductZoom } from "@/components/product/product-zoom";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { ShareButton } from "@/components/ui/share-button";
@@ -37,6 +38,10 @@ type ProductDetailProps = {
   // Notice de montage du kit, aperçu public (migration 0077) : vide si le
   // produit n'est pas un kit ou si aucune notice n'a encore été rattachée.
   documents?: DocumentApercu[];
+  // Ordinateur (CORRECTIONS_V16 §2.2) : affichées dans la colonne droite,
+  // sous le bloc d'achat, visibles sans défiler. Sur mobile, la page parente
+  // affiche sa propre section "Vous aimerez aussi" (celle-ci reste masquée).
+  similaires?: Produit[];
 };
 
 export function ProductDetail({
@@ -46,6 +51,7 @@ export function ProductDetail({
   autresEditions = [],
   composantsKit = [],
   documents = [],
+  similaires = [],
 }: ProductDetailProps) {
   const { ajouter } = usePanier();
   const { recordConsulte } = useConsultes();
@@ -154,8 +160,8 @@ export function ProductDetail({
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative">
+    <div className="flex flex-col gap-4 lg:mx-auto lg:w-full lg:max-w-[1200px] lg:flex-row lg:items-start lg:gap-8 lg:px-4">
+      <div className="relative lg:w-[520px] lg:shrink-0 lg:overflow-hidden lg:rounded-2xl lg:sticky lg:top-20">
         {galerie.length <= 1 ? (
           <div className="relative aspect-square w-full bg-ink/5">
             <ProductImage
@@ -228,7 +234,7 @@ export function ProductDetail({
         />
       )}
 
-      <div className="flex flex-col gap-3 px-4">
+      <div className="flex flex-col gap-3 px-4 lg:flex-1 lg:px-0">
         <div className="flex items-start justify-between gap-3">
           <div>
             {categorieNom && (
@@ -414,6 +420,15 @@ export function ProductDetail({
               ? "Ajouté ✓"
               : "Ajouter au panier"}
         </button>
+
+        {similaires.length > 0 && (
+          // Desktop uniquement : sur mobile, la page parente affiche sa
+          // propre section "Vous aimerez aussi" sous la fiche (CORRECTIONS_V16 §2.2).
+          <section className="hidden border-t border-ink/10 pt-3 lg:block">
+            <h2 className="pb-3 font-heading text-sm font-semibold text-ink">Vous aimerez aussi</h2>
+            <ProductGrid produits={similaires} />
+          </section>
+        )}
 
         {caracteristiques.length > 0 && (
           <section className="mt-1 flex flex-col gap-1.5 border-t border-ink/10 pt-3">

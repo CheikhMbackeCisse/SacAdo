@@ -290,7 +290,7 @@ export default function CheckoutPage() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="animate-fade-in-up flex flex-1 flex-col gap-6 px-4 pb-[env(safe-area-inset-bottom)] pt-4"
+      className="animate-fade-in-up flex flex-1 flex-col gap-6 px-4 pb-[env(safe-area-inset-bottom)] pt-4 lg:mx-auto lg:w-full lg:max-w-5xl lg:flex-row lg:items-start lg:gap-8"
     >
       {noticeNom && (
         <div
@@ -302,6 +302,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
+      <div className="flex flex-1 flex-col gap-6">
       <h1 className="font-heading text-xl font-bold text-ink">Livraison</h1>
 
       <section className="flex flex-col gap-3">
@@ -509,7 +510,9 @@ export default function CheckoutPage() {
           )}
         </div>
       </section>
+      </div>
 
+      <div className="flex flex-col gap-3 lg:sticky lg:top-20 lg:w-80 lg:shrink-0">
       <section className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">
         <div className="flex justify-between text-ink/70">
           <span>Sous-total</span>
@@ -538,7 +541,7 @@ export default function CheckoutPage() {
 
       {/* Écran "tunnel" : pas de bottom nav ici (voir ROUTES_SANS_BOTTOM_NAV),
           le bouton reste collé tout en bas de l'écran. */}
-      <div className="sticky bottom-0 z-40 mt-auto border-t border-ink/10 bg-surface/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+      <div className="sticky bottom-0 z-40 mt-auto border-t border-ink/10 bg-surface/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:static lg:mt-0 lg:rounded-2xl lg:border lg:border-ink/10 lg:bg-elevated lg:p-3 lg:pb-3 lg:backdrop-blur-none">
         <p className="mb-2 text-center text-[11px] text-ink/50">
           En confirmant, tu acceptes les{" "}
           <Link href="/cgv" className="font-medium text-brand">
@@ -564,6 +567,7 @@ export default function CheckoutPage() {
             Votre paiement sera adressé à {opts.waveNomMarchand}, propriétaire de SacAdo.
           </p>
         )}
+      </div>
       </div>
     </form>
   );

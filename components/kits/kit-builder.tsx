@@ -171,7 +171,8 @@ export function KitBuilder({
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col lg:mx-auto lg:w-full lg:max-w-5xl lg:flex-row lg:items-start lg:gap-8">
+    <div className="flex flex-1 flex-col">
       <KitBeneficiairePicker
         cycle={cycle}
         niveau={niveau}
@@ -258,9 +259,10 @@ export function KitBuilder({
           ))}
         </ul>
       )}
+    </div>
 
-      <div className="sticky bottom-16 z-30 mt-4 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:bottom-0">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+      <div className="sticky bottom-16 z-30 mt-4 border-t border-ink/10 bg-surface/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:sticky lg:top-20 lg:mt-0 lg:w-80 lg:shrink-0 lg:rounded-2xl lg:border lg:bg-elevated lg:backdrop-blur-none">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 lg:flex-col lg:items-stretch lg:gap-2">
           <div className="flex flex-col">
             <span className="text-xs text-ink/50">
               {nbArticles} article{nbArticles > 1 ? "s" : ""} sélectionné{nbArticles > 1 ? "s" : ""}
@@ -271,7 +273,7 @@ export function KitBuilder({
             type="button"
             disabled={nbArticles === 0}
             onClick={handleAjouter}
-            className="flex h-11 items-center justify-center rounded-full bg-action px-5 text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+            className="flex h-11 items-center justify-center rounded-full bg-action px-5 text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30 lg:w-full"
           >
             {added ? "Ajouté ✓" : `Ajouter le kit ${kitNom}`}
           </button>

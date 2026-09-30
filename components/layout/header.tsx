@@ -63,6 +63,7 @@ export function Header() {
   const [produits, setProduits] = useState<ProduitTrouve[]>([]);
   const [ouvert, setOuvert] = useState(false);
   const rechercheRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   // Marques (maj-26-09 §4) : chargées une fois, comparées en mémoire à chaque
   // frappe — pas besoin d'aller-retour serveur pour ~30 marques.
   const [marques, setMarques] = useState<MarqueAvecCompte[]>([]);
@@ -100,6 +101,22 @@ export function Header() {
     }, PLACEHOLDER_INTERVAL_MS);
     return () => clearInterval(id);
   }, [placeholders]);
+
+  // Touche "/" (ordinateur, CORRECTIONS_V16 §2.3) : place le curseur dans la
+  // recherche, sauf si l'utilisateur tape déjà dans un champ.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "/") return;
+      const cible = event.target as HTMLElement | null;
+      const dejaDansUnChamp =
+        cible?.tagName === "INPUT" || cible?.tagName === "TEXTAREA" || cible?.isContentEditable;
+      if (dejaDansUnChamp) return;
+      event.preventDefault();
+      inputRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Fermer au clic en dehors et à la touche Échap.
   useEffect(() => {
@@ -253,6 +270,7 @@ export function Header() {
           >
             <div className="relative">
               <input
+                ref={inputRef}
                 type="search"
                 value={query}
                 onChange={(event) => {

@@ -10,7 +10,7 @@ export function CategoryScroll({ categories }: { categories: Categorie[] }) {
   return (
     <div className="px-4 pt-2">
       <h2 className="mb-1 font-heading text-base font-semibold text-ink">Catégories</h2>
-      <div className="grid auto-cols-[28%] grid-flow-col grid-rows-2 gap-x-2 gap-y-1 overflow-x-auto pb-1 [scrollbar-width:none] sm:auto-cols-[18%] [&::-webkit-scrollbar]:hidden">
+      <div className="grid auto-cols-[28%] grid-flow-col grid-rows-2 gap-x-2 gap-y-1 overflow-x-auto pb-1 [scrollbar-width:none] sm:auto-cols-[18%] [&::-webkit-scrollbar]:hidden lg:grid-flow-row lg:grid-cols-6 lg:auto-cols-auto lg:gap-y-3 lg:overflow-visible">
         {categories.map((categorie) => (
           <Link
             key={categorie.slug}
