@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LIENS } from "@/components/admin/admin-nav";
+import { LIENS } from "@/lib/admin/nav-liens";
 import { RechercheAllerA } from "@/components/admin/recherche-aller-a";
 import { ActiverPushAdmin } from "@/components/admin/activer-push-admin";
 import { DeconnexionAdmin } from "@/components/admin/deconnexion-admin";
