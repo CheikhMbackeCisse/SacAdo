@@ -4,6 +4,7 @@ import { bodyFont, headingFont } from "@/lib/fonts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 // PWA admin (TACHE_admin_pwa_meme_domaine.md) : manifeste dédié servi sous
@@ -61,7 +62,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {user && estAdmin ? (
           <div className="lg:flex lg:min-h-screen">
             <AdminNav email={user.email ?? ""} />
-            <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
+            <main className="min-w-0 flex-1 p-4 pb-24 lg:p-6 lg:pb-6">{children}</main>
+            <AdminBottomNav />
           </div>
         ) : (
           children

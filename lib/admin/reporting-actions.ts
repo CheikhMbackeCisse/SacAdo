@@ -13,6 +13,9 @@ export type DashboardStats = {
   alertesStock: Produit[];
   // Demandes de préparation prêtes chez un fournisseur, pas encore récupérées.
   preparationsPretes: number;
+  // Tuiles d'action PROMPT_ADMIN Lot 2.
+  produitsEnModeration: number;
+  kitsAvecProduitProbleme: number;
 };
 
 async function compterPreparationsPretes(): Promise<number> {
@@ -22,6 +25,35 @@ async function compterPreparationsPretes(): Promise<number> {
     .eq("statut", "preparee")
     .is("recuperee_le", null);
   return error ? 0 : (count ?? 0);
+}
+
+async function compterProduitsEnModeration(): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("produits")
+    .select("id", { count: "exact", head: true })
+    .not("vendeur_id", "is", null)
+    .in("statut_publication", ["en_attente", "negociation"]);
+  return error ? 0 : (count ?? 0);
+}
+
+// Kits qui ont au moins une ligne principale masquée (vendeur) ou en rupture
+// — même critère que lignes_cachees dans getKitsAdmin (kits-actions.ts).
+async function compterKitsAvecProduitProbleme(): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from("kit_items")
+    .select("kit_id, section, produit:produits(statut, statut_publication)");
+  type ProduitLite = { statut: string; statut_publication: string };
+  type Row = { kit_id: number; section: string; produit: ProduitLite | ProduitLite[] | null };
+  const kitsProblematiques = new Set<number>();
+  ((data ?? []) as unknown as Row[]).forEach((row) => {
+    if (row.section !== "principal") return;
+    const produit = Array.isArray(row.produit) ? row.produit[0] : row.produit;
+    if (!produit) return;
+    if (produit.statut_publication !== "publie" || produit.statut === "epuise") {
+      kitsProblematiques.add(row.kit_id);
+    }
+  });
+  return kitsProblematiques.size;
 }
 
 function debutJournee(): string {
@@ -35,20 +67,28 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   // Les commandes Wave non encore payées (statut 'paiement_en_attente') sont
   // exclues du CA et des ventes : elles ne comptent qu'une fois le webhook reçu.
-  const [{ data: commandesDuJour }, { data: items }, { data: produits }, preparationsPretes] =
-    await Promise.all([
-      supabaseAdmin
-        .from("commandes")
-        .select("total")
-        .gte("date", debutJournee())
-        .neq("statut", STATUT_EN_ATTENTE_PAIEMENT),
-      supabaseAdmin
-        .from("commande_items")
-        .select("quantite, produit:produits(nom), commande:commandes!inner(statut)")
-        .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT),
-      supabaseAdmin.from("produits").select("*"),
-      compterPreparationsPretes(),
-    ]);
+  const [
+    { data: commandesDuJour },
+    { data: items },
+    { data: produits },
+    preparationsPretes,
+    produitsEnModeration,
+    kitsAvecProduitProbleme,
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("commandes")
+      .select("total")
+      .gte("date", debutJournee())
+      .neq("statut", STATUT_EN_ATTENTE_PAIEMENT),
+    supabaseAdmin
+      .from("commande_items")
+      .select("quantite, produit:produits(nom), commande:commandes!inner(statut)")
+      .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT),
+    supabaseAdmin.from("produits").select("*"),
+    compterPreparationsPretes(),
+    compterProduitsEnModeration(),
+    compterKitsAvecProduitProbleme(),
+  ]);
 
   const commandes = commandesDuJour ?? [];
   const caDuJour = commandes.reduce((sum, c) => sum + c.total, 0);
@@ -76,6 +116,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     topProduits,
     alertesStock,
     preparationsPretes,
+    produitsEnModeration,
+    kitsAvecProduitProbleme,
   };
 }
 

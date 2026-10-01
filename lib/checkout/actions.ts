@@ -16,6 +16,7 @@ import {
 import { calculerDateLivraison } from "@/lib/checkout/date-livraison";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
+import { notifierPushAdminNouvelleCommande } from "@/lib/admin/notifier-commande";
 import { origineSite } from "@/lib/site-url";
 import type { GroupeKitPanier, LignePanier } from "@/lib/local/panier";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
@@ -661,6 +662,10 @@ export async function passerCommande(
   // Push "commande confirmée" (matrice de canaux) : no-op silencieux si le
   // client n'a pas encore d'abonnement (cas le plus courant à la 1re commande).
   await notifierPushStatutCommande(commandeId as number, "recue");
+
+  // PROMPT_ADMIN Lot 2 : prévenir le fondateur même hors de l'app (badge +
+  // notification push), best-effort, ne doit jamais faire échouer la commande.
+  await notifierPushAdminNouvelleCommande(commandeId as number, input.nom.trim(), total);
 
   return {
     ok: true,

@@ -107,3 +107,11 @@ export async function envoyerPushClient(
 ): Promise<ResultatPush> {
   return envoyerA("abonnements_push_client", "client_id", clientId, payload);
 }
+
+// Admin (nouvelle commande) — table abonnements_push_admin.
+export async function envoyerPushAdmin(
+  adminUserId: string,
+  payload: PushPayload,
+): Promise<ResultatPush> {
+  return envoyerA("abonnements_push_admin", "admin_user_id", adminUserId, payload);
+}

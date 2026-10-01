@@ -2,6 +2,7 @@ import Link from "next/link";
 import { compterCommandesRecues, getCommandesAdmin } from "@/lib/admin/commandes-actions";
 import { CommandesListe } from "@/components/admin/commandes-liste";
 import type { StatutCommande } from "@/lib/supabase/types";
+import { PullToRefresh } from "@/components/admin/pull-to-refresh";
 
 const STATUTS: { value: StatutCommande | "toutes"; label: string }[] = [
   { value: "toutes", label: "Toutes" },
@@ -43,6 +44,7 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
   const hrefPourPage = (p: number) => hrefAvec({ page: p });
 
   return (
+    <PullToRefresh>
     <div className="flex flex-col gap-4">
       <h1 className="font-heading text-xl font-bold text-ink">Commandes</h1>
 
@@ -113,5 +115,6 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }

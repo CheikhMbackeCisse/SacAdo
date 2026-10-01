@@ -6,8 +6,10 @@ import { NouveauKitForm } from "@/components/admin/nouveau-kit-form";
 import { KitStatutToggle } from "@/components/admin/kit-statut-toggle";
 import { DupliquerKitButton } from "@/components/admin/dupliquer-kit-button";
 import { RemplacerProduitKits } from "@/components/admin/remplacer-produit-kits";
+import { ImporterKits } from "@/components/admin/importer-kits";
 import { getProduitsAdmin } from "@/lib/admin/produits-actions";
 import { Download } from "lucide-react";
+import { PullToRefresh } from "@/components/admin/pull-to-refresh";
 
 const LABELS_CYCLE: Record<string, string> = {
   prescolaire: "Préscolaire",
@@ -43,16 +45,20 @@ export default async function AdminKitsPage(props: PageProps<"/admin/kits">) {
   const optionsProduits = produits.map((p) => ({ value: String(p.id), label: p.nom }));
 
   return (
+    <PullToRefresh>
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-xl font-bold text-ink">Kits</h1>
-        <Link
-          href="/admin/kits/export"
-          className="flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70"
-        >
-          <Download size={14} aria-hidden="true" />
-          Exporter en Excel
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/kits/export"
+            className="flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70"
+          >
+            <Download size={14} aria-hidden="true" />
+            Exporter en Excel
+          </Link>
+          <ImporterKits />
+        </div>
       </div>
 
       <NouveauKitForm />
@@ -181,5 +187,6 @@ export default async function AdminKitsPage(props: PageProps<"/admin/kits">) {
         </table>
       </div>
     </div>
+    </PullToRefresh>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -19,7 +18,6 @@ import {
   LogOut,
   MapPin,
   MapPinned,
-  Menu,
   MessageSquareText,
   Package,
   PackageCheck,
@@ -32,11 +30,15 @@ import {
   Wallet,
   Warehouse,
   Users,
-  X,
 } from "lucide-react";
 import { signOut } from "@/lib/admin/auth-actions";
+import { RechercheAllerA } from "./recherche-aller-a";
 
-const LIENS = [
+// Les 26 onglets admin. Les 5 premiers (Accueil, Commandes, Livraisons,
+// Produits, Kits) sont les entrées de la bottom nav mobile (AdminBottomNav) ;
+// tous les autres sont regroupés par thème sur /admin/plus (GROUPES_PLUS
+// ci-dessous). Source commune pour la recherche "Aller à…".
+export const LIENS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/livraisons", label: "Livraisons", icon: Truck },
   { href: "/admin/preparations", label: "Préparations", icon: PackageCheck },
@@ -69,25 +71,13 @@ function estActif(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
-function labelPage(pathname: string): string {
-  const lien = [...LIENS].reverse().find((l) => estActif(pathname, l.href));
-  return lien?.label ?? "Administration";
-}
-
-function ListeLiens({
-  pathname,
-  onNavigate,
-}: {
-  pathname: string;
-  onNavigate?: () => void;
-}) {
+function ListeLiens({ pathname }: { pathname: string }) {
   return (
     <>
       {LIENS.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
-          onClick={onNavigate}
           className={`flex min-h-11 items-center gap-2.5 rounded-xl px-3 text-sm transition-colors ${
             estActif(pathname, href)
               ? "bg-brand/10 font-medium text-brand"
@@ -111,78 +101,22 @@ function ListeLiens({
   );
 }
 
+// Sidebar desktop seulement : sur mobile, la navigation principale est la
+// bottom nav (AdminBottomNav) + la page /admin/plus (tiroir hamburger retiré,
+// PROMPT_ADMIN Lot 2).
 export function AdminNav({ email }: { email: string }) {
   const pathname = usePathname();
-  const [ouvert, setOuvert] = useState(false);
-
-  useEffect(() => {
-    if (!ouvert) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOuvert(false);
-    };
-    const root = document.documentElement;
-    const avant = root.style.overflow;
-    root.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      root.style.overflow = avant;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [ouvert]);
 
   return (
-    <>
-      {/* Desktop : sidebar figée */}
-      <nav className="hidden w-56 shrink-0 flex-col gap-1 border-r border-ink/10 bg-white p-4 lg:flex">
-        <div className="mb-4">
-          <p className="font-heading text-sm font-bold text-ink">SacAdo Admin</p>
-          <p className="truncate text-[11px] text-ink/40">{email}</p>
-        </div>
+    <nav className="hidden w-56 shrink-0 flex-col gap-3 border-r border-ink/10 bg-white p-4 lg:flex">
+      <div>
+        <p className="font-heading text-sm font-bold text-ink">SacAdo Admin</p>
+        <p className="truncate text-[11px] text-ink/40">{email}</p>
+      </div>
+      <RechercheAllerA liens={LIENS.map(({ href, label }) => ({ href, label }))} />
+      <div className="flex flex-col gap-1 overflow-y-auto">
         <ListeLiens pathname={pathname} />
-      </nav>
-
-      {/* Mobile : barre du haut + tiroir */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-ink/10 bg-white px-3 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setOuvert(true)}
-          aria-label="Ouvrir le menu"
-          className="flex size-10 items-center justify-center rounded-xl text-ink/70 transition-colors hover:bg-ink/5 active:scale-90"
-        >
-          <Menu size={22} aria-hidden="true" />
-        </button>
-        <span className="truncate font-heading text-sm font-bold text-ink">
-          {labelPage(pathname)}
-        </span>
-      </header>
-
-      {ouvert && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            aria-label="Fermer le menu"
-            onClick={() => setOuvert(false)}
-            className="absolute inset-0 bg-ink/40"
-          />
-          <nav className="animate-fade-in-up absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-1 overflow-y-auto bg-white p-4 shadow-xl">
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-heading text-sm font-bold text-ink">SacAdo Admin</p>
-                <p className="truncate text-[11px] text-ink/40">{email}</p>
-              </div>
-              <button
-                type="button"
-                aria-label="Fermer le menu"
-                onClick={() => setOuvert(false)}
-                className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-ink/50 hover:bg-ink/5"
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
-            </div>
-            <ListeLiens pathname={pathname} onNavigate={() => setOuvert(false)} />
-          </nav>
-        </div>
-      )}
-    </>
+      </div>
+    </nav>
   );
 }

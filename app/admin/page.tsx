@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { AlertTriangle, ClipboardList, Package, PackageCheck, TrendingUp, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  ClipboardList,
+  GraduationCap,
+  Package,
+  PackageCheck,
+  ShieldCheck,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { getDashboardStats } from "@/lib/admin/reporting-actions";
 import { formatPrice } from "@/lib/format";
 import { StatCard } from "@/components/admin/stat-card";
@@ -30,6 +39,39 @@ export default async function AdminDashboardPage() {
             chez un fournisseur — à récupérer.
           </span>
         </Link>
+      )}
+
+      {(stats.produitsEnModeration > 0 || stats.kitsAvecProduitProbleme > 0) && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {stats.produitsEnModeration > 0 && (
+            <Link
+              href="/admin/moderation"
+              className="flex items-center gap-3 rounded-2xl border border-brand/25 bg-brand/[0.04] p-4 transition-colors hover:border-brand/50"
+            >
+              <ShieldCheck size={20} className="shrink-0 text-brand" aria-hidden="true" />
+              <span className="text-sm text-ink">
+                <span className="font-semibold">
+                  {stats.produitsEnModeration} produit{stats.produitsEnModeration > 1 ? "s" : ""}
+                </span>{" "}
+                vendeur en attente de modération.
+              </span>
+            </Link>
+          )}
+          {stats.kitsAvecProduitProbleme > 0 && (
+            <Link
+              href="/admin/kits"
+              className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 transition-colors hover:border-red-300"
+            >
+              <GraduationCap size={20} className="shrink-0 text-red-600" aria-hidden="true" />
+              <span className="text-sm text-ink">
+                <span className="font-semibold">
+                  {stats.kitsAvecProduitProbleme} kit{stats.kitsAvecProduitProbleme > 1 ? "s" : ""}
+                </span>{" "}
+                avec un produit masqué ou en rupture.
+              </span>
+            </Link>
+          )}
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

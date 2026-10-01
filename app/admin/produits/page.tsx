@@ -17,6 +17,7 @@ import { SelectionMasseProvider, CaseSelection, CaseToutSelectionner } from "@/c
 import { ProductImage } from "@/components/ui/product-image";
 import { CarteListe, CartesListe, ChampCarte, TableauDesktop } from "@/components/admin/liste-mobile";
 import { VENDEUR_SACADO_ID } from "@/lib/vendeurs/constants";
+import { PullToRefresh } from "@/components/admin/pull-to-refresh";
 
 const TAILLE_PAGE = 50;
 
@@ -59,6 +60,7 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
   };
 
   return (
+    <PullToRefresh>
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-xl font-bold text-ink">Produits</h1>
@@ -240,5 +242,6 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }
