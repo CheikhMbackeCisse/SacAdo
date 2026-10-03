@@ -175,7 +175,6 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
         <Suspense fallback={null}>
           <KitBuilder
             kitId={kit.id}
-            kitNom={`${niveau} ${gammeDef?.label ?? ""}`.trim()}
             cycle={cycle}
             niveau={niveau}
             gamme={gamme}

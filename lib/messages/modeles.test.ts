@@ -22,11 +22,13 @@ test("laisse le texte sans variable intact", () => {
   assert.equal(rendreModele("Ta commande est livrée.", {}), "Ta commande est livrée.");
 });
 
-test("codeModeleStatut : mapping aligné avec le trigger 0058", () => {
+test("codeModeleStatut : mapping aligné avec le trigger 0105", () => {
+  assert.equal(codeModeleStatut("a_confirmer_appel"), "commande_a_confirmer");
   assert.equal(codeModeleStatut("recue"), "commande_confirmee");
   assert.equal(codeModeleStatut("preparation"), "commande_preparation");
   assert.equal(codeModeleStatut("livraison"), "commande_route");
   assert.equal(codeModeleStatut("livree"), "commande_livree");
   assert.equal(codeModeleStatut("probleme"), "commande_probleme");
+  assert.equal(codeModeleStatut("annulee"), "commande_annulee");
   assert.equal(codeModeleStatut("paiement_en_attente"), null);
 });

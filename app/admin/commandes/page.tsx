@@ -7,11 +7,13 @@ import { PullToRefresh } from "@/components/admin/pull-to-refresh";
 const STATUTS: { value: StatutCommande | "toutes"; label: string }[] = [
   { value: "toutes", label: "Toutes" },
   { value: "paiement_en_attente", label: "Paiement en attente" },
+  { value: "a_confirmer_appel", label: "À confirmer par appel" },
   { value: "recue", label: "Reçue" },
   { value: "preparation", label: "En préparation" },
   { value: "livraison", label: "En livraison" },
   { value: "livree", label: "Livrée" },
   { value: "probleme", label: "Souci" },
+  { value: "annulee", label: "Annulée" },
 ];
 
 const TAILLE_PAGE = 50;

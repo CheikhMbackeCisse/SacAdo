@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { EN_TETE_SIGNATURE, parseEvenementWave, verifierSignatureWave } from "@/lib/wave/webhook";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
+import { traiterCommeAjoutWave } from "@/lib/ajout/webhook";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ ok: true, resultat: "ignore" });
   }
 
-  const { data, error } = await supabaseAdmin.rpc("traiter_paiement_wave", {
+  const { data: dataCommande, error } = await supabaseAdmin.rpc("traiter_paiement_wave", {
     p_event_id: evenement.id,
     p_reference: evenement.reference,
     p_session_id: evenement.sessionId,
@@ -46,6 +47,12 @@ export async function POST(request: NextRequest) {
     console.error("Webhook Wave: traiter_paiement_wave a échoué", error);
     return Response.json({ error: "erreur interne" }, { status: 500 });
   }
+
+  // Référence inconnue des commandes : il peut s'agir du paiement d'un AJOUT
+  // à une commande existante plutôt que d'une commande (PROMPT_CLIENT_V2
+  // Lot 4) — les deux partagent le même espace de référence côté client,
+  // jamais les mêmes lignes en base.
+  const data = dataCommande === "commande_introuvable" ? await traiterCommeAjoutWave(evenement) : dataCommande;
 
   console.log(`Webhook Wave: ${evenement.id} (${evenement.resultat}) -> ${data}`);
 

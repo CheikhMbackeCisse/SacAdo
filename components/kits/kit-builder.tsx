@@ -8,6 +8,7 @@ import { formatPrice } from "@/lib/format";
 import { slugAvecId } from "@/lib/slug";
 import { usePanier } from "@/lib/local/panier";
 import { useKitsPanier } from "@/lib/local/kits-panier";
+import { useAjoutMode } from "@/lib/local/ajout-mode";
 import { KitBeneficiairePicker } from "@/components/kits/kit-beneficiaire-picker";
 import { ligneEstAffichable } from "@/lib/kits";
 import type { Produit, SectionKitItem, VarianteAvecAttributs } from "@/lib/supabase/types";
@@ -28,7 +29,6 @@ type EtatLigne = { checked: boolean; varianteId: number | null };
 
 type KitBuilderProps = {
   kitId: number;
-  kitNom: string;
   cycle: string;
   niveau: string;
   gamme: string;
@@ -46,7 +46,6 @@ function varianteParDefaut(variantes: VarianteAvecAttributs[]): number | null {
 
 export function KitBuilder({
   kitId,
-  kitNom,
   cycle,
   niveau,
   gamme,
@@ -63,6 +62,10 @@ export function KitBuilder({
 
   const { ajouterKit, lignes: lignesPanier } = usePanier();
   const { enregistrer: enregistrerKitClasse } = useKitsPanier();
+  // Mode ajout (PROMPT_CLIENT_V2 Lot 4) : pas de "Commander ce kit" direct —
+  // ajouterKit() va déjà dans le panier de l'ajout en cours (usePanier() est
+  // mode-aware), il n'y a qu'un seul bouton, comme en mode "Modifier".
+  const { mode: modeAjout } = useAjoutMode();
   const [added, setAdded] = useState(false);
 
   const lignesExistantesDuGroupe = useMemo(
@@ -136,7 +139,10 @@ export function KitBuilder({
     .filter((l) => etats[l.id]?.checked)
     .reduce((s, l) => s + l.quantite, 0);
 
-  const handleAjouter = () => {
+  // Construit les lignes cochées et les range dans le panier. Pure côté
+  // données : la navigation qui suit dépend du bouton cliqué (PROMPT_CLIENT_V2
+  // Lot 3), voir handleCommander / handleAjouterContinuer ci-dessous.
+  const ajouterAuPanier = () => {
     const produitIds: number[] = [];
     const items: { produitId: number; varianteId: number | null; quantite: number }[] = [];
     lignes.forEach((l) => {
@@ -161,7 +167,21 @@ export function KitBuilder({
       items,
     );
     enregistrerKitClasse(cycle, niveau, { beneficiaireId, produitIds });
+  };
 
+  // Bouton principal (PROMPT_CLIENT_V2 Lot 3) : va directement à la page
+  // commande, sans passer par le panier. En mode « Modifier » (réouvert
+  // depuis une carte du panier), on retourne au panier comme avant — ce
+  // n'est pas un nouvel achat.
+  const handleCommander = () => {
+    ajouterAuPanier();
+    router.push(modifierGroupeId ? "/panier" : "/checkout");
+  };
+
+  // Lien secondaire : comportement historique du bouton (reste sur la page,
+  // feedback "Ajouté ✓").
+  const handleAjouterContinuer = () => {
+    ajouterAuPanier();
     if (modifierGroupeId) {
       router.push("/panier");
       return;
@@ -269,14 +289,35 @@ export function KitBuilder({
             </span>
             <span className="text-sm font-semibold text-ink">{formatPrice(total)}</span>
           </div>
-          <button
-            type="button"
-            disabled={nbArticles === 0}
-            onClick={handleAjouter}
-            className="flex h-11 items-center justify-center rounded-full bg-action px-5 text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30 lg:w-full"
-          >
-            {added ? "Ajouté ✓" : `Ajouter le kit ${kitNom}`}
-          </button>
+          {modifierGroupeId || modeAjout ? (
+            <button
+              type="button"
+              disabled={nbArticles === 0}
+              onClick={handleAjouterContinuer}
+              className="flex h-11 items-center justify-center rounded-full bg-action px-5 text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30 lg:w-full"
+            >
+              {modifierGroupeId ? "Mettre à jour le kit" : added ? "Ajouté ✓" : "Ajouter le kit"}
+            </button>
+          ) : (
+            <div className="flex flex-col items-end gap-1.5 lg:items-stretch">
+              <button
+                type="button"
+                disabled={nbArticles === 0}
+                onClick={handleCommander}
+                className="flex h-11 items-center justify-center rounded-full bg-action px-5 text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30 lg:w-full"
+              >
+                Commander ce kit
+              </button>
+              <button
+                type="button"
+                disabled={nbArticles === 0}
+                onClick={handleAjouterContinuer}
+                className="text-xs font-medium text-ink/60 underline-offset-2 transition-colors hover:text-ink hover:underline disabled:cursor-not-allowed disabled:text-ink/30 lg:text-center"
+              >
+                {added ? "Ajouté ✓" : "Ajouter au panier et continuer mes achats"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

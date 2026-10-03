@@ -1,32 +1,34 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePanier } from "@/lib/local/panier";
+import { useAjoutMode } from "@/lib/local/ajout-mode";
 import { useKitsPanier } from "@/lib/local/kits-panier";
-import { reprendrePaiementWave, simulerPaiementWave } from "@/lib/checkout/actions";
+import { reprendrePaiementAjoutWave, simulerPaiementAjoutWave } from "@/lib/ajout/actions";
 
-// Le panier n'est vidé qu'au retour dans l'app après un paiement Wave : la
-// commande existe déjà en base (et le stock est décrémenté), le panier local
-// n'a plus lieu d'être.
-export function ViderPanierAuMontage() {
-  const { vider } = usePanier();
+// Pendants de components/checkout/paiement-retour.tsx pour le paiement Wave
+// d'un AJOUT (PROMPT_CLIENT_V2 Lot 4) : même logique, données plus légères
+// (pas de "nomEnregistre", pas de carte).
+
+// Le panier d'ajout n'est vidé qu'au retour dans l'app après le paiement : la
+// commande_ajouts existe déjà en base (stock décrémenté), le panier local n'a
+// plus lieu d'être. Sort aussi du mode ajout.
+export function ViderPanierAjoutAuMontage() {
+  const { sortir } = useAjoutMode();
   const { vider: viderKits } = useKitsPanier();
   const fait = useRef(false);
 
   useEffect(() => {
     if (fait.current) return;
     fait.current = true;
-    vider();
     viderKits();
-  }, [vider, viderKits]);
+    sortir();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 }
 
-// Boutons de la page de SIMULATION du paiement Wave (mode dev sans clé). Le
-// bouton « réussi » déclenche la même logique que le vrai webhook Wave via
-// simulerPaiementWave(), puis renvoie vers l'écran de retour correspondant.
-export function SimulationBoutons({ reference }: { reference: string }) {
+export function SimulationBoutonsAjout({ reference }: { reference: string }) {
   const [enCours, setEnCours] = useState<"paye" | "echoue" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +36,7 @@ export function SimulationBoutons({ reference }: { reference: string }) {
     setEnCours(issue);
     setError(null);
     try {
-      const r = await simulerPaiementWave(reference, issue);
+      const r = await simulerPaiementAjoutWave(reference, issue);
       if (!r.ok) {
         setError(r.error ?? "La simulation a échoué.");
         setEnCours(null);
@@ -42,9 +44,7 @@ export function SimulationBoutons({ reference }: { reference: string }) {
       }
       const ref = encodeURIComponent(reference);
       window.location.href =
-        issue === "paye"
-          ? `/checkout/confirmation?ref=${ref}`
-          : `/checkout/paiement-echoue?ref=${ref}`;
+        issue === "paye" ? `/ajout/confirmation?ref=${ref}` : `/ajout/paiement-echoue?ref=${ref}`;
     } catch {
       setError("La connexion a été interrompue. Réessaie.");
       setEnCours(null);
@@ -74,13 +74,7 @@ export function SimulationBoutons({ reference }: { reference: string }) {
   );
 }
 
-export function BoutonReessayerPaiement({
-  reference,
-  label = "Réessayer le paiement",
-}: {
-  reference: string;
-  label?: string;
-}) {
+export function BoutonReessayerAjout({ reference }: { reference: string }) {
   const [enCours, setEnCours] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,13 +82,13 @@ export function BoutonReessayerPaiement({
     setEnCours(true);
     setError(null);
     try {
-      const r = await reprendrePaiementWave(reference);
+      const r = await reprendrePaiementAjoutWave(reference);
       if (!r.ok) {
         setError(r.error);
         setEnCours(false);
         return;
       }
-      window.location.href = r.waveLaunchUrl;
+      if (r.waveLaunchUrl) window.location.href = r.waveLaunchUrl;
     } catch {
       setError("La connexion a été interrompue. Réessaie.");
       setEnCours(false);
@@ -109,7 +103,7 @@ export function BoutonReessayerPaiement({
         disabled={enCours}
         className="flex h-12 w-full items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
       >
-        {enCours ? "Redirection…" : label}
+        {enCours ? "Redirection…" : "Réessayer le paiement"}
       </button>
       {error && <p className="rounded-xl bg-ink/5 px-3 py-2 text-xs text-ink/80">{error}</p>}
     </div>

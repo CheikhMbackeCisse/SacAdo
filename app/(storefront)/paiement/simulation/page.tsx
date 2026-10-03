@@ -2,6 +2,8 @@ import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 import { waveEnModeSimulation } from "@/lib/wave/client";
 import { SimulationBoutons } from "@/components/checkout/paiement-retour";
+import { SimulationBoutonsAjout } from "@/components/ajout/ajout-paiement-retour";
+import { getAjoutParReference } from "@/lib/ajout/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,10 @@ export default async function SimulationPaiementPage(props: {
   }
 
   const montantNum = Number(montant);
+  // Une même page de simulation sert au paiement d'une commande ET à celui
+  // d'un ajout (PROMPT_CLIENT_V2 Lot 4) : les deux partagent le même espace
+  // de référence côté client, jamais les mêmes lignes en base.
+  const estUnAjout = Boolean(await getAjoutParReference(reference));
 
   return (
     <div className="animate-fade-in-up mx-auto flex max-w-sm flex-col gap-6 px-4 py-12">
@@ -46,7 +52,7 @@ export default async function SimulationPaiementPage(props: {
         )}
       </div>
 
-      <SimulationBoutons reference={reference} />
+      {estUnAjout ? <SimulationBoutonsAjout reference={reference} /> : <SimulationBoutons reference={reference} />}
     </div>
   );
 }

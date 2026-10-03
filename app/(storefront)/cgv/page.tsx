@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { EDITEUR } from "@/lib/legal";
 import { WHATSAPP_AFFICHE } from "@/lib/whatsapp";
-import { SEUIL_PAIEMENT_AVANCE } from "@/lib/checkout/montants";
+import { getPaiementLivraisonMax } from "@/lib/parametres";
 import { formatPrice } from "@/lib/format";
 
 export const metadata = { title: "Conditions générales de vente — SacAdo" };
 
-export default function CgvPage() {
+export default async function CgvPage() {
+  const paiementLivraisonMax = await getPaiementLivraisonMax();
   return (
     <div className="animate-fade-in-up flex flex-col gap-6 px-4 py-6">
       <div>
@@ -51,9 +52,18 @@ export default function CgvPage() {
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">5. Paiement</h2>
         <p className="text-sm text-ink/70">
-          Au-delà de {formatPrice(SEUIL_PAIEMENT_AVANCE)}, le paiement se règle d&apos;avance par
-          Wave. En dessous de ce seuil, le paiement à la livraison reste possible. Le bénéficiaire
-          affiché sur l&apos;écran Wave est {EDITEUR.raisonSociale}.
+          Le paiement s&apos;effectue d&apos;avance par Wave, ou à la livraison (espèces, Wave ou
+          Orange Money remis au livreur)
+          {paiementLivraisonMax !== null && (
+            <>
+              {" "}
+              — au-delà de {formatPrice(paiementLivraisonMax)}, seul le paiement d&apos;avance par
+              Wave est possible
+            </>
+          )}
+          . Pour un paiement à la livraison, SacAdo appelle le client sur WhatsApp pour confirmer
+          la commande avant l&apos;envoi. Le bénéficiaire affiché sur l&apos;écran Wave est{" "}
+          {EDITEUR.raisonSociale}.
         </p>
       </section>
 

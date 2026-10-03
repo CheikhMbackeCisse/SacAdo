@@ -7,8 +7,10 @@ import type { StatutCommande, StatutPaiement } from "@/lib/supabase/types";
 export const STATUT_EN_ATTENTE_PAIEMENT: StatutCommande = "paiement_en_attente";
 
 // Statuts d'une commande « réelle » (paiement acquis, ou paiement à la
-// livraison) : tout sauf l'attente de paiement Wave.
+// livraison) : tout sauf l'attente de paiement Wave. 'annulee' en est
+// délibérément exclue (void, ne compte jamais comme une vente).
 export const STATUTS_COMMANDE_CONFIRMEE: StatutCommande[] = [
+  "a_confirmer_appel",
   "recue",
   "preparation",
   "livraison",
@@ -16,17 +18,21 @@ export const STATUTS_COMMANDE_CONFIRMEE: StatutCommande[] = [
   "probleme",
 ];
 
+// 'annulee' : jamais comptée comme CA/vente, même si ce n'est pas une
+// attente de paiement Wave (migration 0105).
 export function estCommandeConfirmee(statut: StatutCommande): boolean {
-  return statut !== STATUT_EN_ATTENTE_PAIEMENT;
+  return statut !== STATUT_EN_ATTENTE_PAIEMENT && statut !== "annulee";
 }
 
 export const LIBELLES_STATUT_COMMANDE: Record<StatutCommande, string> = {
   paiement_en_attente: "En attente de paiement",
+  a_confirmer_appel: "À confirmer par appel",
   recue: "Reçue",
   preparation: "En préparation",
   livraison: "En livraison",
   livree: "Livrée",
   probleme: "Souci en cours",
+  annulee: "Annulée",
 };
 
 export const LIBELLES_STATUT_PAIEMENT: Record<StatutPaiement, string> = {

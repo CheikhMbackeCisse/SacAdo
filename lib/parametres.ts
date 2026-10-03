@@ -125,6 +125,44 @@ export async function retirerDateFermee(date: string): Promise<{ ok: true } | { 
   return { ok: true };
 }
 
+const CLE_PAIEMENT_LIVRAISON_MAX = "paiement_livraison_max";
+
+// Montant (FCFA) au-delà duquel le paiement à la livraison n'est plus proposé
+// (PROMPT_CLIENT_V2 Lot 1) : seul Wave reste possible. `null` = pas de limite
+// (valeur vide en base) : le paiement à la livraison reste toujours proposé,
+// quel que soit le montant. Remplace l'ancien seuil fixe de 10 000 FCFA.
+export async function getPaiementLivraisonMax(): Promise<number | null> {
+  const { data } = await supabaseAdmin
+    .from("parametres")
+    .select("valeur")
+    .eq("cle", CLE_PAIEMENT_LIVRAISON_MAX)
+    .maybeSingle();
+  if (!data) return null;
+
+  const brut = data.valeur?.trim() ?? "";
+  if (brut === "") return null;
+  const n = Number(brut);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+export async function setPaiementLivraisonMax(
+  valeur: number | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  let colonneValeur: string;
+  if (valeur === null) {
+    colonneValeur = "";
+  } else {
+    const n = Math.round(valeur);
+    if (!Number.isFinite(n) || n < 0) return { ok: false, error: "Le montant doit être un nombre positif." };
+    colonneValeur = String(n);
+  }
+  const { error } = await supabaseAdmin
+    .from("parametres")
+    .upsert({ cle: CLE_PAIEMENT_LIVRAISON_MAX, valeur: colonneValeur, maj: new Date().toISOString() });
+  if (error) return { ok: false, error: "Impossible d'enregistrer le réglage." };
+  return { ok: true };
+}
+
 const CLE_WAVE_NOM_MARCHAND = "wave_nom_marchand";
 const WAVE_NOM_MARCHAND_DEFAUT = "UniShop Sénégal";
 

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifierJetonClient } from "@/lib/client-auth";
 import { formatDateLivraison, formatPrice } from "@/lib/format";
-import { FileText, MessageCircle } from "lucide-react";
+import { ExternalLink, FileText, MessageCircle } from "lucide-react";
 import { lienAssistanceCommande } from "@/lib/whatsapp";
 import { MENTION_BENEFICIAIRE_WAVE } from "@/lib/legal";
 import { OrderStepper } from "@/components/suivi/order-stepper";
@@ -13,6 +13,8 @@ import { DocumentTelechargement } from "@/components/suivi/document-telechargeme
 import { getDocumentsCommande } from "@/lib/documents/actions";
 import { FactureActions } from "@/components/suivi/facture-actions";
 import { numeroFacture } from "@/lib/factures/config";
+import { BoutonAjouterProduits } from "@/components/ajout/bouton-ajouter";
+import { commandeModifiablePourAjout } from "@/lib/ajout/eligibilite";
 import type { Commande } from "@/lib/supabase/types";
 
 export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
@@ -78,6 +80,10 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
 
       <OrderStepper statut={commande.statut} />
 
+      {commandeModifiablePourAjout(commande.statut) && (
+        <BoutonAjouterProduits commandeId={commande.id} jeton={jeton} />
+      )}
+
       {!enAttentePaiement && <PushInvite commandeId={commande.id} />}
 
       {documents.length > 0 && (
@@ -98,7 +104,7 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
         </section>
       )}
 
-      {commande.lat != null && commande.lng != null && (
+      {commande.lat != null && commande.lng != null ? (
         <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">
           <span className="text-xs font-medium text-ink/60">Lieu de livraison</span>
           <CommandeLocalisation
@@ -107,6 +113,21 @@ export default async function SuiviPage(props: PageProps<"/suivi/[id]">) {
             precision={commande.precision_livreur}
           />
         </section>
+      ) : (
+        commande.lien_localisation && (
+          <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">
+            <span className="text-xs font-medium text-ink/60">Lieu de livraison</span>
+            <a
+              href={commande.lien_localisation}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-fit items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 transition-transform active:scale-95"
+            >
+              <ExternalLink size={13} aria-hidden="true" />
+              Voir sur Google Maps
+            </a>
+          </section>
+        )
       )}
 
       <section className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-elevated p-3 text-sm">

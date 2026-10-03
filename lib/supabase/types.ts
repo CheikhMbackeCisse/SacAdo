@@ -384,6 +384,10 @@ export type StatutPaiement = "en_attente" | "payee" | "echoue" | "annulee";
 // hors du flux de préparation tant qu'elle n'est pas passée 'recue'.
 export type StatutCommande =
   | "paiement_en_attente"
+  // Commande payée à la livraison (migration 0105, PROMPT_CLIENT_V2 Lot 1) :
+  // on appelle le client sur WhatsApp pour confirmer avant l'envoi. L'admin
+  // la fait passer 'recue' après l'appel.
+  | "a_confirmer_appel"
   | "recue"
   | "preparation"
   | "livraison"
@@ -391,7 +395,9 @@ export type StatutCommande =
   // État d'exception (migration 0058) : souci sur la commande (article
   // indisponible…). L'admin y passe pour prévenir le client, puis reprend le
   // flux normal.
-  | "probleme";
+  | "probleme"
+  // État final (migration 0105) : commande qui ne sera pas honorée.
+  | "annulee";
 
 export type Client = {
   id: number;
@@ -438,6 +444,11 @@ export type Commande = {
   lat: number | null;
   lng: number | null;
   precision_livreur: string | null;
+  // Lien Google Maps collé par le client ou reconstruit à partir de sa
+  // position GPS (PROMPT_CLIENT_V2 Lot 2, migration 0106) — ouvert en un
+  // toucher par l'admin/le livreur. Remplace le champ libre "Comment trouver
+  // ta porte" pour les commandes créées après ce lot.
+  lien_localisation: string | null;
   // Livraison par localité (IMPLEMENTATION_TARIFS_LIVRAISON.md). `localite_nom`
   // est toujours renseigné (localité reconnue, lieu spécial, ou saisie libre) ;
   // `localite_id`/`lieu_special_id` restent null l'un de l'autre selon le cas.
@@ -484,6 +495,26 @@ export type CommandeItem = {
   kit_classe: string | null;
   kit_gamme: string | null;
   kit_beneficiaire_prenom: string | null;
+  // Lot d'ajout dont vient cette ligne (PROMPT_CLIENT_V2 Lot 4, migration 0107).
+  // NULL = ligne d'origine, créée avec la commande.
+  ajout_id: number | null;
+};
+
+// Un "lot" de produits ajoutés après coup à une commande déjà passée
+// (PROMPT_CLIENT_V2 Lot 4, migration 0107) : pas de nouveaux frais de
+// livraison (déjà comptés sur la commande d'origine), paiement propre (Wave
+// ou ajouté au montant dû à la livraison).
+export type CommandeAjout = {
+  id: number;
+  commande_id: number;
+  reference: string;
+  sous_total: number;
+  mode_paiement: ModePaiement;
+  statut_paiement: StatutPaiement | null;
+  wave_session_id: string | null;
+  wave_event_id: string | null;
+  montant_paye: number | null;
+  cree_le: string;
 };
 
 // Suivi de trésorerie admin (GROUPE_B §2, migration 0032 ; catégories revues en

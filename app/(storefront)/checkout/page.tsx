@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Truck } from "lucide-react";
+import { Truck } from "lucide-react";
 import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
 import { marquerCommandeFraiche } from "@/lib/local/push-invite";
@@ -18,9 +18,12 @@ import {
   getOptionsPaiement,
   passerCommande,
 } from "@/lib/checkout/actions";
-import { SEUIL_PAIEMENT_AVANCE } from "@/lib/checkout/montants";
 import { MENTION_BENEFICIAIRE_WAVE } from "@/lib/legal";
 import { LocalitePicker, type SelectionLocalite } from "@/components/checkout/localite-picker";
+import { LocalisationInput, type ValeurLocalisation } from "@/components/checkout/localisation-input";
+import { lienGoogleMapsDepuisCoordonnees } from "@/lib/checkout/localisation";
+import { useAjoutMode } from "@/lib/local/ajout-mode";
+import { getCommandeModifiableParTelephone } from "@/lib/ajout/actions";
 import {
   useAllowNextNavigation,
   useUnsavedChanges,
@@ -51,6 +54,9 @@ export default function CheckoutPage() {
   const { detail, sousTotal, loading: loadingPanier, vider } = usePanierDetaille();
   const { identite, setIdentite } = useIdentite();
   const { lignes: kitsPanier, vider: viderKitsPanier } = useKitsPanier();
+  // Mode ajout (PROMPT_CLIENT_V2 Lot 4) : /checkout créerait une 2e commande
+  // (et une 2e livraison facturée) — la page dédiée est /ajout.
+  const { mode: modeAjout, entrer: entrerModeAjout } = useAjoutMode();
 
   // Générée une seule fois par visite du checkout (pas à chaque re-render) :
   // permet au serveur de reconnaître un clic double ou une requête retentée
@@ -66,14 +72,28 @@ export default function CheckoutPage() {
   const nom = nomSaisi ?? identite?.nom ?? "";
   const telephone = telephoneSaisi ?? identite?.telephone ?? "";
   const [modeLivraison, setModeLivraison] = useState<ModeLivraison>("6j");
-  const [modePaiement, setModePaiement] = useState<ModePaiement>("livraison");
+  // Wave sélectionné par défaut (PROMPT_CLIENT_V2 Lot 1) : paiement en ligne
+  // en premier, avant le paiement à la livraison.
+  const [modePaiement, setModePaiement] = useState<ModePaiement>("wave");
+  // Case à cocher obligatoire pour un paiement à la livraison (on appelle le
+  // client avant l'envoi) : jamais fait confiance côté serveur, revérifiée
+  // dans passerCommande.
+  const [consentementAppel, setConsentementAppel] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Numéro déjà associé à un autre nom en base (GROUPE_B §1) : on informe sans
   // bloquer, puis on enchaîne — voir trouverOuCreerClient (lib/checkout/actions.ts).
   const [noticeNom, setNoticeNom] = useState<string | null>(null);
 
-  const [precisionLivreur, setPrecisionLivreur] = useState("");
+  // Relance proactive (PROMPT_CLIENT_V2 Lot 4) : ce numéro a déjà une commande
+  // modifiable en cours. Suggestion rejetable, jamais un blocage — l'utilisateur
+  // peut très bien vouloir une commande séparée (adresse différente, etc.).
+  const [suggestionAjout, setSuggestionAjout] = useState<{ commandeId: number; jeton: string } | null>(null);
+  const [suggestionRejetee, setSuggestionRejetee] = useState(false);
+
+  // Obligatoire (PROMPT_CLIENT_V2 Lot 2) : remplace le champ libre "Comment
+  // trouver ta porte" — position GPS ou lien Google Maps collé.
+  const [localisation, setLocalisation] = useState<ValeurLocalisation>({ lat: null, lng: null, lien: null });
 
   // Le checkout contient un travail non enregistré dès que l'utilisateur a
   // saisi/choisi quelque chose (CONFIRMATION_RETOUR.md). Repasse à false à la
@@ -87,9 +107,48 @@ export default function CheckoutPage() {
     getLieuxSpeciaux().then(setLieuxSpeciaux);
   }, []);
 
-  // Pré-remplissage : dernière précision livreur saisie par ce numéro de client
-  // (même adresse d'une commande à l'autre). Nécessite le jeton de l'identité
-  // mémorisée (et donc que le numéro affiché soit bien celui de cette identité).
+  // Déjà en mode ajout : /checkout créerait une 2e commande (et une 2e
+  // livraison facturée) à la place d'ajouter à celle en cours.
+  useEffect(() => {
+    if (modeAjout) router.replace("/ajout");
+  }, [modeAjout, router]);
+
+  // Relance proactive (PROMPT_CLIENT_V2 Lot 4) : dès que le numéro saisi
+  // correspond à une commande modifiable, propose d'y ajouter plutôt que de
+  // repasser une commande. Débouncée, jamais bloquante. `suggestionRejetee`
+  // filtre à l'affichage (voir plus bas) plutôt que d'être revérifiée ici :
+  // la dernière trouvaille reste en mémoire, pas la peine de la redemander
+  // si l'utilisateur change d'avis après un "Non, nouvelle commande".
+  useEffect(() => {
+    const numero = telephone.trim();
+    if (!numero || modeAjout) return;
+    let annule = false;
+    const minuteur = setTimeout(() => {
+      getCommandeModifiableParTelephone(numero).then((r) => {
+        if (!annule) setSuggestionAjout(r);
+      });
+    }, 500);
+    return () => {
+      annule = true;
+      clearTimeout(minuteur);
+    };
+  }, [telephone, modeAjout]);
+
+  const suggestionAffichee = suggestionRejetee ? null : suggestionAjout;
+
+  const accepterSuggestionAjout = () => {
+    if (!suggestionAffichee) return;
+    // true : le panier déjà rempli sur CE checkout part avec l'ajout, pas
+    // perdu en route.
+    entrerModeAjout(suggestionAffichee.commandeId, suggestionAffichee.jeton, true);
+    autoriserProchaineNavigation();
+    router.push("/ajout");
+  };
+
+  // Pré-remplissage : dernière position GPS validée par ce numéro de client
+  // (même lieu de livraison d'une commande à l'autre). Nécessite le jeton de
+  // l'identité mémorisée (et donc que le numéro affiché soit bien celui de
+  // cette identité).
   const prefillFait = useRef(false);
   useEffect(() => {
     const numero = telephone.trim();
@@ -98,14 +157,16 @@ export default function CheckoutPage() {
     prefillFait.current = true;
     getDernierePosition(numero, jeton).then((pos) => {
       if (!pos) return;
-      setPrecisionLivreur((actuel) => actuel || pos.precisionLivreur || "");
+      setLocalisation((actuel) =>
+        actuel.lien
+          ? actuel
+          : { lat: pos.lat, lng: pos.lng, lien: lienGoogleMapsDepuisCoordonnees(pos.lat, pos.lng) },
+      );
     });
-    // Localité et précision choisies dans Préférences (§C.6) : appliquées
-    // seulement si rien n'est déjà sélectionné (getDernierePosition ci-dessus,
-    // ou une saisie de l'utilisateur, restent prioritaires).
+    // Localité choisie dans Préférences (§C.6) : appliquée seulement si rien
+    // n'est déjà sélectionné (une saisie de l'utilisateur reste prioritaire).
     getLivraisonDefaut(numero, jeton).then((defaut) => {
       if (!defaut) return;
-      setPrecisionLivreur((actuel) => actuel || defaut.precisionLivreur || "");
       setSelectionLocalite((actuel) => {
         if (actuel) return actuel;
         if (defaut.localite) return { type: "localite", id: defaut.localite.id, nom: defaut.localite.nom };
@@ -140,6 +201,7 @@ export default function CheckoutPage() {
     messageLivraison: string | null;
     dateLivraisonPrevue: string;
     waveNomMarchand: string | null;
+    paiementLivraisonMax: number | null;
   } | null>(null);
   const panierSignature = detail
     .map((d) => `${d.produit.id}:${d.variante?.id ?? 0}x${d.quantite}`)
@@ -176,6 +238,7 @@ export default function CheckoutPage() {
         messageLivraison: r.messageLivraison,
         dateLivraisonPrevue: r.dateLivraisonPrevue,
         waveNomMarchand: r.waveNomMarchand,
+        paiementLivraisonMax: r.paiementLivraisonMax,
       });
     });
     return () => {
@@ -191,7 +254,10 @@ export default function CheckoutPage() {
   const waveAffiche = opts?.options.includes("wave") ?? false;
   const livraisonAffiche = opts?.options.includes("livraison") ?? true;
   const waveImpose = opts?.waveImpose ?? false;
-  const modePaiementEffectif: ModePaiement = waveImpose ? "wave" : modePaiement;
+  // Avant la réponse du serveur, le Wave sélectionné par défaut n'a pas encore
+  // de bouton affiché (waveAffiche=false) : on retombe sur "à la livraison"
+  // plutôt que de montrer un état Wave sans bouton Wave visible.
+  const modePaiementEffectif: ModePaiement = waveImpose ? "wave" : waveAffiche ? modePaiement : "livraison";
   const fraisLivraison = opts?.fraisLivraison ?? 0;
   const total = opts?.total ?? sousTotal;
 
@@ -199,6 +265,14 @@ export default function CheckoutPage() {
     event.preventDefault();
     if (!selectionLocalite) {
       setError("Choisis ta localité dans la liste.");
+      return;
+    }
+    if (!localisation.lien) {
+      setError("Indique ta position de livraison (position actuelle ou lien Google Maps).");
+      return;
+    }
+    if (modePaiementEffectif === "livraison" && !consentementAppel) {
+      setError("Coche la case pour confirmer que tu seras joignable.");
       return;
     }
     setSubmitting(true);
@@ -216,12 +290,11 @@ export default function CheckoutPage() {
       localiteId: selectionLocalite?.type === "localite" ? selectionLocalite.id : null,
       lieuSpecialId: selectionLocalite?.type === "special" ? selectionLocalite.id : null,
       localiteTexte: localiteTexteCourant,
-      // Carte retirée de la page de commande : la localité + la précision
-      // livreur portent l'information. Pas de coordonnées ici.
-      lat: null,
-      lng: null,
-      precisionLivreur: precisionLivreur.trim() || null,
+      lat: localisation.lat,
+      lng: localisation.lng,
+      lienLocalisation: localisation.lien,
       modeLivraison,
+      consentementAppel,
       reference,
       ebookClasses: kitsPanier.map((k) => ({ cycle: k.cycle, niveau: k.niveau })),
       // Produits de kit -> bénéficiaire choisi au sélecteur (attribution du
@@ -283,6 +356,8 @@ export default function CheckoutPage() {
     }
   };
 
+  if (modeAjout) return null;
+
   if (!loadingPanier && detail.length === 0) {
     return <p className="px-4 py-12 text-center text-sm text-ink/50">Ton panier est vide.</p>;
   }
@@ -335,6 +410,31 @@ export default function CheckoutPage() {
           />
         </label>
 
+        {suggestionAffichee && (
+          <div className="flex flex-col gap-2 rounded-2xl border border-brand/25 bg-brand/5 p-3 text-sm">
+            <p className="text-ink/80">
+              Ajouter à votre commande en cours n°{suggestionAffichee.commandeId} et économiser la
+              livraison ?
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={accepterSuggestionAjout}
+                className="flex h-9 flex-1 items-center justify-center rounded-full bg-brand text-xs font-semibold text-on-brand"
+              >
+                Oui, ajouter
+              </button>
+              <button
+                type="button"
+                onClick={() => setSuggestionRejetee(true)}
+                className="flex h-9 flex-1 items-center justify-center rounded-full border border-ink/15 text-xs font-medium text-ink/70"
+              >
+                Non, nouvelle commande
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-1.5 text-sm">
           <span className="text-xs font-medium text-ink/60">Ta localité</span>
           <LocalitePicker
@@ -362,27 +462,13 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        <label className="flex flex-col gap-1.5 rounded-2xl border border-brand/25 bg-brand/5 p-3 text-sm">
-          <span className="flex items-center gap-1.5 font-semibold text-ink">
-            <MapPin size={15} className="text-brand" aria-hidden="true" />
-            Comment trouver ta porte
-          </span>
-          <span className="text-xs text-ink/60">
-            C&apos;est ce qui guide le livreur jusqu&apos;à toi : repères visibles, étage,
-            couleur du portail, à qui demander, quand t&apos;appeler.
-          </span>
-          <textarea
-            rows={3}
-            maxLength={300}
-            value={precisionLivreur}
-            onChange={(event) => {
-              setPrecisionLivreur(event.target.value);
-              setModifie(true);
-            }}
-            placeholder="Ex : quartier Liberté 6, immeuble en face de la pharmacie, portail bleu, 2e étage. Appeler en arrivant au carrefour."
-            className="rounded-xl border border-ink/15 bg-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
-          />
-        </label>
+        <LocalisationInput
+          value={localisation}
+          onChange={(v) => {
+            setLocalisation(v);
+            setModifie(true);
+          }}
+        />
       </section>
 
       {opts?.messageLivraison ? (
@@ -439,15 +525,44 @@ export default function CheckoutPage() {
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3">
         <span className="text-xs font-medium text-ink/60">Paiement</span>
 
-        {waveImpose ? (
+        {waveImpose && opts?.paiementLivraisonMax != null ? (
           <p className="rounded-xl bg-brand/5 px-3 py-2 text-xs text-ink/75">
             Au-dessus de{" "}
-            <span className="font-semibold text-ink">{formatPrice(SEUIL_PAIEMENT_AVANCE)}</span>, le
+            <span className="font-semibold text-ink">{formatPrice(opts.paiementLivraisonMax)}</span>, le
             paiement se règle <span className="font-semibold text-ink">d’avance par Wave</span>.
           </p>
         ) : null}
 
         <div className="flex flex-col gap-2">
+          {/* Wave en premier, sélectionné par défaut (PROMPT_CLIENT_V2 Lot 1). */}
+          {waveAffiche && (
+            <button
+              type="button"
+              aria-pressed={modePaiementEffectif === "wave"}
+              onClick={() => {
+                setModePaiement("wave");
+                setModifie(true);
+              }}
+              className={`flex flex-col gap-1 rounded-2xl border p-3 text-left transition-colors ${
+                modePaiementEffectif === "wave" ? "border-brand bg-brand/5" : "border-ink/10 bg-surface"
+              }`}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <Image
+                  src="/images/logo-wave.jpg"
+                  alt=""
+                  width={32}
+                  height={20}
+                  className="rounded object-contain"
+                />
+                Payer avec Wave
+              </span>
+              <span className="text-[11px] text-ink/45">
+                Paiement sécurisé, votre commande part plus vite.
+              </span>
+            </button>
+          )}
+
           {livraisonAffiche && !waveImpose && (
             <button
               type="button"
@@ -480,35 +595,31 @@ export default function CheckoutPage() {
               </span>
             </button>
           )}
-
-          {waveAffiche && (
-            <button
-              type="button"
-              aria-pressed={modePaiementEffectif === "wave"}
-              onClick={() => {
-                setModePaiement("wave");
-                setModifie(true);
-              }}
-              className={`flex flex-col gap-1 rounded-2xl border p-3 text-left transition-colors ${
-                modePaiementEffectif === "wave" ? "border-brand bg-brand/5" : "border-ink/10 bg-surface"
-              }`}
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Image
-                  src="/images/logo-wave.jpg"
-                  alt=""
-                  width={32}
-                  height={20}
-                  className="rounded object-contain"
-                />
-                Payer d’avance avec Wave
-              </span>
-              <span className="text-[11px] text-ink/45">
-                Paiement sécurisé sur Wave, puis retour sur SacAdo.
-              </span>
-            </button>
-          )}
         </div>
+
+        {modePaiementEffectif === "livraison" && (
+          <div className="flex flex-col gap-1.5 rounded-xl bg-ink/5 p-3">
+            <p className="text-xs text-ink/70">
+              Nous vous appellerons sur votre numéro WhatsApp pour confirmer la commande avant
+              l&apos;envoi. Sans réponse, la commande ne sera pas expédiée.
+            </p>
+            <label className="flex items-start gap-2 text-xs text-ink">
+              <input
+                type="checkbox"
+                checked={consentementAppel}
+                onChange={(event) => {
+                  setConsentementAppel(event.target.checked);
+                  setModifie(true);
+                }}
+                className="mt-0.5 size-4 shrink-0 accent-brand"
+              />
+              <span>
+                J&apos;ai compris, je serai joignable au{" "}
+                <span className="font-medium">{telephone || "ce numéro"}</span>
+              </span>
+            </label>
+          </div>
+        )}
       </section>
       </div>
 
@@ -551,7 +662,12 @@ export default function CheckoutPage() {
         </p>
         <button
           type="submit"
-          disabled={submitting || !selectionLocalite}
+          disabled={
+            submitting ||
+            !selectionLocalite ||
+            !localisation.lien ||
+            (modePaiementEffectif === "livraison" && !consentementAppel)
+          }
           className="mx-auto flex h-12 w-full max-w-6xl items-center justify-center rounded-full bg-action text-sm font-semibold text-on-action transition-transform active:scale-95 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
         >
           {submitting

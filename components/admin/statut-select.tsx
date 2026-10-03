@@ -6,11 +6,13 @@ import { changerStatutCommande } from "@/lib/admin/commandes-actions";
 import type { StatutCommande } from "@/lib/supabase/types";
 
 const OPTIONS: { value: StatutCommande; label: string }[] = [
+  { value: "a_confirmer_appel", label: "À confirmer par appel" },
   { value: "recue", label: "Reçue" },
   { value: "preparation", label: "En préparation" },
   { value: "livraison", label: "En livraison" },
   { value: "livree", label: "Livrée" },
   { value: "probleme", label: "Souci sur la commande" },
+  { value: "annulee", label: "Annulée" },
 ];
 
 export function StatutSelect({
@@ -59,7 +61,7 @@ export function StatutSelect({
         className={`rounded-full border px-2 py-1 text-xs font-medium ${
           valeur === "livree"
             ? "border-success/40 text-success"
-            : valeur === "probleme"
+            : valeur === "probleme" || valeur === "annulee"
               ? "border-red-300 text-red-600"
               : "border-ink/15 text-ink/70"
         }`}

@@ -9,6 +9,10 @@ import { formatPrice } from "@/lib/format";
 import { IdentitePrompt } from "@/components/moi/identite-prompt";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LIBELLES_STATUT_COMMANDE } from "@/lib/commandes";
+import { BoutonReessayerPaiement } from "@/components/checkout/paiement-retour";
+import { BasculerLivraison } from "@/components/checkout/bascule-livraison";
+import { BoutonAjouterProduits } from "@/components/ajout/bouton-ajouter";
+import { commandeModifiablePourAjout } from "@/lib/ajout/eligibilite";
 import type { Commande } from "@/lib/supabase/types";
 
 const LABELS_STATUT = LIBELLES_STATUT_COMMANDE;
@@ -58,32 +62,63 @@ export default function MesCommandesPage() {
         />
       ) : (
         <div className="flex flex-col gap-3">
-          {commandes.map((commande) => (
-            <Link
-              key={commande.id}
-              href={`/suivi/${commande.id}?t=${identite?.jeton ?? ""}`}
-              className="flex flex-col gap-1 rounded-2xl border border-ink/10 bg-elevated p-3 active:bg-ink/5"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-ink">Commande #{commande.id}</span>
-                <span
-                  className={`text-xs font-medium ${
-                    commande.statut === "livree"
-                      ? "text-success"
-                      : commande.statut === "probleme"
-                        ? "text-red-600"
-                        : "text-ink/60"
-                  }`}
+          {commandes.map((commande) => {
+            // Paiement Wave abandonné ou échoué (PROMPT_CLIENT_V2 Lot 1) : la
+            // commande reste visible, avec le choix de reprendre le paiement
+            // Wave ou de basculer à la livraison. `statut` reste
+            // 'paiement_en_attente' même après un échec (voir
+            // traiter_paiement_wave) — seul `statut_paiement` change.
+            const enAttentePaiement =
+              commande.mode_paiement === "wave" && commande.statut === "paiement_en_attente";
+
+            return (
+              <div
+                key={commande.id}
+                className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-3"
+              >
+                <Link
+                  href={`/suivi/${commande.id}?t=${identite?.jeton ?? ""}`}
+                  className="flex flex-col gap-1 active:opacity-70"
                 >
-                  {LABELS_STATUT[commande.statut]}
-                </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-ink">Commande #{commande.id}</span>
+                    <span
+                      className={`text-xs font-medium ${
+                        commande.statut === "livree"
+                          ? "text-success"
+                          : commande.statut === "probleme" || commande.statut === "annulee"
+                            ? "text-red-600"
+                            : "text-ink/60"
+                      }`}
+                    >
+                      {LABELS_STATUT[commande.statut]}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-ink/50">
+                    <span>{formatDate(commande.date)}</span>
+                    <span className="font-semibold text-ink">{formatPrice(commande.total)}</span>
+                  </div>
+                </Link>
+
+                {enAttentePaiement && commande.client_reference && (
+                  <div className="flex flex-col gap-2 border-t border-ink/10 pt-2">
+                    <BoutonReessayerPaiement reference={commande.client_reference} label="Payer maintenant" />
+                    <BasculerLivraison reference={commande.client_reference} />
+                  </div>
+                )}
+
+                {commandeModifiablePourAjout(commande.statut) && identite?.jeton && (
+                  <div className="border-t border-ink/10 pt-2">
+                    <BoutonAjouterProduits
+                      commandeId={commande.id}
+                      jeton={identite.jeton}
+                      className="flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-brand/30 text-xs font-semibold text-brand active:scale-[0.98]"
+                    />
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between text-xs text-ink/50">
-                <span>{formatDate(commande.date)}</span>
-                <span className="font-semibold text-ink">{formatPrice(commande.total)}</span>
-              </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

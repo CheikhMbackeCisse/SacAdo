@@ -4,6 +4,7 @@ import "../../styles/app-feel.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
 import { AppBehavior } from "@/components/pwa/app-behavior";
 import { Header } from "@/components/layout/header";
+import { AjoutBandeau } from "@/components/ajout/ajout-bandeau";
 import { AppMain } from "@/components/layout/app-main";
 import { CartToast } from "@/components/panier/cart-toast";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -98,6 +99,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         <AppBehavior />
         <ProductPreviewProvider>
           <Header />
+          <AjoutBandeau />
           <CartToast />
           <AppMain>
             <NavigationGuardProvider>{children}</NavigationGuardProvider>

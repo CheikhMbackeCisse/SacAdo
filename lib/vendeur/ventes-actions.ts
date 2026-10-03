@@ -43,6 +43,7 @@ export async function getMesVentes(): Promise<RecapVentes> {
     .select("commande_id, produit_id, quantite, prix_unitaire, commandes!inner(date, statut)")
     .in("produit_id", ids)
     .neq("commandes.statut", STATUT_EN_ATTENTE_PAIEMENT)
+    .neq("commandes.statut", "annulee")
     .order("commande_id", { ascending: false });
 
   type Row = {

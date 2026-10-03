@@ -4,6 +4,8 @@ import type { CanalModele, StatutCommande } from "@/lib/supabase/types";
 // mapping du trigger notify_commande_statut() (migration 0058).
 export function codeModeleStatut(statut: StatutCommande): string | null {
   switch (statut) {
+    case "a_confirmer_appel":
+      return "commande_a_confirmer";
     case "recue":
       return "commande_confirmee";
     case "preparation":
@@ -14,6 +16,8 @@ export function codeModeleStatut(statut: StatutCommande): string | null {
       return "commande_livree";
     case "probleme":
       return "commande_probleme";
+    case "annulee":
+      return "commande_annulee";
     default:
       return null;
   }

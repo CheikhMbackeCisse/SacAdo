@@ -11,9 +11,11 @@ import {
   getDatesFermees,
   getHeureLimiteSamedi,
   getNomMarchandWave,
+  getPaiementLivraisonMax,
   getSeuilLivraisonGratuite,
 } from "@/lib/parametres";
 import { calculerDateLivraison } from "@/lib/checkout/date-livraison";
+import { coordonneesValides } from "@/lib/checkout/localisation";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { notifierPushAdminNouvelleCommande } from "@/lib/admin/notifier-commande";
@@ -40,13 +42,25 @@ export type CheckoutInput = {
   localiteId: number | null;
   lieuSpecialId: number | null;
   localiteTexte: string;
-  // Point carte désormais FACULTATIF : sert uniquement à préciser l'endroit
-  // exact pour le livreur, plus à déduire le tarif.
+  // Point de livraison, jamais utilisé pour le tarif (la localité s'en charge) :
+  // coordonnées GPS si le client a autorisé la position, sinon celles extraites
+  // du lien Google Maps collé (lienLocalisation) — peuvent être null si cette
+  // extraction a échoué (lien gardé quand même, voir resoudreLienLocalisation).
   lat: number | null;
   lng: number | null;
-  // Champ libre facultatif : « portail bleu, 2e étage, appeler en arrivant ».
+  // Obligatoire (PROMPT_CLIENT_V2 Lot 2) : lien Google Maps, collé par le
+  // client ou reconstruit depuis sa position GPS — remplace le champ libre
+  // « Comment trouver ta porte ». Ouvert en un toucher par l'admin/le livreur.
+  lienLocalisation: string | null;
+  // Champ libre historique : plus proposé au checkout depuis le Lot 2
+  // ci-dessus, gardé en lecture pour les anciennes commandes uniquement.
   precisionLivreur?: string | null;
   modeLivraison: ModeLivraison;
+  // Case à cocher obligatoire côté checkout pour un paiement à la livraison
+  // (PROMPT_CLIENT_V2 Lot 1) : « J'ai compris, je serai joignable au
+  // <numéro> ». Ignoré pour un paiement Wave. Vérifié côté serveur dans
+  // passerCommande (jamais fait confiance côté client).
+  consentementAppel?: boolean;
   // Généré une fois côté client (crypto.randomUUID()) au chargement du
   // checkout : permet à creer_commande() de rejouer un clic double ou une
   // requête retentée sans créer deux commandes (voir 0004_performance.sql).
@@ -355,6 +369,14 @@ async function figerMessageLivraison(commandeId: number, message: string | null)
   await supabaseAdmin.from("commandes").update({ message_livraison: message }).eq("id", commandeId);
 }
 
+// `creer_commande()` (RPC) ne connaît pas le lien Google Maps (PROMPT_CLIENT_V2
+// Lot 2, migration 0106) : on le fige juste après, comme le message de
+// livraison ci-dessus. Idempotent.
+async function figerLienLocalisation(commandeId: number, lien: string | null): Promise<void> {
+  if (!lien) return;
+  await supabaseAdmin.from("commandes").update({ lien_localisation: lien }).eq("id", commandeId);
+}
+
 // Prix d'achat figé sur chaque ligne de commande (migration 0055) : base de la
 // part fournisseur du bénéfice, jamais recalculée ensuite. Idempotent (ne touche
 // que les lignes pas encore renseignées).
@@ -371,12 +393,6 @@ async function figerPrixAchat(commandeId: number, lignes: LigneResolue[]): Promi
       .eq("produit_id", produitId)
       .is("prix_achat_unitaire", null);
   }
-}
-
-function coordonneesValides(lat: number, lng: number): boolean {
-  return (
-    Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
-  );
 }
 
 function panierValide(lignes: LignePanier[]): boolean {
@@ -435,10 +451,13 @@ export async function getOptionsPaiement(
 ): Promise<OptionsPaiementResult> {
   if (!panierValide(lignes)) return { ok: false, error: "Panier invalide." };
 
-  const resolu = await resoudreCommande(lignes, params);
+  const [resolu, paiementLivraisonMax] = await Promise.all([
+    resoudreCommande(lignes, params),
+    getPaiementLivraisonMax(),
+  ]);
   if (!resolu.ok) return { ok: false, error: resolu.error };
 
-  const options = optionsPaiementPourTotal(resolu.data.total, waveDisponible());
+  const options = optionsPaiementPourTotal(resolu.data.total, waveDisponible(), paiementLivraisonMax);
 
   return {
     ok: true,
@@ -454,19 +473,26 @@ export async function getOptionsPaiement(
   };
 }
 
+const LIEN_LOCALISATION_MAX = 500;
+
 // Validation commune du formulaire de checkout (livraison comme Wave).
 function validerCheckout(input: CheckoutInput, lignes: LignePanier[]): string | null {
   const nom = input.nom.trim();
   const telephone = input.telephone.trim();
   const precisionLivreur = (input.precisionLivreur ?? "").trim();
   const localiteTexte = input.localiteTexte.trim();
+  const lienLocalisation = (input.lienLocalisation ?? "").trim();
 
   if (lignes.length === 0) return "Ton panier est vide.";
   if (!nom || !telephone) return "Merci de renseigner ton nom et ton téléphone.";
   if (!localiteTexte) return "Indique ta localité de livraison.";
   if (localiteTexte.length > LOCALITE_TEXTE_MAX) return "Nom de localité trop long.";
+  // Obligatoire (PROMPT_CLIENT_V2 Lot 2) : position GPS ou lien Google Maps —
+  // jamais fait confiance côté client seul, revérifié ici avant la commande.
+  if (!lienLocalisation) return "Indique ta position de livraison (position actuelle ou lien Google Maps).";
+  if (lienLocalisation.length > LIEN_LOCALISATION_MAX) return "Lien de localisation trop long.";
   if (input.lat != null && input.lng != null && !coordonneesValides(input.lat, input.lng)) {
-    return "Position invalide sur la carte.";
+    return "Position invalide.";
   }
   if (nom.length > NOM_MAX || precisionLivreur.length > PRECISION_LIVREUR_MAX) {
     return "Un des champs est trop long.";
@@ -580,6 +606,12 @@ export async function passerCommande(
   const erreurValidation = validerCheckout(input, lignes);
   if (erreurValidation) return { ok: false, error: erreurValidation };
 
+  // Case à cocher obligatoire (PROMPT_CLIENT_V2 Lot 1) : jamais fait confiance
+  // côté client, revérifiée ici avant de créer la commande.
+  if (!input.consentementAppel) {
+    return { ok: false, error: "Merci de confirmer que tu seras joignable avant de valider." };
+  }
+
   const precisionLivreur = (input.precisionLivreur ?? "").trim() || null;
 
   const ip = await getClientIp();
@@ -588,21 +620,25 @@ export async function passerCommande(
     return { ok: false, error: "Trop de commandes envoyées d'un coup. Réessaie dans quelques minutes." };
   }
 
-  const resolu = await resoudreCommande(lignes, {
-    modeLivraison: input.modeLivraison,
-    localiteId: input.localiteId,
-    lieuSpecialId: input.lieuSpecialId,
-    localiteTexte: input.localiteTexte,
-  });
+  const [resolu, paiementLivraisonMax] = await Promise.all([
+    resoudreCommande(lignes, {
+      modeLivraison: input.modeLivraison,
+      localiteId: input.localiteId,
+      lieuSpecialId: input.lieuSpecialId,
+      localiteTexte: input.localiteTexte,
+    }),
+    getPaiementLivraisonMax(),
+  ]);
   if (!resolu.ok) return { ok: false, error: resolu.error };
   const { zoneId, localiteId, lieuSpecialId, localiteNom, aConfirmer, lignesResolues, sousTotal, fraisLivraison, total } =
     resolu.data;
 
-  // Au-dessus du seuil, le paiement à la livraison n'est plus permis
-  // (INTEGRATION_WAVE.md, W2). Contrôle serveur : le client a beau envoyer
-  // "livraison", on refuse. Le checkout bascule alors sur demarrerPaiementWave.
-  // (Si Wave n'est pas branché, waveDisponible()=false => tout reste "livraison".)
-  if (!paiementAutorise("livraison", total, waveDisponible())) {
+  // Au-dessus du plafond (réglable dans l'admin), le paiement à la livraison
+  // n'est plus permis (PROMPT_CLIENT_V2 Lot 1). Contrôle serveur : le client a
+  // beau envoyer "livraison", on refuse. Le checkout bascule alors sur
+  // demarrerPaiementWave. (Si Wave n'est pas branché, waveDisponible()=false
+  // => tout reste "livraison", le plafond ne s'applique pas.)
+  if (!paiementAutorise("livraison", total, waveDisponible(), paiementLivraisonMax)) {
     return { ok: false, error: "Pour ce montant, le paiement se fait d'avance par Wave." };
   }
 
@@ -644,6 +680,7 @@ export async function passerCommande(
   }
 
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
+  await figerLienLocalisation(commandeId as number, input.lienLocalisation);
   await figerDateLivraison(commandeId as number, input.modeLivraison);
   await figerPrixAchat(commandeId as number, lignesResolues);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
@@ -653,15 +690,14 @@ export async function passerCommande(
     clientId: client.clientId,
   });
 
-  // Commande en livraison 24h : prévenir automatiquement les fournisseurs
-  // concernés (NOTIFICATIONS_FOURNISSEURS §2). Ne bloque pas la confirmation.
-  if (input.modeLivraison === "24h") {
-    await declencherPreparationsAuto(commandeId as number);
-  }
-
-  // Push "commande confirmée" (matrice de canaux) : no-op silencieux si le
-  // client n'a pas encore d'abonnement (cas le plus courant à la 1re commande).
-  await notifierPushStatutCommande(commandeId as number, "recue");
+  // Une commande payée à la livraison part maintenant sur 'a_confirmer_appel'
+  // (PROMPT_CLIENT_V2 Lot 1, migration 0105) : on ne prévient plus les
+  // fournisseurs ni n'envoie le push "commande confirmée" dès la création,
+  // seulement après l'appel de confirmation — voir changerStatutCommande()
+  // (lib/admin/commandes-actions.ts), qui déclenche les deux à l'entrée en
+  // 'recue'. La boîte de réception reçoit déjà le message "On va t'appeler"
+  // via le trigger DB.
+  await notifierPushStatutCommande(commandeId as number, "a_confirmer_appel");
 
   // PROMPT_ADMIN Lot 2 : prévenir le fondateur même hors de l'app (badge +
   // notification push), best-effort, ne doit jamais faire échouer la commande.
@@ -786,6 +822,7 @@ export async function demarrerPaiementWave(
   }
 
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
+  await figerLienLocalisation(commandeId as number, input.lienLocalisation);
   await figerDateLivraison(commandeId as number, input.modeLivraison);
   await figerPrixAchat(commandeId as number, lignesResolues);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
@@ -812,6 +849,51 @@ export async function reprendrePaiementWave(reference: string): Promise<Paiement
   const commande = await getCommandeParReference(reference);
   if (!commande) return { ok: false, error: "Commande introuvable." };
   return relancerSessionPourCommande(commande);
+}
+
+export type BasculerLivraisonResult =
+  | { ok: true; commandeId: number; jeton: string }
+  | { ok: false; error: string };
+
+// Bascule une commande Wave restée sans paiement (abandonnée ou échouée) vers
+// le paiement à la livraison (PROMPT_CLIENT_V2 Lot 1, bouton « Payer à la
+// livraison à la place » de l'écran d'échec / de « Mes commandes »). Le stock
+// a déjà été réservé à la création : rien à toucher de ce côté, seulement le
+// mode de paiement et le statut (-> 'a_confirmer_appel', comme une commande
+// livraison créée directement dans cet état).
+export async function basculerPaiementLivraison(
+  reference: string,
+  consentementAppel: boolean,
+): Promise<BasculerLivraisonResult> {
+  if (!consentementAppel) {
+    return { ok: false, error: "Merci de confirmer que tu seras joignable avant de valider." };
+  }
+
+  const commande = await getCommandeParReference(reference);
+  if (!commande) return { ok: false, error: "Commande introuvable." };
+  if (commande.mode_paiement !== "wave" || commande.statut !== "paiement_en_attente") {
+    return { ok: false, error: "Cette commande ne peut plus changer de mode de paiement." };
+  }
+
+  const paiementLivraisonMax = await getPaiementLivraisonMax();
+  if (!paiementAutorise("livraison", commande.total, waveDisponible(), paiementLivraisonMax)) {
+    return { ok: false, error: "Pour ce montant, le paiement se fait d'avance par Wave." };
+  }
+
+  const { error } = await supabaseAdmin
+    .from("commandes")
+    .update({
+      mode_paiement: "livraison",
+      statut: "a_confirmer_appel",
+      statut_paiement: null,
+      wave_session_id: null,
+    })
+    .eq("id", commande.id);
+  if (error) return { ok: false, error: "Impossible de changer le mode de paiement." };
+
+  await notifierPushStatutCommande(commande.id, "a_confirmer_appel");
+
+  return { ok: true, commandeId: commande.id, jeton: jetonClient(commande.client_id) };
 }
 
 async function relancerSessionPourCommande(commande: Commande): Promise<PaiementWaveResult> {

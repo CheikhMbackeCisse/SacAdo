@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { usePanierDetaille, type LigneDetaillee } from "@/lib/local/use-panier-detaille";
 import type { GroupeKitPanier, LignePanier } from "@/lib/local/panier";
+import { useAjoutMode } from "@/lib/local/ajout-mode";
 import { PanierLine } from "@/components/panier/panier-line";
 import { PanierKitCard } from "@/components/panier/panier-kit-card";
 import { FreeShippingProgress } from "@/components/panier/free-shipping-progress";
@@ -36,13 +37,24 @@ function regrouperParKit(detail: LigneDetaillee[]): {
 
 export default function PanierPage() {
   const router = useRouter();
+  const { mode: modeAjout } = useAjoutMode();
   const { detail, sousTotal, loading, retirer, retirerGroupe, restaurerLignes, setQuantite } =
     usePanierDetaille();
   const [kitRetire, setKitRetire] = useState<{ groupe: GroupeKitPanier; lignes: LignePanier[] } | null>(
     null,
   );
 
+  // En mode ajout (PROMPT_CLIENT_V2 Lot 4), il n'y a qu'un seul panier — celui
+  // de l'ajout en cours — et sa page dédiée (récapitulatif + paiement propre,
+  // pas de nouveaux frais de livraison) : /panier redirige vers /ajout plutôt
+  // que de montrer le "Commander" générique, qui créerait une 2e commande.
+  useEffect(() => {
+    if (modeAjout) router.replace("/ajout");
+  }, [modeAjout, router]);
+
   const { groupes, horsGroupe } = useMemo(() => regrouperParKit(detail), [detail]);
+
+  if (modeAjout) return null;
 
   // Retirer le dernier kit du panier vide la liste : l'écran "panier vide"
   // ne doit pas pour autant avaler la bannière d'annulation, sinon "Annuler"

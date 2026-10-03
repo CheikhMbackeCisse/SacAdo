@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocalList } from "./use-local-list";
+import { cleActive, useAjoutMode } from "./ajout-mode";
 
 const KEY = "sacado_kits_panier";
 
@@ -21,7 +22,8 @@ export type KitPanier = {
 type ExtraKit = { beneficiaireId?: number | null; produitIds?: number[] };
 
 export function useKitsPanier() {
-  const [lignes, set] = useLocalList<KitPanier>(KEY);
+  const { mode } = useAjoutMode();
+  const [lignes, set] = useLocalList<KitPanier>(cleActive(KEY, mode));
 
   const enregistrer = (cycle: string, niveau: string, extra?: ExtraKit) => {
     set((current) => {

@@ -3,6 +3,7 @@
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
+import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import type { Commande, CommandeItem, StatutCommande } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
@@ -44,6 +45,7 @@ function mapCommandeRow(
     lat: row.lat,
     lng: row.lng,
     precision_livreur: row.precision_livreur,
+    lien_localisation: row.lien_localisation,
     localite_id: row.localite_id,
     lieu_special_id: row.lieu_special_id,
     localite_nom: row.localite_nom,
@@ -112,9 +114,9 @@ export async function changerStatutCommande(id: number, statut: StatutCommande):
   }
   const { data: actuelle } = await supabaseAdmin
     .from("commandes")
-    .select("statut")
+    .select("statut, mode_livraison")
     .eq("id", id)
-    .maybeSingle<{ statut: StatutCommande }>();
+    .maybeSingle<{ statut: StatutCommande; mode_livraison: Commande["mode_livraison"] }>();
   if (actuelle?.statut === "paiement_en_attente") {
     return { ok: false, error: "Cette commande attend la confirmation du paiement Wave." };
   }
@@ -126,6 +128,14 @@ export async function changerStatutCommande(id: number, statut: StatutCommande):
   if (error) return { ok: false, error: "Impossible de changer le statut." };
 
   if (statut === "livree") await figerGarantieCommande([id]);
+
+  // L'appel de confirmation vient d'aboutir (PROMPT_CLIENT_V2 Lot 1) : la
+  // commande entre dans le flux normal, exactement comme un paiement Wave
+  // confirmé (voir app/api/wave/webhook/route.ts). Prévenir les fournisseurs
+  // seulement maintenant, pas dès la création à 'a_confirmer_appel'.
+  if (statut === "recue" && actuelle?.statut === "a_confirmer_appel" && actuelle.mode_livraison === "24h") {
+    await declencherPreparationsAuto(id);
+  }
 
   await notifierPushStatutCommande(id, statut);
   return { ok: true };
@@ -187,6 +197,21 @@ export async function changerStatutCommandesGroupe(
     return { ok: false, error: "Statut réservé au paiement Wave." };
   }
 
+  // Appels de confirmation qui aboutissent dans ce lot (PROMPT_CLIENT_V2 Lot 1) :
+  // il faut connaître l'état AVANT la mise à jour pour savoir lesquelles
+  // prévenir les fournisseurs ensuite (même règle que changerStatutCommande).
+  const aPrevenir: number[] =
+    statut === "recue"
+      ? (
+          await supabaseAdmin
+            .from("commandes")
+            .select("id")
+            .in("id", ids)
+            .eq("statut", "a_confirmer_appel")
+            .eq("mode_livraison", "24h")
+        ).data?.map((c) => (c as { id: number }).id) ?? []
+      : [];
+
   // Une commande Wave en attente ne doit pas être basculée par une action
   // groupée (même règle que le changement individuel) : on l'exclut plutôt
   // que de faire échouer tout le lot.
@@ -200,6 +225,7 @@ export async function changerStatutCommandesGroupe(
 
   const idsModifiees = (modifiees ?? []).map((c) => (c as { id: number }).id);
   if (statut === "livree" && idsModifiees.length > 0) await figerGarantieCommande(idsModifiees);
+  await Promise.all(aPrevenir.map((id) => declencherPreparationsAuto(id)));
 
   await Promise.all(idsModifiees.map((id) => notifierPushStatutCommande(id, statut)));
   return { ok: true };
@@ -275,6 +301,7 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       prix_achat_unitaire: row.prix_achat_unitaire,
       reverse_le: row.reverse_le,
       garantie_fin: row.garantie_fin,
+      ajout_id: row.ajout_id,
       produit_nom: produit?.nom ?? "Produit supprimé",
       composants: produit?.est_kit ? compositionsParKit.get(row.produit_id) : undefined,
       photo_a_ameliorer: produit?.photo_a_ameliorer ?? false,

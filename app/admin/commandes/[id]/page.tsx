@@ -7,7 +7,7 @@ import {
   type CommandeItemAvecProduit,
 } from "@/lib/admin/commandes-actions";
 import { getBlocWhatsApp } from "@/lib/admin/whatsapp-actions";
-import { Download } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import { formatDateLivraison, formatPrice } from "@/lib/format";
 import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
 import { numeroFacture } from "@/lib/factures/config";
@@ -146,6 +146,16 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
             precision={commande.precision_livreur}
             liensNavigation
           />
+        ) : commande.lien_localisation ? (
+          <a
+            href={commande.lien_localisation}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-fit items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70 transition-transform active:scale-95"
+          >
+            <ExternalLink size={13} aria-hidden="true" />
+            Voir sur Google Maps
+          </a>
         ) : (
           <p className="text-xs text-ink/40">Aucune position de livraison enregistrée.</p>
         )}

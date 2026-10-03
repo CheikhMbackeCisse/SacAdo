@@ -4,6 +4,7 @@ import { getCommandeParReference } from "@/lib/checkout/actions";
 import { formatPrice } from "@/lib/format";
 import { messageErreurPaiement } from "@/lib/wave/webhook";
 import { BoutonReessayerPaiement } from "@/components/checkout/paiement-retour";
+import { BasculerLivraison } from "@/components/checkout/bascule-livraison";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,10 @@ export default async function PaiementEchouePage(props: {
       )}
 
       {rejouable && commande?.client_reference ? (
-        <BoutonReessayerPaiement reference={commande.client_reference} />
+        <div className="flex flex-col gap-2">
+          <BoutonReessayerPaiement reference={commande.client_reference} />
+          <BasculerLivraison reference={commande.client_reference} />
+        </div>
       ) : null}
 
       <Link

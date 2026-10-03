@@ -1,4 +1,4 @@
-import { Check, TriangleAlert } from "lucide-react";
+import { Check, PhoneCall, TriangleAlert, XCircle } from "lucide-react";
 import type { StatutCommande } from "@/lib/supabase/types";
 
 const ETAPES: { value: StatutCommande; label: string }[] = [
@@ -9,8 +9,7 @@ const ETAPES: { value: StatutCommande; label: string }[] = [
 ];
 
 export function OrderStepper({ statut }: { statut: StatutCommande }) {
-  // « Souci » n'est pas une étape du parcours : on affiche un encart dédié.
-  // Le suivi reprendra son cours quand l'admin remet un statut normal.
+  // États hors parcours normal : un encart dédié plutôt qu'une étape.
   if (statut === "probleme") {
     return (
       <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-3.5">
@@ -20,6 +19,33 @@ export function OrderStepper({ statut }: { statut: StatutCommande }) {
           <p className="mt-0.5 text-xs text-ink/65">
             On te contacte par WhatsApp pour trouver une solution. Ton suivi reprend juste après.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (statut === "a_confirmer_appel") {
+    return (
+      <div className="flex items-start gap-3 rounded-2xl border border-brand/25 bg-brand/5 p-3.5">
+        <PhoneCall size={18} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-semibold text-ink">On va t&apos;appeler</p>
+          <p className="mt-0.5 text-xs text-ink/65">
+            On te contacte sur WhatsApp pour confirmer ta commande avant l&apos;envoi. Ton suivi
+            reprend juste après.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (statut === "annulee") {
+    return (
+      <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-3.5">
+        <XCircle size={18} className="mt-0.5 shrink-0 text-red-600" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-semibold text-ink">Commande annulée</p>
+          <p className="mt-0.5 text-xs text-ink/65">Cette commande ne sera pas livrée.</p>
         </div>
       </div>
     );

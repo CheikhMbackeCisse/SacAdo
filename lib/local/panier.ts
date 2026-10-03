@@ -2,6 +2,7 @@
 
 import { useLocalList } from "./use-local-list";
 import { mesurer } from "@/lib/mesure-client";
+import { cleActive, useAjoutMode } from "./ajout-mode";
 
 const KEY = "sacado_panier";
 
@@ -55,7 +56,11 @@ function genererIdGroupe(): string {
 // perdre entre deux visites. L'écran Panier lui-même (calcul des frais de
 // livraison, seuil de gratuité, etc.) reste au Lot 4 comme prévu.
 export function usePanier() {
-  const [lignes, setLignes] = useLocalList<LignePanier>(KEY);
+  // Mode ajout (PROMPT_CLIENT_V2 Lot 4) : tout ce qui est ajouté va dans le
+  // panier de l'ajout en cours, pas dans le panier normal — sans que les
+  // appelants (cartes produit, fiche produit…) aient à le savoir.
+  const { mode } = useAjoutMode();
+  const [lignes, setLignes] = useLocalList<LignePanier>(cleActive(KEY, mode));
 
   const emettreAjout = (quantiteAjoutee: number, totalApres: number) => {
     if (typeof window === "undefined") return;

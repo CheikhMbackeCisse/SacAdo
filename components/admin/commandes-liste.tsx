@@ -18,6 +18,7 @@ const OPTIONS_GROUPE: { value: StatutCommande; label: string }[] = [
   { value: "preparation", label: "En préparation" },
   { value: "livraison", label: "En livraison" },
   { value: "livree", label: "Livrée" },
+  { value: "annulee", label: "Annulée" },
 ];
 
 function formatDate(iso: string) {
