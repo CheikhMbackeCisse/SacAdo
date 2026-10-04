@@ -70,6 +70,16 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
+        // TACHE_admin_sous_domaine.md Phase 3 : sur admin.sacado.sn, l'admin
+        // EST toute l'origine, donc le service worker servi depuis
+        // /admin/sw.js doit pouvoir contrôler "/" (pas seulement /admin/,
+        // portée par défaut déduite de l'emplacement du fichier). Un navigateur
+        // n'autorise une portée plus large que le dossier du script QUE si le
+        // serveur l'autorise explicitement via cet en-tête.
+        source: "/admin/sw.js",
+        headers: [{ key: "Service-Worker-Allowed", value: "/" }],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: CSP },

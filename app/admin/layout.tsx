@@ -1,11 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "../globals.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { ADMIN_URL } from "@/lib/site";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+
+const ADMIN_HOST = new URL(ADMIN_URL).hostname;
 
 // PWA admin (TACHE_admin_pwa_meme_domaine.md) : manifeste dédié servi sous
 // `/admin/manifest.webmanifest`, avec sa propre identité (`id: /admin`, `scope:
@@ -45,6 +49,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Portée du service worker : "/" sur le sous-domaine admin.sacado.sn (où
+  // l'admin EST toute l'origine), "/admin/" (par défaut) quand il reste
+  // servi en place sous /admin/* (Preview Vercel, localhost).
+  const h = await headers();
+  const hostActuel = (h.get("x-forwarded-host") ?? h.get("host") ?? "").split(":")[0].toLowerCase();
+  const surSousDomaine = hostActuel === ADMIN_HOST;
+
   // Le chrome admin (sidebar) n'apparaît que pour un vrai admin. Un compte
   // connecté mais non-admin voit la page nue (le proxy le redirige déjà).
   const { data: admin } = user
@@ -68,7 +79,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ) : (
           children
         )}
-        <ServiceWorkerRegister script="/admin/sw.js" />
+        <ServiceWorkerRegister script="/admin/sw.js" scope={surSousDomaine ? "/" : "/admin/"} />
       </body>
     </html>
   );

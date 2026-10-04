@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import {
   getCategories,
   getClassesActives,
@@ -7,7 +8,9 @@ import {
 } from "@/lib/supabase/queries";
 import { slugAvecId } from "@/lib/slug";
 import { CYCLES } from "@/lib/cycles";
-import { SITE_URL } from "@/lib/site";
+import { ADMIN_URL, SITE_URL } from "@/lib/site";
+
+const ADMIN_HOST = new URL(ADMIN_URL).hostname;
 
 // Généré depuis la base à chaque requête du crawler (pas de fichier écrit à
 // la main) : ne contient que les catégories actives et les produits publiés.
@@ -16,6 +19,14 @@ import { SITE_URL } from "@/lib/site";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // admin.sacado.sn n'est jamais indexé (voir robots.ts) : sitemap vide,
+  // inutile d'interroger la base pour cette origine.
+  const h = await headers();
+  const hostname = (h.get("x-forwarded-host") ?? h.get("host") ?? "").split(":")[0].toLowerCase();
+  if (hostname === ADMIN_HOST) {
+    return [];
+  }
+
   const [categories, produits, classesLyceeDb, toutesLesClasses] = await Promise.all([
     getCategories(),
     getProduitsPubliesPourSitemap(),

@@ -7,17 +7,23 @@ import { useEffect } from "react";
 // navigation reste fluide, sans retour brutal au splash en pleine session.
 //
 // L'espace client enregistre `/sw.js` (scope "/"). L'admin enregistre
-// `/admin/sw.js` (scope "/admin/", déduit de l'emplacement) : pour les pages
-// /admin, c'est cet enregistrement plus précis qui prend la main
-// (TACHE_admin_pwa_meme_domaine.md §4).
-export function ServiceWorkerRegister({ script = "/sw.js" }: { script?: string }) {
+// `/admin/sw.js` avec une portée EXPLICITE (`scope`) :
+//   - "/admin/" (déduite par défaut) quand l'admin reste servi en place sous
+//     /admin/* (Preview Vercel, localhost) — pour ces pages, cet
+//     enregistrement plus précis prend la main sur le SW racine du client.
+//   - "/" quand l'admin tourne sur son propre sous-domaine admin.sacado.sn
+//     (TACHE_admin_sous_domaine.md Phase 3) : là, l'admin EST toute
+//     l'origine, donc le SW doit contrôler toutes ses pages. Une portée plus
+//     large que le dossier du script nécessite l'en-tête
+//     `Service-Worker-Allowed` (voir next.config.ts).
+export function ServiceWorkerRegister({ script = "/sw.js", scope }: { script?: string; scope?: string }) {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
     navigator.serviceWorker
-      .register(script)
+      .register(script, scope ? { scope } : undefined)
       .catch((error) => console.error("Échec de l'enregistrement du service worker", error));
-  }, [script]);
+  }, [script, scope]);
 
   return null;
 }
