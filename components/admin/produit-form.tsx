@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, ImagePlus, Loader2, Star, X } from "lucide-react";
 import {
   creerProduit,
   modifierProduit,
@@ -15,6 +15,7 @@ import { creerSousSousCategorie } from "@/lib/admin/sous-sous-categories-actions
 import { compresserImage } from "@/lib/images/compress-image";
 import { MAX_PHOTOS_PRODUIT } from "@/lib/vendeur/produits-shared";
 import { ChampSelect } from "@/components/ui/champ-select";
+import { useGlisserDeposer } from "@/lib/admin/use-glisser-deposer";
 import type { Categorie, Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
 const CHAMP =
@@ -212,6 +213,26 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
       return copie;
     });
   };
+
+  const definirPhotoPrincipale = (index: number) => {
+    setPhotos((current) => {
+      if (index <= 0 || index >= current.length) return current;
+      const copie = [...current];
+      const [photo] = copie.splice(index, 1);
+      copie.unshift(photo);
+      return copie;
+    });
+  };
+
+  // Glisser-déposer (souris sur ordinateur, appui long + glisser sur
+  // téléphone) : l'index sert d'identifiant, stable le temps d'un geste de
+  // glisser (PROMPT_ADMIN_KITS_PRODUITS.md lot 2).
+  const { idDeplace: indexPhotoDeplacee, idSurvole: indexPhotoSurvolee, proprietesTuile: proprietesTuilePhoto } =
+    useGlisserDeposer(
+      photos.map((url, i) => ({ url, i })),
+      (p) => p.i,
+      (nouveaux) => setPhotos(nouveaux.map((p) => p.url)),
+    );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -501,41 +522,67 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
             {photos.map((url, index) => (
               <div
                 key={url}
-                className="relative aspect-square overflow-hidden rounded-xl border border-ink/10 bg-ink/5"
+                {...proprietesTuilePhoto(index)}
+                className={`relative aspect-square touch-none overflow-hidden rounded-xl border bg-ink/5 transition-colors ${
+                  indexPhotoSurvolee === index && indexPhotoDeplacee !== index ? "border-brand" : "border-ink/10"
+                } ${indexPhotoDeplacee === index ? "opacity-40" : ""}`}
               >
-                <Image src={url} alt="" fill sizes="120px" className="object-cover" />
-                {index === 0 && (
-                  <span className="absolute left-1 top-1 rounded-full bg-brand px-1.5 py-0.5 text-[9px] font-semibold text-surface">
-                    Principale
-                  </span>
-                )}
+                <Image src={url} alt="" fill sizes="120px" className="cursor-grab object-cover active:cursor-grabbing" />
+                <span className="absolute left-1 top-1 rounded-full bg-white/90 p-0.5 text-ink/50 shadow">
+                  <GripVertical size={12} />
+                </span>
                 <button
                   type="button"
                   onClick={() => retirerPhoto(index)}
-                  className="absolute right-1 top-1 rounded-full bg-white/90 p-0.5 text-ink shadow"
+                  className="absolute right-0 top-0 flex min-h-11 min-w-11 items-center justify-center text-ink lg:min-h-0 lg:min-w-0 lg:right-1 lg:top-1"
                   aria-label="Retirer cette photo"
                 >
-                  <X size={12} />
+                  <span className="rounded-full bg-white/90 p-0.5 shadow">
+                    <X size={12} />
+                  </span>
                 </button>
-                <div className="absolute inset-x-1 bottom-1 flex justify-between">
-                  <button
-                    type="button"
-                    onClick={() => deplacerPhoto(index, -1)}
-                    disabled={index === 0}
-                    className="rounded-full bg-white/90 p-0.5 text-ink shadow disabled:opacity-30"
-                    aria-label="Déplacer vers la gauche"
-                  >
-                    <ChevronLeft size={12} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deplacerPhoto(index, 1)}
-                    disabled={index === photos.length - 1}
-                    className="rounded-full bg-white/90 p-0.5 text-ink shadow disabled:opacity-30"
-                    aria-label="Déplacer vers la droite"
-                  >
-                    <ChevronRight size={12} />
-                  </button>
+                <div className="absolute inset-x-1 bottom-1 flex items-center justify-between">
+                  {/* Monter/descendre : repli souris, caché sur téléphone où
+                      le glisser-déposer est l'interaction principale — pas la
+                      place pour des cibles de 44 px dans une mosaïque à 4
+                      colonnes (PROMPT_ADMIN_KITS_PRODUITS.md lot 6). */}
+                  <div className="hidden gap-1 lg:flex">
+                    <button
+                      type="button"
+                      onClick={() => deplacerPhoto(index, -1)}
+                      disabled={index === 0}
+                      className="rounded-full bg-white/90 p-0.5 text-ink shadow disabled:opacity-30"
+                      aria-label="Déplacer vers la gauche"
+                    >
+                      <ChevronLeft size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deplacerPhoto(index, 1)}
+                      disabled={index === photos.length - 1}
+                      className="rounded-full bg-white/90 p-0.5 text-ink shadow disabled:opacity-30"
+                      aria-label="Déplacer vers la droite"
+                    >
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                  {index === 0 ? (
+                    <span className="rounded-full bg-brand px-1.5 py-0.5 text-[9px] font-semibold text-surface">
+                      Principale
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => definirPhotoPrincipale(index)}
+                      className="flex min-h-11 min-w-11 items-center justify-center text-ink lg:min-h-0 lg:min-w-0"
+                      aria-label="Définir comme image principale"
+                      title="Définir comme image principale"
+                    >
+                      <span className="rounded-full bg-white/90 p-0.5 shadow">
+                        <Star size={12} />
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

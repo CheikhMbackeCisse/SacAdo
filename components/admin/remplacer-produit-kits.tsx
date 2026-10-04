@@ -3,14 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getKitsUtilisantProduit, remplacerProduitPartout } from "@/lib/admin/kits-actions";
+import { rechercherProduitsAdmin } from "@/lib/admin/produits-actions";
 import { ChampSelect, type OptionSelect } from "@/components/ui/champ-select";
 
 // « remplacer un produit par un autre dans tous les kits, avec la liste des
-// kits touchés avant de valider » — ADMIN.md Lot 2.
-export function RemplacerProduitKits({ produits }: { produits: OptionSelect[] }) {
+// kits touchés avant de valider » — ADMIN.md Lot 2. Recherche serveur unique
+// (lib/admin/produits-actions.ts) : plus de liste préchargée.
+const rechercher = async (terme: string): Promise<OptionSelect[]> => {
+  const resultats = await rechercherProduitsAdmin(terme);
+  return resultats.map((p) => ({ value: String(p.id), label: p.nom }));
+};
+
+export function RemplacerProduitKits() {
   const router = useRouter();
   const [ancien, setAncien] = useState("");
+  const [ancienOption, setAncienOption] = useState<OptionSelect | null>(null);
   const [nouveau, setNouveau] = useState("");
+  const [nouveauOption, setNouveauOption] = useState<OptionSelect | null>(null);
   const [apercu, setApercu] = useState<{ id: number; nom: string }[] | null>(null);
   const [chargement, setChargement] = useState(false);
   const [enCours, setEnCours] = useState(false);
@@ -40,7 +49,9 @@ export function RemplacerProduitKits({ produits }: { produits: OptionSelect[] })
     setSucces(`${result.nb ?? 0} ligne(s) remplacée(s).`);
     setApercu(null);
     setAncien("");
+    setAncienOption(null);
     setNouveau("");
+    setNouveauOption(null);
     router.refresh();
   };
 
@@ -52,23 +63,27 @@ export function RemplacerProduitKits({ produits }: { produits: OptionSelect[] })
       <div className="mt-3 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <ChampSelect
-            options={produits}
+            options={ancienOption ? [ancienOption] : []}
             value={ancien}
             onChange={(v) => {
               setAncien(v);
               setApercu(null);
             }}
+            onSelect={setAncienOption}
             placeholder="Produit à remplacer"
+            searchHint="Tapez le nom, l'ID ou la marque…"
             className="min-h-10 rounded-lg border border-ink/15 px-3 text-xs"
-            searchable
+            onSearch={rechercher}
           />
           <ChampSelect
-            options={produits}
+            options={nouveauOption ? [nouveauOption] : []}
             value={nouveau}
             onChange={setNouveau}
+            onSelect={setNouveauOption}
             placeholder="Par ce produit"
+            searchHint="Tapez le nom, l'ID ou la marque…"
             className="min-h-10 rounded-lg border border-ink/15 px-3 text-xs"
-            searchable
+            onSearch={rechercher}
           />
           <button
             type="button"

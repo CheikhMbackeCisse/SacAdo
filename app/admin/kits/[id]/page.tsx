@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { getKitAdmin, getKitItemsAdmin, getTotauxGammesClasse } from "@/lib/admin/kits-actions";
-import { getProduitsAdmin } from "@/lib/admin/produits-actions";
 import { getGammeDef } from "@/lib/gammes";
 import { KitItemsManager } from "@/components/admin/kit-items-manager";
 import { MosaiqueKit } from "@/components/admin/mosaique-kit";
@@ -14,14 +13,10 @@ export default async function EditKitPage(props: PageProps<"/admin/kits/[id]">) 
   const kit = await getKitAdmin(kitId);
   if (!kit) notFound();
 
-  const [items, tousLesProduits, gammesSoeurs] = await Promise.all([
+  const [items, gammesSoeurs] = await Promise.all([
     getKitItemsAdmin(kitId),
-    getProduitsAdmin(),
     getTotauxGammesClasse(kit.cycle, kit.niveau, kit.id),
   ]);
-  // Livres et annales (§3.5.3) : jamais une ancienne édition dans un kit —
-  // pas proposée au sélecteur (garde-fou serveur dans ajouterKitItem).
-  const produits = tousLesProduits.filter((p) => p.edition_statut !== "ancienne");
 
   // Approximation en direct pendant l'édition (coché par défaut, section
   // principale) : le calcul exact, aligné sur le storefront, reste
@@ -43,7 +38,7 @@ export default async function EditKitPage(props: PageProps<"/admin/kits/[id]">) 
         ))}
       </div>
 
-      <KitItemsManager kitId={kit.id} items={items} produits={produits} />
+      <KitItemsManager kitId={kit.id} items={items} />
       <MosaiqueKit kitId={kit.id} items={items} imagesInitiales={kit.images_mosaique} />
     </div>
   );

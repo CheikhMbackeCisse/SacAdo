@@ -6,6 +6,7 @@ import { estNombrePositifValide, texteNonVide } from "@/lib/admin/validation";
 import { VENDEUR_SACADO_ID } from "@/lib/vendeurs/constants";
 import type { Fournisseur, PalierTarif } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
+import { normaliserGrille } from "./grille-tarif";
 
 // Depuis l'unification vendeur = fournisseur (migration 0036), un « fournisseur »
 // est un `vendeurs` sans compte (`user_id is null`) : une entité que l'admin gère
@@ -40,8 +41,8 @@ type VendeurRow = {
   lat: number | null;
   lng: number | null;
   contact_telephone: string | null;
-  grille_remise: PalierTarif[] | null;
-  grille_majoration: PalierTarif[] | null;
+  grille_remise: unknown;
+  grille_majoration: unknown;
 };
 
 function versFournisseur(v: VendeurRow): Fournisseur {
@@ -52,8 +53,8 @@ function versFournisseur(v: VendeurRow): Fournisseur {
     lat: v.lat,
     lng: v.lng,
     telephone: v.contact_telephone,
-    grilleRemise: v.grille_remise,
-    grilleMajoration: v.grille_majoration,
+    grilleRemise: normaliserGrille(v.grille_remise),
+    grilleMajoration: normaliserGrille(v.grille_majoration),
   };
 }
 

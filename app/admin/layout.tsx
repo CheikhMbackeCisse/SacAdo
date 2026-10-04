@@ -69,7 +69,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       data-theme="light"
       className={`${bodyFont.variable} ${headingFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-ink/[0.03] text-ink">
+      <body className="admin-shell min-h-full bg-ink/[0.03] text-ink">
         {user && estAdmin ? (
           <div className="lg:flex lg:min-h-screen">
             <AdminNav email={user.email ?? ""} />

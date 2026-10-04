@@ -15,6 +15,7 @@ import {
   Map,
   MapPin,
   MapPinned,
+  Menu,
   MessageSquareText,
   Package,
   PackageCheck,
@@ -66,3 +67,18 @@ export const LIENS = [
   { href: "/admin/clients", label: "Clients", icon: Users },
   { href: "/admin/comptabilite", label: "Comptabilité", icon: Wallet },
 ] as const;
+
+export type SectionBadge = "commandes";
+
+// Les 5 entrées regroupées (PROMPT_ADMIN_KITS_PRODUITS.md lot 4) : identiques
+// sur téléphone (bottom nav) et sur ordinateur (barre latérale) — « Plus »
+// ouvre /admin/plus, qui regroupe tout le reste par thème (Produits en
+// première tuile). Avant ce lot, la barre latérale listait les 28 `LIENS` à
+// plat ; seule la bottom nav mobile avait ce regroupement.
+export const ENTREES_PRINCIPALES: { href: string; label: string; icon: (typeof LIENS)[number]["icon"]; section?: SectionBadge }[] = [
+  { href: "/admin", label: "Accueil", icon: LayoutDashboard },
+  { href: "/admin/commandes", label: "Commandes", icon: ClipboardList, section: "commandes" },
+  { href: "/admin/kits", label: "Kits", icon: GraduationCap },
+  { href: "/admin/trafic", label: "Trafic", icon: Activity },
+  { href: "/admin/plus", label: "Plus", icon: Menu },
+];

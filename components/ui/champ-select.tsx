@@ -11,6 +11,10 @@ type Props = {
   // AUCUNE option n'apparaît cochée. L'utilisateur doit choisir activement.
   value: string;
   onChange: (value: string) => void;
+  // Appelé avec l'option complète au moment du choix (en plus de onChange) —
+  // utile en mode recherche serveur pour retenir le libellé affiché sans
+  // garder toute la liste des résultats précédents.
+  onSelect?: (option: OptionSelect) => void;
   placeholder: string;
   disabled?: boolean;
   ariaLabel?: string;
@@ -23,6 +27,13 @@ type Props = {
   align?: "start" | "end";
   // Filtre de recherche. Par défaut : automatique au-delà de 8 options.
   searchable?: boolean;
+  // Recherche côté serveur (catalogues trop grands pour être préchargés en
+  // entier : produits d'un kit, remplacement de produit…). Quand fourni,
+  // `options` ne sert qu'à afficher le libellé de la valeur déjà choisie ;
+  // la liste affichée vient de cet appel, débouncé, à chaque frappe.
+  onSearch?: (terme: string) => Promise<OptionSelect[]>;
+  // Texte affiché avant la première frappe en mode recherche serveur.
+  searchHint?: string;
 };
 
 // Liste déroulante maison : remplace <select> natif là où le picker natif
@@ -33,6 +44,7 @@ export function ChampSelect({
   options,
   value,
   onChange,
+  onSelect,
   placeholder,
   disabled = false,
   ariaLabel,
@@ -41,6 +53,8 @@ export function ChampSelect({
   wrapperClassName = "",
   align = "start",
   searchable,
+  onSearch,
+  searchHint = "Tapez pour chercher…",
 }: Props) {
   const autoId = useId();
   const listboxId = `${id ?? autoId}-listbox`;
@@ -50,27 +64,60 @@ export function ChampSelect({
   const [ouvert, setOuvert] = useState(false);
   const [recherche, setRecherche] = useState("");
   const [indexActif, setIndexActif] = useState(-1);
+  const [resultatsServeur, setResultatsServeur] = useState<OptionSelect[] | null>(null);
+  const [rechercheEnCours, setRechercheEnCours] = useState(false);
 
   const optionsActivables = options.filter((o) => !o.disabled);
-  const avecRecherche = searchable ?? optionsActivables.length > 8;
+  const avecRecherche = searchable ?? (!!onSearch || optionsActivables.length > 8);
 
-  const selection = options.find((o) => o.value === value && !o.disabled) ?? null;
+  const selection =
+    options.find((o) => o.value === value && !o.disabled) ??
+    resultatsServeur?.find((o) => o.value === value) ??
+    null;
+
+  // Recherche serveur débouncée (250 ms), déclenchée depuis la frappe (pas un
+  // effect : un setState synchrone dans un effect provoquerait un rendu en
+  // cascade évitable ici).
+  const debounceRecherche = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lancerRecherche = (terme: string) => {
+    if (debounceRecherche.current) clearTimeout(debounceRecherche.current);
+    if (!onSearch) return;
+    const q = terme.trim();
+    if (!q) {
+      setResultatsServeur(null);
+      setRechercheEnCours(false);
+      return;
+    }
+    setRechercheEnCours(true);
+    debounceRecherche.current = setTimeout(() => {
+      onSearch(q).then((resultats) => {
+        setResultatsServeur(resultats);
+        setRechercheEnCours(false);
+      });
+    }, 250);
+  };
+  useEffect(() => () => {
+    if (debounceRecherche.current) clearTimeout(debounceRecherche.current);
+  }, []);
 
   const visibles = useMemo(() => {
+    if (onSearch) return resultatsServeur ?? [];
     const q = recherche.trim().toLowerCase();
     if (!q) return options;
     return options.filter((o) => o.disabled || o.label.toLowerCase().includes(q));
-  }, [options, recherche]);
+  }, [options, recherche, onSearch, resultatsServeur]);
 
   const ouvrir = () => {
     if (disabled) return;
     setRecherche("");
+    setResultatsServeur(null);
     setIndexActif(-1);
     setOuvert(true);
   };
   const fermer = () => {
     setOuvert(false);
     setRecherche("");
+    setResultatsServeur(null);
     setIndexActif(-1);
   };
   const basculer = () => (ouvert ? fermer() : ouvrir());
@@ -78,6 +125,7 @@ export function ChampSelect({
   const choisir = (option: OptionSelect) => {
     if (option.disabled) return;
     onChange(option.value);
+    onSelect?.(option);
     fermer();
   };
 
@@ -176,6 +224,7 @@ export function ChampSelect({
                 onChange={(event) => {
                   setRecherche(event.target.value);
                   setIndexActif(-1);
+                  lancerRecherche(event.target.value);
                 }}
                 placeholder="Rechercher…"
                 className="w-full rounded-lg border border-ink/15 bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink/40 focus:border-brand focus:outline-none"
@@ -184,10 +233,16 @@ export function ChampSelect({
           )}
 
           <ul role="listbox" id={listboxId} className="max-h-60 overflow-y-auto py-1">
-            {visibles.length === 0 && (
+            {onSearch && !recherche.trim() && (
+              <li className="px-3 py-3 text-center text-sm text-ink/50">{searchHint}</li>
+            )}
+            {onSearch && recherche.trim() && rechercheEnCours && (
+              <li className="px-3 py-3 text-center text-sm text-ink/50">Recherche…</li>
+            )}
+            {(!onSearch || (recherche.trim() && !rechercheEnCours)) && visibles.length === 0 && (
               <li className="px-3 py-3 text-center text-sm text-ink/50">Aucun résultat.</li>
             )}
-            {visibles.map((option, index) => {
+            {(!onSearch || (recherche.trim() && !rechercheEnCours)) && visibles.map((option, index) => {
               if (option.disabled) return null;
               const active = option.value === value;
               const survole = index === indexActif;

@@ -1,5 +1,27 @@
 @import "tailwindcss";
 
+/* PROMPT_ADMIN_KITS_PRODUITS.md lot 6 : curseur main sur tout élément
+ * cliquable, partout (pas seulement l'admin — correct aussi sur le site
+ * client, aucun risque visuel). Placé hors de tout @layer pour primer sur le
+ * reset de Tailwind quelle que soit sa spécificité ; :disabled reprend le
+ * curseur par défaut du navigateur. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+select,
+a[href] {
+  cursor: pointer;
+}
+
+/* État de survol par défaut, ADMIN SEULEMENT (.admin-shell, posé sur le body
+ * dans app/admin/layout.tsx) : un bouton qui ne définit pas déjà son propre
+ * hover reste muet autrement. Ne touche pas le site client, dont les couleurs
+ * de marque (CLAUDE.md §4) ont des règles de survol pensées au cas par cas. */
+.admin-shell button:not(:disabled):hover,
+.admin-shell [role="button"]:not([aria-disabled="true"]):hover {
+  filter: brightness(0.97);
+}
+
 /*
  * Palette de marque SacAdo (voir CLAUDE.md section 4).
  * Rôle unique par couleur : ne pas réutiliser une couleur hors de son rôle.

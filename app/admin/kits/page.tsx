@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getKitsAdmin, type FiltresKitsAdmin } from "@/lib/admin/kits-actions";
+import { filtrerKitsAdmin } from "@/lib/admin/kits-filtrage";
 import { getGammeDef, GAMMES } from "@/lib/gammes";
 import { formatPrice } from "@/lib/format";
 import { NouveauKitForm } from "@/components/admin/nouveau-kit-form";
@@ -7,7 +8,6 @@ import { KitStatutToggle } from "@/components/admin/kit-statut-toggle";
 import { DupliquerKitButton } from "@/components/admin/dupliquer-kit-button";
 import { RemplacerProduitKits } from "@/components/admin/remplacer-produit-kits";
 import { ImporterKits } from "@/components/admin/importer-kits";
-import { getProduitsAdmin } from "@/lib/admin/produits-actions";
 import { Download } from "lucide-react";
 import { PullToRefresh } from "@/components/admin/pull-to-refresh";
 
@@ -36,13 +36,12 @@ export default async function AdminKitsPage(props: PageProps<"/admin/kits">) {
     gamme: chaine(sp.gamme) as FiltresKitsAdmin["gamme"],
     statut: chaine(sp.statut) as FiltresKitsAdmin["statut"],
   };
-  const [kits, tousLesKits, produits] = await Promise.all([
-    getKitsAdmin(filtres),
-    getKitsAdmin(),
-    getProduitsAdmin(),
-  ]);
+  // Un seul chargement (kits + kit_items) : getKitsAdmin() ignore déjà filtres
+  // côté base (voir son commentaire), filtrer deux fois en appelant deux fois
+  // la fonction ne faisait que doubler la requête pour rien.
+  const tousLesKits = await getKitsAdmin();
+  const kits = filtrerKitsAdmin(tousLesKits, filtres);
   const niveaux = [...new Set(tousLesKits.map((k) => k.niveau))].sort();
-  const optionsProduits = produits.map((p) => ({ value: String(p.id), label: p.nom }));
 
   return (
     <PullToRefresh>
@@ -62,7 +61,7 @@ export default async function AdminKitsPage(props: PageProps<"/admin/kits">) {
       </div>
 
       <NouveauKitForm />
-      <RemplacerProduitKits produits={optionsProduits} />
+      <RemplacerProduitKits />
 
       <form method="get" className="flex flex-wrap items-center gap-2 rounded-2xl border border-ink/10 bg-white p-3">
         <select

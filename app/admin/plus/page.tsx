@@ -56,7 +56,7 @@ export default function AdminPlusPage() {
       {GROUPES.map((groupe) => (
         <section key={groupe.titre}>
           <h2 className="mb-2 text-sm font-semibold text-ink/60">{groupe.titre}</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {groupe.hrefs.map((href) => {
               const lien = parHref.get(href);
               if (!lien) return null;

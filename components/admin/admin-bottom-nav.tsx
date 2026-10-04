@@ -3,19 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, ClipboardList, GraduationCap, LayoutDashboard, Menu } from "lucide-react";
 import { getBadges, marquerSectionVue, type Badges } from "@/lib/admin/lecture-actions";
+import { ENTREES_PRINCIPALES as ENTREES } from "@/lib/admin/nav-liens";
 import { BadgeCompte } from "./badge-compte";
-
-type Section = "commandes";
-
-const ENTREES: { href: string; label: string; icon: typeof LayoutDashboard; section?: Section }[] = [
-  { href: "/admin", label: "Accueil", icon: LayoutDashboard },
-  { href: "/admin/commandes", label: "Commandes", icon: ClipboardList, section: "commandes" },
-  { href: "/admin/kits", label: "Kits", icon: GraduationCap },
-  { href: "/admin/trafic", label: "Trafic", icon: Activity },
-  { href: "/admin/plus", label: "Plus", icon: Menu },
-];
 
 function estActif(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);

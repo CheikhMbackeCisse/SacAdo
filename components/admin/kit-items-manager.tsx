@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical, Minus, Plus, Settings2, X } from "lucide-react";
 import {
   ajouterKitItem,
   modifierKitItem,
@@ -10,11 +10,27 @@ import {
   remplacerKitItemProduit,
   retirerKitItem,
   deplacerKitItem,
+  reordonnerKitItems,
   type KitItemAvecProduit,
 } from "@/lib/admin/kits-actions";
+import { rechercherProduitsAdmin } from "@/lib/admin/produits-actions";
+import { useGlisserDeposer } from "@/lib/admin/use-glisser-deposer";
 import { formatPrice } from "@/lib/format";
-import { ChampSelect } from "@/components/ui/champ-select";
-import type { Produit } from "@/lib/supabase/types";
+import { ProductImage } from "@/components/ui/product-image";
+import { ChampSelect, type OptionSelect } from "@/components/ui/champ-select";
+
+// Statut affiché à côté du nom pour un produit en attente/masqué/refusé —
+// un produit publié n'affiche rien (bruit inutile, cas normal).
+const LABELS_STATUT: Record<string, string> = {
+  en_attente: "en attente",
+  negociation: "en négociation",
+  refuse: "refusé",
+};
+
+function libelleProduit(p: { nom: string; statut_publication: string }): string {
+  const suffixe = LABELS_STATUT[p.statut_publication];
+  return suffixe ? `${p.nom} (${suffixe})` : p.nom;
+}
 
 const SECTIONS: { value: KitItemAvecProduit["section"]; label: string }[] = [
   { value: "principal", label: "Principal" },
@@ -22,26 +38,44 @@ const SECTIONS: { value: KitItemAvecProduit["section"]; label: string }[] = [
   { value: "option", label: "Option" },
 ];
 
+const DELAI_RETRAIT_MS = 5000;
+
 export function KitItemsManager({
   kitId,
   items,
-  produits,
 }: {
   kitId: number;
   items: KitItemAvecProduit[];
-  produits: Produit[];
 }) {
   const router = useRouter();
   // Aucun produit pré-sélectionné : choix explicite (sinon on ajoute le premier
   // produit de la liste sans le vouloir).
   const [produitId, setProduitId] = useState<number | "">("");
+  const [produitSelectionne, setProduitSelectionne] = useState<OptionSelect | null>(null);
   const [quantite, setQuantite] = useState("1");
   const [error, setError] = useState<string | null>(null);
-  const [remplacementOuvert, setRemplacementOuvert] = useState<number | null>(null);
+  const [detailsOuverts, setDetailsOuverts] = useState<number | null>(null);
+  const [retraitEnAttente, setRetraitEnAttente] = useState<{ id: number; nom: string } | null>(null);
+  const minuteurRetrait = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const dejaPresents = new Set(items.map((item) => item.produit_id));
-  const produitsDisponibles = produits.filter((p) => !dejaPresents.has(p.id));
+  useEffect(() => () => {
+    if (minuteurRetrait.current) clearTimeout(minuteurRetrait.current);
+  }, []);
+
+  const idsPresents = items.map((item) => item.produit_id);
   const idsOrdonnes = items.map((i) => i.id);
+  const itemsAffiches = items.filter((it) => it.id !== retraitEnAttente?.id);
+
+  // Recherche serveur unique (lib/admin/produits-actions.ts) : plus de liste
+  // préchargée, qui coupait silencieusement à 1000 produits sur un catalogue
+  // qui en compte plus (cause des produits introuvables au sélecteur).
+  const rechercher = async (terme: string): Promise<OptionSelect[]> => {
+    const resultats = await rechercherProduitsAdmin(terme, {
+      excludeIds: idsPresents,
+      exclureAncienneEdition: true,
+    });
+    return resultats.map((p) => ({ value: String(p.id), label: libelleProduit(p) }));
+  };
 
   const ajouter = async () => {
     setError(null);
@@ -55,6 +89,7 @@ export function KitItemsManager({
       return;
     }
     setProduitId("");
+    setProduitSelectionne(null);
     setQuantite("1");
     router.refresh();
   };
@@ -66,13 +101,24 @@ export function KitItemsManager({
     router.refresh();
   };
 
-  const retirer = async (id: number) => {
-    const result = await retirerKitItem(id);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    router.refresh();
+  // × sur la vignette : retrait différé de quelques secondes, annulable
+  // (PROMPT_ADMIN_KITS_PRODUITS.md lot 2).
+  const demarrerRetrait = (item: KitItemAvecProduit) => {
+    if (minuteurRetrait.current) clearTimeout(minuteurRetrait.current);
+    setRetraitEnAttente({ id: item.id, nom: item.produit_nom });
+    minuteurRetrait.current = setTimeout(async () => {
+      minuteurRetrait.current = null;
+      setRetraitEnAttente(null);
+      const result = await retirerKitItem(item.id);
+      if (!result.ok) setError(result.error);
+      router.refresh();
+    }, DELAI_RETRAIT_MS);
+  };
+
+  const annulerRetrait = () => {
+    if (minuteurRetrait.current) clearTimeout(minuteurRetrait.current);
+    minuteurRetrait.current = null;
+    setRetraitEnAttente(null);
   };
 
   const patcher = async (id: number, patch: Parameters<typeof modifierKitItem>[1]) => {
@@ -89,7 +135,7 @@ export function KitItemsManager({
       setError(result.error);
       return;
     }
-    setRemplacementOuvert(null);
+    setDetailsOuverts(null);
     router.refresh();
   };
 
@@ -100,155 +146,216 @@ export function KitItemsManager({
     router.refresh();
   };
 
+  // Glisser-déposer (souris sur ordinateur, appui long + glisser sur
+  // téléphone) : reçoit l'ordre final, réécrit `ordre` en une fois.
+  const { idDeplace, idSurvole, proprietesTuile } = useGlisserDeposer(
+    items,
+    (it) => it.id,
+    async (nouveaux) => {
+      const result = await reordonnerKitItems(kitId, nouveaux.map((it) => it.id));
+      if (!result.ok) setError(result.error);
+      router.refresh();
+    },
+  );
+
   return (
-    <div className="flex max-w-2xl flex-col gap-3 rounded-2xl border border-ink/10 bg-white p-5">
-      {items.length === 0 ? (
+    <div className="flex max-w-3xl flex-col gap-3 rounded-2xl border border-ink/10 bg-white p-5">
+      {itemsAffiches.length === 0 ? (
         <p className="text-sm text-ink/50">Aucun article dans ce kit pour l&apos;instant.</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-ink/10">
-          {items.map((item, index) => (
-            <li key={item.id} className="flex flex-col gap-2 py-3 text-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col">
-                  <span className="text-ink">{item.produit_nom}</span>
-                  <span className="text-xs text-ink/40">{formatPrice(item.produit_prix)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => deplacer(item.id, -1)}
-                    disabled={index === 0}
-                    className="rounded-full border border-ink/15 p-1 text-ink/60 disabled:opacity-30"
-                    aria-label="Monter"
-                  >
-                    <ChevronUp size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deplacer(item.id, 1)}
-                    disabled={index === items.length - 1}
-                    className="rounded-full border border-ink/15 p-1 text-ink/60 disabled:opacity-30"
-                    aria-label="Descendre"
-                  >
-                    <ChevronDown size={14} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => changerQuantite(item.id, item.quantite_defaut - 1)}
-                    className="rounded-full border border-ink/15 p-1 text-ink/60"
-                    aria-label="Diminuer la quantité"
-                  >
-                    <Minus size={13} />
-                  </button>
-                  <span className="w-6 text-center">{item.quantite_defaut}</span>
-                  <button
-                    type="button"
-                    onClick={() => changerQuantite(item.id, item.quantite_defaut + 1)}
-                    className="rounded-full border border-ink/15 p-1 text-ink/60"
-                    aria-label="Augmenter la quantité"
-                  >
-                    <Plus size={13} />
-                  </button>
-                </div>
-
-                <ChampSelect
-                  ariaLabel="Section"
-                  placeholder="Section"
-                  className="min-h-9 rounded-lg border border-ink/15 px-2 text-xs"
-                  value={item.section}
-                  onChange={(v) => patcher(item.id, { section: v as KitItemAvecProduit["section"] })}
-                  options={SECTIONS}
-                />
-
-                <label className="flex items-center gap-1.5 text-xs text-ink/60">
-                  <input
-                    type="checkbox"
-                    checked={item.coche_defaut}
-                    onChange={(e) => patcher(item.id, { coche_defaut: e.target.checked })}
-                    className="size-4 rounded border-ink/25"
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {itemsAffiches.map((item) => {
+            const index = idsOrdonnes.indexOf(item.id);
+            return (
+              <div
+                key={item.id}
+                {...proprietesTuile(item.id)}
+                className={`flex flex-col gap-1.5 rounded-xl border p-2 transition-colors ${
+                  idSurvole === item.id && idDeplace !== item.id ? "border-brand bg-brand/5" : "border-ink/10"
+                } ${idDeplace === item.id ? "opacity-40" : ""}`}
+              >
+                <div className="relative aspect-square cursor-grab touch-none overflow-hidden rounded-lg bg-ink/5 active:cursor-grabbing">
+                  <ProductImage
+                    src={item.produit_photo}
+                    alt={item.produit_nom}
+                    className="h-full w-full"
+                    sizes="150px"
                   />
-                  Coché par défaut
-                </label>
+                  <span className="absolute left-1 top-1 rounded-full bg-white/90 p-0.5 text-ink/50 shadow">
+                    <GripVertical size={12} />
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => demarrerRetrait(item)}
+                    className="absolute right-0 top-0 flex min-h-11 min-w-11 items-center justify-center text-ink lg:min-h-0 lg:min-w-0 lg:p-1"
+                    aria-label={`Retirer ${item.produit_nom} du kit`}
+                  >
+                    <span className="rounded-full bg-white/90 p-1 shadow">
+                      <X size={13} />
+                    </span>
+                  </button>
+                </div>
 
-                <input
-                  defaultValue={item.groupe_affichage ?? ""}
-                  onBlur={(e) => patcher(item.id, { groupe_affichage: e.target.value.trim() || null })}
-                  placeholder="Groupe"
-                  className="min-h-9 w-28 rounded-lg border border-ink/15 px-2 text-xs"
-                />
-                <input
-                  defaultValue={item.libelle_besoin ?? ""}
-                  onBlur={(e) => patcher(item.id, { libelle_besoin: e.target.value.trim() || null })}
-                  placeholder="Libellé (ex: 2 cahiers 100p)"
-                  className="min-h-9 flex-1 min-w-[10rem] rounded-lg border border-ink/15 px-2 text-xs"
-                />
+                <p className="line-clamp-2 text-xs text-ink" title={item.produit_nom}>
+                  {item.produit_nom}
+                </p>
+                <p className="text-[11px] text-ink/40">{formatPrice(item.produit_prix)}</p>
 
-                <button
-                  type="button"
-                  onClick={() => setRemplacementOuvert(remplacementOuvert === item.id ? null : item.id)}
-                  className="text-xs font-medium text-brand hover:underline"
-                >
-                  Remplacer
-                </button>
-                <button type="button" onClick={() => retirer(item.id)} className="text-xs text-red-600 hover:underline">
-                  Retirer
-                </button>
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => changerQuantite(item.id, item.quantite_defaut - 1)}
+                      className="flex min-h-11 min-w-11 items-center justify-center text-ink/60 lg:min-h-0 lg:min-w-0"
+                      aria-label="Diminuer la quantité"
+                    >
+                      <span className="rounded-full border border-ink/15 p-1">
+                        <Minus size={12} />
+                      </span>
+                    </button>
+                    <span className="w-5 text-center text-xs">{item.quantite_defaut}</span>
+                    <button
+                      type="button"
+                      onClick={() => changerQuantite(item.id, item.quantite_defaut + 1)}
+                      className="flex min-h-11 min-w-11 items-center justify-center text-ink/60 lg:min-h-0 lg:min-w-0"
+                      aria-label="Augmenter la quantité"
+                    >
+                      <span className="rounded-full border border-ink/15 p-1">
+                        <Plus size={12} />
+                      </span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    {/* Monter/descendre : repli clavier/souris, caché sur
+                        téléphone où le glisser-déposer est l'interaction
+                        principale — la rangée n'a pas la place pour 5 cibles
+                        de 44 px (PROMPT_ADMIN_KITS_PRODUITS.md lot 6). */}
+                    <button
+                      type="button"
+                      onClick={() => deplacer(item.id, -1)}
+                      disabled={index === 0}
+                      className="hidden rounded-full border border-ink/15 p-1 text-ink/60 disabled:opacity-30 lg:block"
+                      aria-label="Monter"
+                    >
+                      <ChevronUp size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deplacer(item.id, 1)}
+                      disabled={index === idsOrdonnes.length - 1}
+                      className="hidden rounded-full border border-ink/15 p-1 text-ink/60 disabled:opacity-30 lg:block"
+                      aria-label="Descendre"
+                    >
+                      <ChevronDown size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDetailsOuverts(detailsOuverts === item.id ? null : item.id)}
+                      className={`flex min-h-11 min-w-11 items-center justify-center lg:min-h-0 lg:min-w-0 ${
+                        detailsOuverts === item.id ? "text-brand" : "text-ink/60"
+                      }`}
+                      aria-label="Réglages de cet article"
+                    >
+                      <span className={`rounded-full border p-1 ${detailsOuverts === item.id ? "border-brand" : "border-ink/15"}`}>
+                        <Settings2 size={12} />
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {detailsOuverts === item.id && (
+                  <div className="flex flex-col gap-2 border-t border-ink/10 pt-2 text-xs">
+                    <ChampSelect
+                      ariaLabel="Section"
+                      placeholder="Section"
+                      className="min-h-9 rounded-lg border border-ink/15 px-2 text-xs"
+                      value={item.section}
+                      onChange={(v) => patcher(item.id, { section: v as KitItemAvecProduit["section"] })}
+                      options={SECTIONS}
+                    />
+                    <label className="flex items-center gap-1.5 text-ink/60">
+                      <input
+                        type="checkbox"
+                        checked={item.coche_defaut}
+                        onChange={(e) => patcher(item.id, { coche_defaut: e.target.checked })}
+                        className="size-4 rounded border-ink/25"
+                      />
+                      Coché par défaut
+                    </label>
+                    <input
+                      defaultValue={item.groupe_affichage ?? ""}
+                      onBlur={(e) => patcher(item.id, { groupe_affichage: e.target.value.trim() || null })}
+                      placeholder="Groupe"
+                      className="min-h-9 rounded-lg border border-ink/15 px-2 text-xs"
+                    />
+                    <input
+                      defaultValue={item.libelle_besoin ?? ""}
+                      onBlur={(e) => patcher(item.id, { libelle_besoin: e.target.value.trim() || null })}
+                      placeholder="Libellé (ex: 2 cahiers 100p)"
+                      className="min-h-9 rounded-lg border border-ink/15 px-2 text-xs"
+                    />
+                    <ChampSelect
+                      ariaLabel="Remplacer par"
+                      placeholder="Remplacer par…"
+                      searchHint="Tapez le nom, l'ID ou la marque de l'article…"
+                      className="min-h-9 rounded-lg border border-ink/15 px-2 text-xs"
+                      value=""
+                      onChange={(v) => v && remplacer(item.id, Number(v))}
+                      options={[]}
+                      onSearch={rechercher}
+                    />
+                  </div>
+                )}
               </div>
-
-              {remplacementOuvert === item.id && (
-                <ChampSelect
-                  ariaLabel="Remplacer par"
-                  placeholder="Choisir le nouveau produit…"
-                  className="min-h-9 max-w-xs rounded-lg border border-ink/15 px-2 text-xs"
-                  value=""
-                  onChange={(v) => v && remplacer(item.id, Number(v))}
-                  options={produitsDisponibles.map((p) => ({ value: String(p.id), label: p.nom }))}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {produitsDisponibles.length > 0 && (
-        <div className="flex flex-col gap-3 border-t border-ink/10 pt-3 sm:flex-row sm:items-end sm:gap-2">
-          <label className="flex flex-1 flex-col gap-1 text-xs">
-            <span className="text-ink/60">Ajouter un article</span>
-            <ChampSelect
-              ariaLabel="Article à ajouter au kit"
-              placeholder="Choisir un article…"
-              className="min-h-11 rounded-lg border border-ink/15 px-3 text-sm"
-              value={produitId === "" ? "" : String(produitId)}
-              onChange={(v) => setProduitId(v === "" ? "" : Number(v))}
-              options={produitsDisponibles.map((p) => ({ value: String(p.id), label: p.nom }))}
-            />
-          </label>
-          <div className="flex items-end gap-2">
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="text-ink/60">Qté</span>
-              <input
-                type="number"
-                min={1}
-                value={quantite}
-                onChange={(event) => setQuantite(event.target.value)}
-                className="min-h-11 w-16 rounded-lg border border-ink/15 px-3 text-sm"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={ajouter}
-              className="min-h-11 flex-1 rounded-full bg-brand px-4 text-sm font-semibold text-surface active:scale-95 sm:flex-none"
-            >
-              Ajouter
-            </button>
-          </div>
+            );
+          })}
         </div>
       )}
+
+      {retraitEnAttente && (
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-ink/[0.04] px-3 py-2 text-xs text-ink/70">
+          <span>« {retraitEnAttente.nom} » retiré du kit.</span>
+          <button type="button" onClick={annulerRetrait} className="font-semibold text-brand hover:underline">
+            Annuler
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3 border-t border-ink/10 pt-3 sm:flex-row sm:items-end sm:gap-2">
+        <label className="flex flex-1 flex-col gap-1 text-xs">
+          <span className="text-ink/60">Ajouter un article</span>
+          <ChampSelect
+            ariaLabel="Article à ajouter au kit"
+            placeholder="Choisir un article…"
+            searchHint="Tapez le nom, l'ID ou la marque de l'article…"
+            className="min-h-11 rounded-lg border border-ink/15 px-3 text-sm"
+            value={produitId === "" ? "" : String(produitId)}
+            onChange={(v) => setProduitId(v === "" ? "" : Number(v))}
+            options={produitSelectionne ? [produitSelectionne] : []}
+            onSelect={(option) => setProduitSelectionne(option)}
+            onSearch={rechercher}
+          />
+        </label>
+        <div className="flex items-end gap-2">
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-ink/60">Qté</span>
+            <input
+              type="number"
+              min={1}
+              value={quantite}
+              onChange={(event) => setQuantite(event.target.value)}
+              className="min-h-11 w-16 rounded-lg border border-ink/15 px-3 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={ajouter}
+            className="min-h-11 flex-1 rounded-full bg-brand px-4 text-sm font-semibold text-surface active:scale-95 sm:flex-none"
+          >
+            Ajouter
+          </button>
+        </div>
+      </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

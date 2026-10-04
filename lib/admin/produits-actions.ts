@@ -14,13 +14,81 @@ export type PageAdmin<T> = { items: T[]; hasMore: boolean };
 
 const TAILLE_PAGE_ADMIN = 50;
 
-// Liste complète : utilisée pour le sélecteur "ajouter un article" d'un kit,
-// où on a besoin de chercher parmi tous les produits. À revoir si le
-// catalogue grossit beaucoup (passer à une recherche paginée côté serveur).
-export async function getProduitsAdmin(): Promise<Produit[]> {
+// Recherche admin unique, utilisée partout où on doit retrouver un produit
+// par texte (sélecteur "ajouter un article" / "remplacer" d'un kit, remplacement
+// global). Jamais de liste complète préchargée : au-delà de 1 000 lignes,
+// Supabase/PostgREST tronque silencieusement un select("*") sans range/limit
+// (constaté : 1731 produits en base, getProduitsAdmin() n'en renvoyait que
+// 1000, triés par nom — tout ce qui triait après coupait, Karbi inclus).
+// Mêmes règles que la recherche client (accents, synonymes, fautes de frappe
+// via recherche_texte/normaliser_recherche), plus un identifiant numérique et
+// la marque, propres à l'admin. Inclut les produits en attente/masqués.
+export type ProduitRechercheAdmin = {
+  id: number;
+  nom: string;
+  prix: number;
+  statut: StatutProduit;
+  statut_publication: StatutPublication;
+};
+
+export async function rechercherProduitsAdmin(
+  q: string,
+  {
+    limite = 20,
+    excludeIds = [],
+    exclureAncienneEdition = false,
+  }: { limite?: number; excludeIds?: number[]; exclureAncienneEdition?: boolean } = {},
+): Promise<ProduitRechercheAdmin[]> {
   await requireAdmin();
-  const { data } = await supabaseAdmin.from("produits").select("*").order("nom", { ascending: true });
-  return data ?? [];
+  const terme = q.trim();
+  if (!terme) return [];
+
+  // Fabrique une requête neuve à chaque appel : un query builder PostgREST
+  // mute et renvoie this, le réutiliser pour deux branches ferait fuiter les
+  // filtres de l'une dans l'autre.
+  const base = () => {
+    let query = supabaseAdmin
+      .from("produits")
+      .select("id, nom, prix, statut, statut_publication")
+      .order("nom", { ascending: true })
+      .limit(limite);
+    if (excludeIds.length > 0) query = query.not("id", "in", `(${excludeIds.join(",")})`);
+    // Livres et annales (§3.5.3) : jamais une ancienne édition proposée au
+    // sélecteur d'un kit (garde-fou serveur dupliqué dans ajouterKitItem).
+    if (exclureAncienneEdition) query = query.or("edition_statut.is.null,edition_statut.neq.ancienne");
+    return query;
+  };
+
+  if (/^\d+$/.test(terme)) {
+    const { data } = await base().eq("id", Number(terme));
+    return data ?? [];
+  }
+
+  const mots = await normaliserMots(terme);
+  // Deux requêtes fusionnées plutôt qu'un .or() : la syntaxe de filtre
+  // combiné de PostgREST échoue ("LIKE pattern must not end with escape
+  // character") dès qu'un mot contient une parenthèse ou une virgule — très
+  // fréquent dans les noms de produits ("(500 feuilles)", "(lot de 4)"...).
+  // Deux .ilike() simples n'ont pas ce problème.
+  const [parTexte, parMarque] = await Promise.all([
+    appliquerFiltreTexte(base(), "recherche_texte", mots),
+    appliquerFiltreTexte(base(), "marque", mots),
+  ]);
+  const fusion = new Map<number, ProduitRechercheAdmin>();
+  for (const p of [...(parTexte.data ?? []), ...(parMarque.data ?? [])]) fusion.set(p.id, p);
+  return [...fusion.values()].sort((a, b) => a.nom.localeCompare(b.nom)).slice(0, limite);
+}
+
+async function normaliserMots(terme: string): Promise<string[]> {
+  const { data: normalise } = await supabaseAdmin.rpc("normaliser_recherche", { texte: terme });
+  return (normalise ?? terme.toLowerCase()).split(/\s+/).filter(Boolean);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function appliquerFiltreTexte(query: any, colonne: "recherche_texte" | "marque", mots: string[]) {
+  let q = query;
+  for (const mot of mots) q = q.ilike(colonne, `%${mot}%`);
+  return q;
 }
 
 export type TriProduitsAdmin = "nom" | "prix" | "stock" | "date";
@@ -48,10 +116,11 @@ export async function getProduitsAdminPage(
   let query = supabaseAdmin.from("produits").select("*");
 
   if (filtres.q && filtres.q.trim()) {
-    const { data: normalise } = await supabaseAdmin.rpc("normaliser_recherche", { texte: filtres.q.trim() });
-    const mots = (normalise ?? filtres.q.trim().toLowerCase()).split(/\s+/).filter(Boolean);
-    for (const mot of mots) {
-      query = query.ilike("recherche_texte", `%${mot}%`);
+    const terme = filtres.q.trim();
+    if (/^\d+$/.test(terme)) {
+      query = query.eq("id", Number(terme));
+    } else {
+      query = appliquerFiltreTexte(query, "recherche_texte", await normaliserMots(terme));
     }
   }
   if (filtres.categorieId) query = query.eq("categorie_id", filtres.categorieId);

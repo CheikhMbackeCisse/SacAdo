@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/admin/auth-actions";
-import { LIENS } from "@/lib/admin/nav-liens";
+import { ENTREES_PRINCIPALES, LIENS } from "@/lib/admin/nav-liens";
 import { RechercheAllerA } from "./recherche-aller-a";
 
 function estActif(pathname: string, href: string): boolean {
@@ -14,7 +14,7 @@ function estActif(pathname: string, href: string): boolean {
 function ListeLiens({ pathname }: { pathname: string }) {
   return (
     <>
-      {LIENS.map(({ href, label, icon: Icon }) => (
+      {ENTREES_PRINCIPALES.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
@@ -41,9 +41,11 @@ function ListeLiens({ pathname }: { pathname: string }) {
   );
 }
 
-// Sidebar desktop seulement : sur mobile, la navigation principale est la
-// bottom nav (AdminBottomNav) + la page /admin/plus (tiroir hamburger retiré,
-// PROMPT_ADMIN Lot 2).
+// Sidebar desktop seulement, visible à partir de lg: (sur mobile, la
+// navigation principale est la bottom nav — AdminBottomNav). Mêmes 5 entrées
+// que la bottom nav (PROMPT_ADMIN_KITS_PRODUITS.md lot 4) : avant ce lot elle
+// listait les 28 `LIENS` à plat, illisible. « Plus » ouvre /admin/plus, qui
+// regroupe le reste par thème — partagé avec mobile, pas une page à part.
 export function AdminNav({ email }: { email: string }) {
   const pathname = usePathname();
 

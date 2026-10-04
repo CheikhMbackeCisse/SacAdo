@@ -7,6 +7,7 @@ import { GAMME_ORDER, isGamme } from "@/lib/gammes";
 import { calculerPrixKit, ligneEstAffichable, type LigneKit } from "@/lib/kits";
 import type { Cycle, Gamme, Kit, Produit, SectionKitItem } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
+import { filtrerKitsAdmin } from "./kits-filtrage";
 
 export type MotifLigneCachee = "masque" | "rupture" | "sans_prix";
 
@@ -39,47 +40,35 @@ function motifLigneCachee(produit: { statut: string; statut_publication: string;
   return "sans_prix";
 }
 
-export async function getKitsAdmin(filtres: FiltresKitsAdmin = {}): Promise<KitAvecCompte[]> {
-  await requireAdmin();
-  // Toujours chargés sans filtre : le signalement "ordre de prix invalide"
-  // compare les 3 gammes d'une classe, y compris celles masquées par les
-  // filtres d'affichage.
-  const { data: kits } = await supabaseAdmin
-    .from("kits")
-    .select("*")
-    .order("cycle", { ascending: true })
-    .order("niveau", { ascending: true });
-  if (!kits) return [];
+type ProduitLite = { nom: string; prix: number; statut: string; statut_publication: string };
+type KitItemRow = {
+  kit_id: number;
+  quantite_defaut: number;
+  coche_defaut: boolean;
+  section: string;
+  libelle_besoin: string | null;
+  produit: ProduitLite;
+};
+type KitItemRawRow = Omit<KitItemRow, "produit"> & { produit: ProduitLite | ProduitLite[] | null };
 
-  kits.sort(
-    (a, b) =>
-      a.cycle.localeCompare(b.cycle) ||
-      a.niveau.localeCompare(b.niveau) ||
-      GAMME_ORDER[a.gamme as Gamme] - GAMME_ORDER[b.gamme as Gamme],
-  );
+const SELECT_KIT_ITEMS_AVEC_PRODUIT =
+  "kit_id, quantite_defaut, coche_defaut, section, libelle_besoin, produit:produits(nom, prix, statut, statut_publication)";
 
-  const { data: items } = await supabaseAdmin
-    .from("kit_items")
-    .select("kit_id, quantite_defaut, coche_defaut, section, libelle_besoin, produit:produits(nom, prix, statut, statut_publication)");
-
-  type ProduitLite = { nom: string; prix: number; statut: string; statut_publication: string };
-  type Row = {
-    kit_id: number;
-    quantite_defaut: number;
-    coche_defaut: boolean;
-    section: string;
-    libelle_besoin: string | null;
-    produit: ProduitLite;
-  };
-  type RawRow = Omit<Row, "produit"> & { produit: ProduitLite | ProduitLite[] | null };
-  const rows = ((items ?? []) as unknown as RawRow[])
+// Calcule total/nb affichés/lignes cachées pour chaque kit à partir de ses
+// lignes déjà chargées, puis signale les classes (cycle+niveau) dont l'ordre
+// de prix Essentiel < Complet < Confort n'est pas respecté. Factorisé hors de
+// getKitsAdmin pour être réutilisable sur un sous-ensemble de kits
+// (getTotauxGammesClasse) sans recharger tout le catalogue à chaque fois
+// (PROMPT_ADMIN_KITS_PRODUITS.md lot 5).
+function annoterKits(kits: Kit[], itemsBruts: KitItemRawRow[]): KitAvecCompte[] {
+  const rows = itemsBruts
     .map((row) => {
       const produit = Array.isArray(row.produit) ? row.produit[0] : row.produit;
       return produit ? { ...row, produit } : null;
     })
-    .filter((r): r is Row => r !== null);
+    .filter((r): r is KitItemRow => r !== null);
 
-  const parKit = new Map<number, Row[]>();
+  const parKit = new Map<number, KitItemRow[]>();
   rows.forEach((row) => {
     parKit.set(row.kit_id, [...(parKit.get(row.kit_id) ?? []), row]);
   });
@@ -137,18 +126,34 @@ export async function getKitsAdmin(filtres: FiltresKitsAdmin = {}): Promise<KitA
     }
   });
 
-  const resultat = avecTotal.map((k) => ({
+  return avecTotal.map((k) => ({
     ...k,
     ordre_prix_invalide: classesInvalides.has(`${k.cycle}|${k.niveau}`),
   }));
+}
 
-  return resultat.filter(
-    (k) =>
-      (!filtres.cycle || k.cycle === filtres.cycle) &&
-      (!filtres.niveau || k.niveau === filtres.niveau) &&
-      (!filtres.gamme || k.gamme === filtres.gamme) &&
-      (!filtres.statut || k.statut === filtres.statut),
+export async function getKitsAdmin(filtres: FiltresKitsAdmin = {}): Promise<KitAvecCompte[]> {
+  await requireAdmin();
+  // Toujours chargés sans filtre : le signalement "ordre de prix invalide"
+  // compare les 3 gammes d'une classe, y compris celles masquées par les
+  // filtres d'affichage.
+  const { data: kits } = await supabaseAdmin
+    .from("kits")
+    .select("*")
+    .order("cycle", { ascending: true })
+    .order("niveau", { ascending: true });
+  if (!kits) return [];
+
+  kits.sort(
+    (a, b) =>
+      a.cycle.localeCompare(b.cycle) ||
+      a.niveau.localeCompare(b.niveau) ||
+      GAMME_ORDER[a.gamme as Gamme] - GAMME_ORDER[b.gamme as Gamme],
   );
+
+  const { data: items } = await supabaseAdmin.from("kit_items").select(SELECT_KIT_ITEMS_AVEC_PRODUIT);
+
+  return filtrerKitsAdmin(annoterKits(kits, (items ?? []) as unknown as KitItemRawRow[]), filtres);
 }
 
 export async function togglerStatutKit(id: number, statut: "masque" | "publie"): Promise<ActionResult> {
@@ -216,14 +221,29 @@ export async function dupliquerKit(
 
 // Rappel des totaux des deux autres gammes de la même classe (ADMIN.md Lot 2 :
 // « total en direct, avec le rappel des totaux des deux autres gammes »).
+// Appelée à chaque ouverture de l'éditeur de kit : ne charge plus tout le
+// catalogue (kits + kit_items de TOUS les kits via getKitsAdmin) pour
+// n'afficher que 2-3 totaux de la même classe — seulement les kits de ce
+// cycle+niveau, et seulement leurs lignes (PROMPT_ADMIN_KITS_PRODUITS.md lot
+// 5 : c'était la requête dominante derrière la lenteur de cette page).
 export async function getTotauxGammesClasse(
   cycle: Cycle,
   niveau: string,
   excluKitId: number,
 ): Promise<{ gamme: Gamme; nom: string; prix_calcule: number }[]> {
   await requireAdmin();
-  const kits = (await getKitsAdmin({ cycle, niveau })).filter((k) => k.id !== excluKitId);
-  return kits.map((k) => ({ gamme: k.gamme, nom: k.nom, prix_calcule: k.prix_calcule }));
+  const { data: kits } = await supabaseAdmin.from("kits").select("*").eq("cycle", cycle).eq("niveau", niveau);
+  if (!kits || kits.length === 0) return [];
+
+  const idsKits = kits.map((k) => k.id);
+  const { data: items } = await supabaseAdmin
+    .from("kit_items")
+    .select(SELECT_KIT_ITEMS_AVEC_PRODUIT)
+    .in("kit_id", idsKits);
+
+  return annoterKits(kits, (items ?? []) as unknown as KitItemRawRow[])
+    .filter((k) => k.id !== excluKitId)
+    .map((k) => ({ gamme: k.gamme, nom: k.nom, prix_calcule: k.prix_calcule }));
 }
 
 export type KitItemAvecProduit = {
@@ -402,6 +422,19 @@ export async function deplacerKitItem(kitId: number, idsOrdonnes: number[], id: 
 
   const erreurs = await Promise.all(
     reordonnes.map((itemId, ordre) =>
+      supabaseAdmin.from("kit_items").update({ ordre }).eq("id", itemId).eq("kit_id", kitId),
+    ),
+  );
+  if (erreurs.some((r) => r.error)) return { ok: false, error: "Impossible de réordonner." };
+  return { ok: true };
+}
+
+// Glisser-déposer (PROMPT_ADMIN_KITS_PRODUITS.md lot 2) : reçoit l'ordre final
+// complet des ids (déjà réordonné côté client) et réécrit `ordre` pour tous.
+export async function reordonnerKitItems(kitId: number, idsOrdonnes: number[]): Promise<ActionResult> {
+  await requireAdmin();
+  const erreurs = await Promise.all(
+    idsOrdonnes.map((itemId, ordre) =>
       supabaseAdmin.from("kit_items").update({ ordre }).eq("id", itemId).eq("kit_id", kitId),
     ),
   );
