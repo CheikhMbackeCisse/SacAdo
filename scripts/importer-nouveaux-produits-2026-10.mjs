@@ -158,11 +158,13 @@ const DESCRIPTION_KARBI =
   "Sac à dos scolaire 43 × 33 cm. Grand compartiment avec rangements intérieurs pour cahiers, trousse et téléphone, poche avant zippée, poche latérale, bretelles réglables.";
 
 async function importerKarbi() {
+  // "Karbi" est le vendeur (fournisseur) ; la marque des sacs eux-mêmes est
+  // "Forever Cultivate" — c'est elle qui doit apparaître dans le nom produit.
   const vendeurId = await trouverOuCreerVendeur("Karbi");
   const { categorieId, sousCategorieId } = await idSousCategorie("cartables-sacs", "sacs-a-dos");
   for (const slug of NOMS_KARBI) {
     await creerProduitSimple({
-      nom: `Sac à dos Karbi · ${LIBELLES_KARBI[slug]}`,
+      nom: `Sac à dos Forever Cultivate · ${LIBELLES_KARBI[slug]}`,
       description: DESCRIPTION_KARBI,
       categorieId,
       sousCategorieId,
