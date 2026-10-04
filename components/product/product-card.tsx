@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { FavoriteButton } from "@/components/ui/favorite-button";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, uniteVenteAffichee } from "@/lib/format";
 import { usePanier } from "@/lib/local/panier";
 import { slugAvecId } from "@/lib/slug";
 import { logoMarque } from "@/lib/marques";
@@ -85,7 +85,14 @@ export function ProductCard({
           {produit.nom}
         </p>
         <div className="mt-auto flex items-center justify-between gap-2">
-          <span className="text-xs font-semibold text-ink/70">{formatPrice(produit.prix)}</span>
+          <span className="text-xs font-semibold text-ink/70">
+            {formatPrice(produit.prix)}
+            {uniteVenteAffichee(produit.unite_vente, produit.quantite_conditionnement) && (
+              <span className="ml-0.5 font-normal text-ink/45">
+                {uniteVenteAffichee(produit.unite_vente, produit.quantite_conditionnement)}
+              </span>
+            )}
+          </span>
           <button
             type="button"
             disabled={epuise}

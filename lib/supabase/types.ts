@@ -119,6 +119,16 @@ export type Produit = {
   est_kit?: boolean;
   niveau_difficulte?: "debutant" | "intermediaire" | "avance" | null;
   notice_url?: string | null;
+  // Unité de vente affichée après le prix (ex. "la ramette", "le lot de 10
+  // feuilles") : migration 0083 (import LPD). null/"unite" = rien à afficher.
+  unite_vente?: string | null;
+  quantite_conditionnement?: number | null;
+  // Personnalisation payante (migration 0111) : nom + spécialité brodés sur
+  // la blouse de laboratoire, +prix_personnalisation. achat_personnalisation
+  // reste côté admin/serveur (coût), jamais exposé au storefront public.
+  personnalisable?: boolean;
+  prix_personnalisation?: number | null;
+  achat_personnalisation?: number | null;
 };
 
 // Notice de montage d'un kit électronique (migration 0077, TACHE_documents_
@@ -503,6 +513,10 @@ export type CommandeItem = {
   // Lot d'ajout dont vient cette ligne (PROMPT_CLIENT_V2 Lot 4, migration 0107).
   // NULL = ligne d'origine, créée avec la commande.
   ajout_id: number | null;
+  // Personnalisation payante (migration 0111) : texte choisi par le client,
+  // figé à la commande. NULL = ligne sans personnalisation.
+  personnalisation_nom: string | null;
+  personnalisation_specialite: string | null;
 };
 
 // Un "lot" de produits ajoutés après coup à une commande déjà passée

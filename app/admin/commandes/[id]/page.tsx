@@ -93,6 +93,11 @@ function BlocArticles({ groupesItems }: { groupesItems: GroupeItemsAdmin[] }) {
                         ))}
                       </ul>
                     )}
+                    {item.personnalisation_nom && (
+                      <span className="block text-xs font-medium text-brand">
+                        Personnalisé : {item.personnalisation_nom} — {item.personnalisation_specialite}
+                      </span>
+                    )}
                     {item.garantie_fin && (
                       <span className="block text-xs font-medium text-[#16A34A]">
                         Garantie jusqu&apos;au {formatDateGarantie(item.garantie_fin)}
@@ -140,6 +145,11 @@ function BlocArticles({ groupesItems }: { groupesItems: GroupeItemsAdmin[] }) {
                   <tr key={item.id} className="border-b border-ink/5 last:border-0">
                     <td className="px-4 py-3 text-ink">
                       {item.produit_nom}
+                      {item.personnalisation_nom && (
+                        <span className="mt-1 block text-xs font-medium text-brand">
+                          Personnalisé : {item.personnalisation_nom} — {item.personnalisation_specialite}
+                        </span>
+                      )}
                       {item.composants && item.composants.length > 0 && (
                         <ul className="mt-1 border-l-2 border-ink/10 pl-2 text-xs font-normal text-ink/55">
                           {item.composants.map((c, i) => (

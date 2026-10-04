@@ -11,7 +11,7 @@ import { FavoriteButton } from "@/components/ui/favorite-button";
 import { ShareButton } from "@/components/ui/share-button";
 import { GuideTailles } from "@/components/product/guide-tailles";
 import { NoticeKit } from "@/components/product/notice-kit";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, uniteVenteAffichee } from "@/lib/format";
 import { slugAvecId, slugify } from "@/lib/slug";
 import { logoMarque } from "@/lib/marques";
 import { usePanier } from "@/lib/local/panier";
@@ -66,6 +66,12 @@ export function ProductDetail({
   });
   const [quantite, setQuantite] = useState(1);
   const [added, setAdded] = useState(false);
+  // Personnalisation payante (migration 0111) : nom + spécialité brodés sur
+  // la blouse de laboratoire. Masqué pour tout produit non `personnalisable`.
+  const [veutPersonnaliser, setVeutPersonnaliser] = useState(false);
+  const [nomPerso, setNomPerso] = useState("");
+  const [specialitePerso, setSpecialitePerso] = useState("");
+  const PERSO_MAX = 30;
   const [slide, setSlide] = useState(0);
   const [zoomOuvert, setZoomOuvert] = useState(false);
   const carrouselRef = useRef<HTMLDivElement>(null);
@@ -123,7 +129,11 @@ export function ProductDetail({
       : produit.photo
         ? [produit.photo]
         : [];
-  const prix = selectedVariante?.prix ?? produit.prix;
+  const uniteVente = uniteVenteAffichee(produit.unite_vente, produit.quantite_conditionnement);
+  const prixPersonnalisation = produit.personnalisable ? (produit.prix_personnalisation ?? 0) : 0;
+  const personnalisationValide =
+    veutPersonnaliser && nomPerso.trim().length > 0 && specialitePerso.trim().length > 0;
+  const prix = (selectedVariante?.prix ?? produit.prix) + (personnalisationValide ? prixPersonnalisation : 0);
 
   // Ordinateurs reconditionnés (migration 0070) : les attributs techniques
   // doivent être visibles, pas seulement filtrables (TACHE_seye_dynamique
@@ -152,11 +162,21 @@ export function ProductDetail({
   const varianteEpuisee = selectedVariante?.statut === "epuise";
   const produitEpuise = produit.statut === "epuise";
   const peutAjouter =
-    !produitEpuise && !varianteEpuisee && (!aDesOptions || selectedVariante !== null);
+    !produitEpuise &&
+    !varianteEpuisee &&
+    (!aDesOptions || selectedVariante !== null) &&
+    (!veutPersonnaliser || personnalisationValide);
 
   const handleAjouter = () => {
     if (!peutAjouter) return;
-    ajouter(produit.id, selectedVariante?.id ?? null, quantite);
+    ajouter(
+      produit.id,
+      selectedVariante?.id ?? null,
+      quantite,
+      personnalisationValide
+        ? { nom: nomPerso.trim().slice(0, PERSO_MAX), specialite: specialitePerso.trim().slice(0, PERSO_MAX) }
+        : null,
+    );
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -296,7 +316,10 @@ export function ProductDetail({
         )}
 
         <div className="flex items-center gap-2">
-          <span className="text-base font-semibold text-ink">{formatPrice(prix)}</span>
+          <span className="text-base font-semibold text-ink">
+            {formatPrice(prix)}
+            {uniteVente && <span className="ml-1 text-xs font-normal text-ink/50">{uniteVente}</span>}
+          </span>
           {produit.etat === "reconditionne" && (
             <span className="inline-flex items-center rounded-full bg-[#64B6AC]/15 px-2.5 py-1 text-[11px] font-semibold text-[#0B3D91]">
               Reconditionné
@@ -385,6 +408,40 @@ export function ProductDetail({
               attributsDuProduit.find((a) => a.nom.toLowerCase() === "taille")?.valeurs ?? []
             }
           />
+        )}
+
+        {produit.personnalisable && (
+          <div className="flex flex-col gap-2 rounded-lg border border-ink/10 p-3">
+            <label className="flex items-center gap-2 text-xs font-medium text-ink">
+              <input
+                type="checkbox"
+                checked={veutPersonnaliser}
+                onChange={(e) => setVeutPersonnaliser(e.target.checked)}
+                className="size-4 accent-brand"
+              />
+              Personnaliser (+{formatPrice(prixPersonnalisation)})
+            </label>
+            {veutPersonnaliser && (
+              <div className="flex flex-col gap-2">
+                <input
+                  type="text"
+                  value={nomPerso}
+                  onChange={(e) => setNomPerso(e.target.value.slice(0, PERSO_MAX))}
+                  placeholder="Nom à broder"
+                  maxLength={PERSO_MAX}
+                  className="rounded-lg border border-ink/15 px-3 py-2 text-sm text-ink placeholder:text-ink/40"
+                />
+                <input
+                  type="text"
+                  value={specialitePerso}
+                  onChange={(e) => setSpecialitePerso(e.target.value.slice(0, PERSO_MAX))}
+                  placeholder="Spécialité à broder"
+                  maxLength={PERSO_MAX}
+                  className="rounded-lg border border-ink/15 px-3 py-2 text-sm text-ink placeholder:text-ink/40"
+                />
+              </div>
+            )}
+          </div>
         )}
 
         <div className="flex items-center gap-3">

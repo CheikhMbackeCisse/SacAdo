@@ -91,10 +91,14 @@ type LigneAjoutResolue = {
   quantite: number;
   prixUnitaire: number;
   groupe: GroupeKitPanier | null;
+  personnalisationNom: string | null;
+  personnalisationSpecialite: string | null;
 };
 
 const LIGNES_MAX = 50;
 const QUANTITE_MAX = 999;
+// Même borne que le champ de la fiche produit (migration 0111).
+const PERSONNALISATION_MAX = 30;
 
 function panierValide(lignes: LignePanier[]): boolean {
   return (
@@ -140,12 +144,21 @@ async function resoudreLignesAjout(
       return { ok: false, error: "Cette option ne correspond pas à ce produit." };
     }
 
+    const personnalise = produit.personnalisable && ligne.personnalisation;
+    const nomPerso = personnalise ? ligne.personnalisation!.nom.trim().slice(0, PERSONNALISATION_MAX) : null;
+    const specialitePerso = personnalise
+      ? ligne.personnalisation!.specialite.trim().slice(0, PERSONNALISATION_MAX)
+      : null;
+    const surchargePerso = personnalise && nomPerso && specialitePerso ? (produit.prix_personnalisation ?? 0) : 0;
+
     resolues.push({
       produitId: produit.id,
       varianteId: variante?.id ?? null,
       quantite: ligne.quantite,
-      prixUnitaire: variante?.prix ?? produit.prix,
+      prixUnitaire: (variante?.prix ?? produit.prix) + surchargePerso,
       groupe: ligne.groupe ?? null,
+      personnalisationNom: nomPerso && specialitePerso ? nomPerso : null,
+      personnalisationSpecialite: nomPerso && specialitePerso ? specialitePerso : null,
     });
   }
 
@@ -165,6 +178,8 @@ function lignesPourRpc(lignes: LigneAjoutResolue[]) {
     kit_classe: l.groupe?.niveau ?? null,
     kit_gamme: l.groupe?.gammeLabel ?? null,
     kit_beneficiaire_prenom: l.groupe?.beneficiairePrenom ?? null,
+    personnalisation_nom: l.personnalisationNom,
+    personnalisation_specialite: l.personnalisationSpecialite,
   }));
 }
 

@@ -27,7 +27,7 @@ const SELECT_VARIANTE = "*, variante_attributs(attribut_id, valeur, attributs(no
 // (il n'existe que pour la composante « marge » du score, calculée en base).
 // L'admin lit l'intégralité via le service_role.
 const COLONNES_PRODUIT_PUBLIC =
-  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id,guide_tailles,processeur,ram_go,stockage_go,type_stockage,taille_ecran,ecran_tactile,convertible,etat,garantie_mois,marque,est_kit,niveau_difficulte,notice_url,technologie,couleur_impression,compatibilite,score_global,photo_a_ameliorer" as const;
+  "id,nom,categorie_id,sous_categorie_id,sous_sous_categorie_id,prix,delai,photo,photos,stock,seuil_alerte,statut,created_at,description,mots_cles,vendeur_id,statut_publication,motif_refus,commentaire_vendeur,publie_par,niveau,serie,matiere,type_ouvrage,auteur,editeur,edition,edition_statut,couverture_epreuves,ouvrage_id,guide_tailles,processeur,ram_go,stockage_go,type_stockage,taille_ecran,ecran_tactile,convertible,etat,garantie_mois,marque,est_kit,niveau_difficulte,notice_url,technologie,couleur_impression,compatibilite,score_global,photo_a_ameliorer,unite_vente,quantite_conditionnement,personnalisable,prix_personnalisation" as const;
 
 // Aplatit une réponse Supabase (avec ou sans jointure) en VarianteAvecAttributs.
 function versVariantes(
@@ -168,6 +168,30 @@ export type FiltresProduitsCategorie = {
   ordre?: "nom" | "prix_asc" | "score_desc";
 };
 
+// Classement secondaire (migration 0111, « Aussi visible dans ») : un produit
+// garde un seul classement principal (categorie_id/sous_categorie_id) mais
+// peut apparaître AUSSI dans d'autres rayons (ex. un compas reste classé
+// "Fournitures d'école" et apparaît aussi dans "Matériel géométrique"). Deux
+// requêtes ciblées plutôt qu'une jointure dans getProduitsByCategorie : la
+// liste est courte (quelques dizaines de lignes au plus) et ça laisse le
+// filtre principal strictement inchangé pour toutes les catégories qui n'ont
+// aucun classement secondaire (l'immense majorité du catalogue).
+async function getIdsSecondairesParSousCategorie(sousCategorieId: number): Promise<number[]> {
+  const { data } = await supabase
+    .from("produit_classements_secondaires")
+    .select("produit_id")
+    .eq("sous_categorie_id", sousCategorieId);
+  return (data ?? []).map((r) => r.produit_id as number);
+}
+
+async function getIdsSecondairesParCategorie(categorieId: number): Promise<number[]> {
+  const { data } = await supabase
+    .from("produit_classements_secondaires")
+    .select("produit_id")
+    .eq("categorie_id", categorieId);
+  return (data ?? []).map((r) => r.produit_id as number);
+}
+
 export async function getProduitsByCategorie(
   categorieId: number,
   {
@@ -189,12 +213,22 @@ export async function getProduitsByCategorie(
     ordre = "nom",
   }: { offset?: number; limit?: number } & FiltresProduitsCategorie = {},
 ): Promise<PageResultat<Produit>> {
-  let requete = supabase
-    .from("produits")
-    .select(COLONNES_PRODUIT_PUBLIC, { count: "exact" })
-    .eq("categorie_id", categorieId)
-    .or(FILTRE_EDITION_AFFICHABLE);
-  if (sousCategorieId != null) requete = requete.eq("sous_categorie_id", sousCategorieId);
+  const idsSecondaires = sousCategorieId != null
+    ? await getIdsSecondairesParSousCategorie(sousCategorieId)
+    : await getIdsSecondairesParCategorie(categorieId);
+
+  let requete = supabase.from("produits").select(COLONNES_PRODUIT_PUBLIC, { count: "exact" });
+  if (idsSecondaires.length > 0) {
+    const idsStr = idsSecondaires.join(",");
+    requete =
+      sousCategorieId != null
+        ? requete.or(`and(categorie_id.eq.${categorieId},sous_categorie_id.eq.${sousCategorieId}),id.in.(${idsStr})`)
+        : requete.or(`categorie_id.eq.${categorieId},id.in.(${idsStr})`);
+  } else {
+    requete = requete.eq("categorie_id", categorieId);
+    if (sousCategorieId != null) requete = requete.eq("sous_categorie_id", sousCategorieId);
+  }
+  requete = requete.or(FILTRE_EDITION_AFFICHABLE);
   if (sousSousCategorieId != null) requete = requete.eq("sous_sous_categorie_id", sousSousCategorieId);
   if (niveau) requete = requete.eq("niveau", niveau);
   // "S" (série générique) doit aussi remonter S1/S2 : géré par l'appelant en

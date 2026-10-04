@@ -13,7 +13,7 @@ type PanierLineProps = {
 };
 
 export function PanierLine({ ligne, onQuantiteChange, onRetirer }: PanierLineProps) {
-  const { produit, variante, quantite, prixUnitaire, totalLigne } = ligne;
+  const { produit, variante, quantite, prixUnitaire, totalLigne, personnalisation } = ligne;
   const label = variante ? libelleVariante(variante) || null : null;
   const href = `/produits/${slugAvecId(produit.nom, produit.id)}`;
 
@@ -33,6 +33,11 @@ export function PanierLine({ ligne, onQuantiteChange, onRetirer }: PanierLinePro
           {produit.nom}
         </Link>
         {label && <span className="text-xs text-ink/50">{label}</span>}
+        {personnalisation && (
+          <span className="text-xs text-ink/50">
+            Personnalisé : {personnalisation.nom} — {personnalisation.specialite}
+          </span>
+        )}
         <span className="text-xs font-semibold text-ink/70">{formatPrice(prixUnitaire)}</span>
       </div>
 

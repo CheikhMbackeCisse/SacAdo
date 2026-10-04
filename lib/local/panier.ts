@@ -23,6 +23,11 @@ export type GroupeKitPanier = {
   beneficiairePrenom?: string | null;
 };
 
+// Personnalisation payante (migration 0111) : texte choisi par le client sur
+// la fiche produit (blouse de laboratoire MedWorld). Présente seulement sur
+// les lignes d'un produit `personnalisable` dont le client a coché l'option.
+export type PersonnalisationPanier = { nom: string; specialite: string };
+
 export type LignePanier = {
   produitId: number;
   varianteId: number | null;
@@ -30,7 +35,20 @@ export type LignePanier = {
   // Absent sur les lignes ajoutées hors kit, ou sur les paniers enregistrés
   // avant ce lot (rétro-compatibilité : elles s'affichent comme avant).
   groupe?: GroupeKitPanier | null;
+  personnalisation?: PersonnalisationPanier | null;
 };
+
+// Deux personnalisations sont « la même ligne » seulement si le texte est
+// identique (ou si aucune des deux n'est personnalisée) — jamais fusionnées
+// sinon : deux blouses brodées différemment doivent rester deux lignes.
+function memePersonnalisation(
+  a: PersonnalisationPanier | null | undefined,
+  b: PersonnalisationPanier | null | undefined,
+): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return a.nom === b.nom && a.specialite === b.specialite;
+}
 
 // Émis à chaque ajout au panier (pas aux retraits / changements de quantité) :
 // la barre de confirmation `CartToast` s'y abonne. `totalArticles` est le total
@@ -72,15 +90,24 @@ export function usePanier() {
     );
   };
 
-  const ajouter = (produitId: number, varianteId: number | null, quantite: number) => {
+  const ajouter = (
+    produitId: number,
+    varianteId: number | null,
+    quantite: number,
+    personnalisation: PersonnalisationPanier | null = null,
+  ) => {
     let totalApres = 0;
     setLignes((current) => {
       const index = current.findIndex(
-        (l) => l.produitId === produitId && l.varianteId === varianteId && !l.groupe,
+        (l) =>
+          l.produitId === produitId &&
+          l.varianteId === varianteId &&
+          !l.groupe &&
+          memePersonnalisation(l.personnalisation, personnalisation),
       );
       const next =
         index === -1
-          ? [...current, { produitId, varianteId, quantite }]
+          ? [...current, { produitId, varianteId, quantite, personnalisation }]
           : current.map((l, i) =>
               i === index ? { ...l, quantite: l.quantite + quantite } : l,
             );
@@ -142,18 +169,31 @@ export function usePanier() {
     setLignes((current) => [...current, ...lignesARestaurer]);
   };
 
-  const retirer = (produitId: number, varianteId: number | null) => {
-    const ligne = lignes.find((l) => l.produitId === produitId && l.varianteId === varianteId);
-    setLignes((current) =>
-      current.filter((l) => !(l.produitId === produitId && l.varianteId === varianteId)),
-    );
+  const retirer = (
+    produitId: number,
+    varianteId: number | null,
+    personnalisation: PersonnalisationPanier | null = null,
+  ) => {
+    const correspond = (l: LignePanier) =>
+      l.produitId === produitId &&
+      l.varianteId === varianteId &&
+      memePersonnalisation(l.personnalisation, personnalisation);
+    const ligne = lignes.find(correspond);
+    setLignes((current) => current.filter((l) => !correspond(l)));
     if (ligne) mesurerVisite({ type: "retrait_panier", produitId, quantite: ligne.quantite });
   };
 
-  const setQuantite = (produitId: number, varianteId: number | null, quantite: number) => {
+  const setQuantite = (
+    produitId: number,
+    varianteId: number | null,
+    quantite: number,
+    personnalisation: PersonnalisationPanier | null = null,
+  ) => {
     setLignes((current) =>
       current.map((l) =>
-        l.produitId === produitId && l.varianteId === varianteId
+        l.produitId === produitId &&
+        l.varianteId === varianteId &&
+        memePersonnalisation(l.personnalisation, personnalisation)
           ? { ...l, quantite: Math.max(1, quantite) }
           : l,
       ),

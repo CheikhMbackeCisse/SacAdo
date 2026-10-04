@@ -32,6 +32,8 @@ const PRECISION_LIVREUR_MAX = 300;
 const LOCALITE_TEXTE_MAX = 150;
 const LIGNES_MAX = 50;
 const QUANTITE_MAX = 999;
+// Même borne que le champ de la fiche produit (migration 0111).
+const PERSONNALISATION_MAX = 30;
 
 export type CheckoutInput = {
   nom: string;
@@ -152,6 +154,9 @@ type LigneResolue = {
   // l'affichage de la commande (admin, WhatsApp) sans exploser en produits un
   // par un. null pour un produit ajouté hors kit.
   groupe: GroupeKitPanier | null;
+  // Personnalisation payante (migration 0111) : null si la ligne n'en porte pas.
+  personnalisationNom: string | null;
+  personnalisationSpecialite: string | null;
 };
 
 type CommandeResolue = {
@@ -325,14 +330,27 @@ async function resoudreCommande(
       return { ok: false, error: "Cette option ne correspond pas à ce produit." };
     }
 
+    // Personnalisation payante (migration 0111) : jamais fait confiance côté
+    // client — ignorée si le produit n'est pas `personnalisable`, bornée à
+    // PERSONNALISATION_MAX caractères sinon (même limite que la fiche produit).
+    const personnalise = produit.personnalisable && ligne.personnalisation;
+    const nomPerso = personnalise ? ligne.personnalisation!.nom.trim().slice(0, PERSONNALISATION_MAX) : null;
+    const specialitePerso = personnalise
+      ? ligne.personnalisation!.specialite.trim().slice(0, PERSONNALISATION_MAX)
+      : null;
+    const surchargePersoVente = personnalise && nomPerso && specialitePerso ? (produit.prix_personnalisation ?? 0) : 0;
+    const surchargePersoAchat = personnalise && nomPerso && specialitePerso ? (produit.achat_personnalisation ?? 0) : 0;
+
     lignesResolues.push({
       produitId: produit.id,
       varianteId: variante?.id ?? null,
       quantite: ligne.quantite,
-      prixUnitaire: variante?.prix ?? produit.prix,
-      prixAchat: produit.prix_achat ?? null,
+      prixUnitaire: (variante?.prix ?? produit.prix) + surchargePersoVente,
+      prixAchat: produit.prix_achat != null ? produit.prix_achat + surchargePersoAchat : null,
       nom: produit.nom,
       groupe: ligne.groupe ?? null,
+      personnalisationNom: nomPerso && specialitePerso ? nomPerso : null,
+      personnalisationSpecialite: nomPerso && specialitePerso ? specialitePerso : null,
     });
   }
 
@@ -590,6 +608,8 @@ function lignesPourRpc(lignesResolues: LigneResolue[]) {
     kit_classe: l.groupe?.niveau ?? null,
     kit_gamme: l.groupe?.gammeLabel ?? null,
     kit_beneficiaire_prenom: l.groupe?.beneficiairePrenom ?? null,
+    personnalisation_nom: l.personnalisationNom,
+    personnalisation_specialite: l.personnalisationSpecialite,
   }));
 }
 

@@ -173,12 +173,14 @@ export default function AjoutPage() {
 
         {horsGroupe.length > 0 && (
           <div className="flex flex-col divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-elevated px-3">
-            {horsGroupe.map((ligne) => (
+            {horsGroupe.map((ligne, index) => (
               <PanierLine
-                key={`${ligne.produit.id}-${ligne.variante?.id ?? "base"}`}
+                key={`${ligne.produit.id}-${ligne.variante?.id ?? "base"}-${ligne.personnalisation ? index : "sans-perso"}`}
                 ligne={ligne}
-                onQuantiteChange={(q) => setQuantite(ligne.produit.id, ligne.variante?.id ?? null, q)}
-                onRetirer={() => retirer(ligne.produit.id, ligne.variante?.id ?? null)}
+                onQuantiteChange={(q) =>
+                  setQuantite(ligne.produit.id, ligne.variante?.id ?? null, q, ligne.personnalisation)
+                }
+                onRetirer={() => retirer(ligne.produit.id, ligne.variante?.id ?? null, ligne.personnalisation)}
               />
             ))}
           </div>

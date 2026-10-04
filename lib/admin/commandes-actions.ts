@@ -345,6 +345,8 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       kit_classe: row.kit_classe,
       kit_gamme: row.kit_gamme,
       kit_beneficiaire_prenom: row.kit_beneficiaire_prenom,
+      personnalisation_nom: row.personnalisation_nom,
+      personnalisation_specialite: row.personnalisation_specialite,
     };
   });
 }

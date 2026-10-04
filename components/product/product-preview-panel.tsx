@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, X } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, uniteVenteAffichee } from "@/lib/format";
 import { slugAvecId } from "@/lib/slug";
 import { usePanier } from "@/lib/local/panier";
 import { useProductPreview } from "@/components/product/product-preview-context";
@@ -56,6 +56,10 @@ function ApercuContenu({ produitId, fermer }: { produitId: number; fermer: () =>
   const [choix, setChoix] = useState<Record<number, string>>({});
   const [quantite, setQuantite] = useState(1);
   const [added, setAdded] = useState(false);
+  const [veutPersonnaliser, setVeutPersonnaliser] = useState(false);
+  const [nomPerso, setNomPerso] = useState("");
+  const [specialitePerso, setSpecialitePerso] = useState("");
+  const PERSO_MAX = 30;
 
   useEffect(() => {
     let annule = false;
@@ -105,7 +109,11 @@ function ApercuContenu({ produitId, fermer }: { produitId: number; fermer: () =>
     );
   }
 
-  const prix = selectedVariante?.prix ?? produit.prix;
+  const prixPersonnalisation = produit.personnalisable ? (produit.prix_personnalisation ?? 0) : 0;
+  const personnalisationValide =
+    veutPersonnaliser && nomPerso.trim().length > 0 && specialitePerso.trim().length > 0;
+  const prix =
+    (selectedVariante?.prix ?? produit.prix) + (personnalisationValide ? prixPersonnalisation : 0);
   const galerie = selectedVariante?.photo
     ? [selectedVariante.photo]
     : produit.photos?.length
@@ -115,7 +123,11 @@ function ApercuContenu({ produitId, fermer }: { produitId: number; fermer: () =>
         : [];
   const varianteEpuisee = selectedVariante?.statut === "epuise";
   const produitEpuise = produit.statut === "epuise";
-  const peutAjouter = !produitEpuise && !varianteEpuisee && (!aDesOptions || selectedVariante !== null);
+  const peutAjouter =
+    !produitEpuise &&
+    !varianteEpuisee &&
+    (!aDesOptions || selectedVariante !== null) &&
+    (!veutPersonnaliser || personnalisationValide);
   const href = `/produits/${slugAvecId(produit.nom, produit.id)}`;
 
   return (
@@ -127,7 +139,14 @@ function ApercuContenu({ produitId, fermer }: { produitId: number; fermer: () =>
       <div className="flex flex-col gap-1">
         <h2 className="font-heading text-base font-bold text-ink">{produit.nom}</h2>
         <div className="flex items-center gap-2">
-          <span className="text-base font-semibold text-ink">{formatPrice(prix)}</span>
+          <span className="text-base font-semibold text-ink">
+            {formatPrice(prix)}
+            {uniteVenteAffichee(produit.unite_vente, produit.quantite_conditionnement) && (
+              <span className="ml-1 text-xs font-normal text-ink/50">
+                {uniteVenteAffichee(produit.unite_vente, produit.quantite_conditionnement)}
+              </span>
+            )}
+          </span>
           {produitEpuise && (
             <span className="rounded-full bg-ink/8 px-2 py-0.5 text-[11px] font-semibold text-ink/60">
               Épuisé
@@ -162,6 +181,40 @@ function ApercuContenu({ produitId, fermer }: { produitId: number; fermer: () =>
         </div>
       ))}
 
+      {produit.personnalisable && (
+        <div className="flex flex-col gap-2 rounded-lg border border-ink/10 p-3">
+          <label className="flex items-center gap-2 text-xs font-medium text-ink">
+            <input
+              type="checkbox"
+              checked={veutPersonnaliser}
+              onChange={(e) => setVeutPersonnaliser(e.target.checked)}
+              className="size-4 accent-brand"
+            />
+            Personnaliser (+{formatPrice(prixPersonnalisation)})
+          </label>
+          {veutPersonnaliser && (
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                value={nomPerso}
+                onChange={(e) => setNomPerso(e.target.value.slice(0, PERSO_MAX))}
+                placeholder="Nom à broder"
+                maxLength={PERSO_MAX}
+                className="rounded-lg border border-ink/15 px-3 py-2 text-sm text-ink placeholder:text-ink/40"
+              />
+              <input
+                type="text"
+                value={specialitePerso}
+                onChange={(e) => setSpecialitePerso(e.target.value.slice(0, PERSO_MAX))}
+                placeholder="Spécialité à broder"
+                maxLength={PERSO_MAX}
+                className="rounded-lg border border-ink/15 px-3 py-2 text-sm text-ink placeholder:text-ink/40"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <span className="text-xs font-medium text-ink/60">Quantité</span>
         <div className="flex items-center gap-3 rounded-full border border-ink/15 px-2 py-1">
@@ -190,7 +243,14 @@ function ApercuContenu({ produitId, fermer }: { produitId: number; fermer: () =>
         disabled={!peutAjouter}
         onClick={() => {
           if (!peutAjouter) return;
-          ajouter(produit.id, selectedVariante?.id ?? null, quantite);
+          ajouter(
+            produit.id,
+            selectedVariante?.id ?? null,
+            quantite,
+            personnalisationValide
+              ? { nom: nomPerso.trim().slice(0, PERSO_MAX), specialite: specialitePerso.trim().slice(0, PERSO_MAX) }
+              : null,
+          );
           setAdded(true);
           setTimeout(() => setAdded(false), 1500);
         }}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePanier, type GroupeKitPanier, type LignePanier } from "./panier";
+import { usePanier, type GroupeKitPanier, type LignePanier, type PersonnalisationPanier } from "./panier";
 import { getProduitsByIds, getVariantesByIds } from "@/lib/supabase/queries";
 import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
@@ -12,6 +12,7 @@ export type LigneDetaillee = {
   prixUnitaire: number;
   totalLigne: number;
   groupe: GroupeKitPanier | null;
+  personnalisation: PersonnalisationPanier | null;
 };
 
 // Le panier local ne stocke que des ids + quantités ; ce hook va chercher les
@@ -52,7 +53,8 @@ export function usePanierDetaille() {
       const variante = ligne.varianteId
         ? (variantes.find((v) => v.id === ligne.varianteId) ?? null)
         : null;
-      const prixUnitaire = variante?.prix ?? produit.prix;
+      const base = variante?.prix ?? produit.prix;
+      const prixUnitaire = ligne.personnalisation ? base + (produit.prix_personnalisation ?? 0) : base;
       return {
         produit,
         variante,
@@ -60,6 +62,7 @@ export function usePanierDetaille() {
         prixUnitaire,
         totalLigne: prixUnitaire * ligne.quantite,
         groupe: ligne.groupe ?? null,
+        personnalisation: ligne.personnalisation ?? null,
       };
     })
     .filter((d): d is LigneDetaillee => d !== null);
