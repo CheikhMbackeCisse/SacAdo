@@ -41,7 +41,16 @@ export function extraireCoordonneesDepuisTexte(texte: string): { lat: number; ln
 
 // Coordonnées embarquées dans une URL Google Maps déjà complète :
 // .../@14.7167,-17.4677,15z ou ?q=14.7167,-17.4677 ou ?query=... ou ?ll=...
+// ou !3d14.7167!4d-17.4677 (point précis d'une fiche établissement/lieu — le
+// "data=" d'un lien de fiche lieu ; prioritaire sur @lat,lng qui n'est que le
+// centre de la vue carte, souvent moins précis pour ce cas).
 export function extraireCoordonneesDepuisUrl(url: URL): { lat: number; lng: number } | null {
+  const data = url.href.match(/!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/);
+  if (data) {
+    const lat = Number(data[1]);
+    const lng = Number(data[2]);
+    if (coordonneesValides(lat, lng)) return { lat, lng };
+  }
   const arobase = url.href.match(/@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/);
   if (arobase) {
     const lat = Number(arobase[1]);

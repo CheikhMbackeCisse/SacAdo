@@ -238,7 +238,8 @@ export async function getParcoursAchat(periode: Periode): Promise<EtapeFunnel[]>
     const { data: commandes } = await supabaseAdmin
       .from("commandes")
       .select("id, statut, mode_paiement, statut_paiement")
-      .in("id", commandeIds);
+      .in("id", commandeIds)
+      .eq("est_test", false);
     const commandesPayees = new Set(
       (commandes ?? [])
         .filter((c) => c.statut !== "annulee" && (c.mode_paiement !== "wave" || c.statut_paiement === "payee"))

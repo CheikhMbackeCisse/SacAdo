@@ -3,15 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, MessageCircle, Search } from "lucide-react";
 import { lienLocaliteLivraison } from "@/lib/whatsapp";
-import type { Localite, LieuSpecial } from "@/lib/supabase/types";
+import type { LieuSpecial } from "@/lib/supabase/types";
 
-// Sélection = TOUJOURS une entrée de la liste (localité ou lieu particulier).
-// Aucune saisie libre acceptée (TACHE_corrections_commande_theme_admin.md §2).
-export type SelectionLocalite =
-  | { type: "localite"; id: number; nom: string }
-  | { type: "special"; id: number; nom: string };
+// Sélection d'un lieu spécial (retrait, ville hors zone habituelle à
+// confirmer…) : la localité "normale" n'est plus choisie ici, elle est
+// déterminée côté serveur à partir du point de livraison
+// (PROMPT_CLIENT_LOCALISATION.md Lot 2). Ce picker ne sert plus qu'à
+// l'alternative "je ne me fais pas livrer à domicile".
+export type SelectionLieuSpecial = { id: number; nom: string } | null;
 
-type Suggestion = { id: number; nom: string; type: "localite" | "special"; norme: string };
+type Suggestion = { id: number; nom: string; norme: string };
 
 const MAX_RESULTATS = 60;
 
@@ -26,33 +27,24 @@ function normaliser(s: string): string {
 }
 
 type Props = {
-  localites: Localite[];
   lieuxSpeciaux: LieuSpecial[];
-  value: SelectionLocalite | null;
-  onChange: (value: SelectionLocalite | null) => void;
+  value: SelectionLieuSpecial;
+  onChange: (value: SelectionLieuSpecial) => void;
 };
 
-export function LocalitePicker({ localites, lieuxSpeciaux, value, onChange }: Props) {
+export function LieuSpecialPicker({ lieuxSpeciaux, value, onChange }: Props) {
   const [texte, setTexte] = useState(() => value?.nom ?? "");
   const [ouverte, setOuverte] = useState(false);
   const [actif, setActif] = useState(0);
   const listeRef = useRef<HTMLUListElement>(null);
 
-  const toutes: Suggestion[] = useMemo(() => {
-    const a: Suggestion[] = localites.map((l) => ({
-      id: l.id,
-      nom: l.nom,
-      type: "localite" as const,
-      norme: normaliser(l.nom),
-    }));
-    const b: Suggestion[] = lieuxSpeciaux.map((l) => ({
-      id: l.id,
-      nom: l.nom,
-      type: "special" as const,
-      norme: normaliser(l.nom),
-    }));
-    return [...a, ...b].sort((x, y) => x.norme.localeCompare(y.norme));
-  }, [localites, lieuxSpeciaux]);
+  const toutes: Suggestion[] = useMemo(
+    () =>
+      lieuxSpeciaux
+        .map((l) => ({ id: l.id, nom: l.nom, norme: normaliser(l.nom) }))
+        .sort((x, y) => x.norme.localeCompare(y.norme)),
+    [lieuxSpeciaux],
+  );
 
   const requete = normaliser(texte);
   const selectionValide = value != null && value.nom === texte;
@@ -80,7 +72,7 @@ export function LocalitePicker({ localites, lieuxSpeciaux, value, onChange }: Pr
     setTexte(s.nom);
     setOuverte(false);
     setActif(0);
-    onChange({ type: s.type, id: s.id, nom: s.nom });
+    onChange({ id: s.id, nom: s.nom });
   };
 
   const majTexte = (v: string) => {
@@ -88,7 +80,7 @@ export function LocalitePicker({ localites, lieuxSpeciaux, value, onChange }: Pr
     setOuverte(true);
     setActif(0);
     // Toute frappe qui ne correspond plus exactement à la sélection l'annule :
-    // on ne peut valider la commande qu'avec une entrée de la liste.
+    // on ne peut valider qu'avec une entrée de la liste.
     if (value && value.nom !== v) onChange(null);
   };
 
@@ -124,14 +116,14 @@ export function LocalitePicker({ localites, lieuxSpeciaux, value, onChange }: Pr
           type="text"
           role="combobox"
           aria-expanded={ouverte}
-          aria-controls="localite-suggestions"
+          aria-controls="lieu-special-suggestions"
           aria-autocomplete="list"
           value={texte}
           onChange={(e) => majTexte(e.target.value)}
           onFocus={() => setOuverte(true)}
           onBlur={() => setTimeout(() => setOuverte(false), 150)}
           onKeyDown={onKeyDown}
-          placeholder="Ta localité (quartier, ville…)"
+          placeholder="Retrait, ville hors zone habituelle…"
           autoComplete="off"
           className="w-full bg-transparent py-2.5 text-sm text-ink placeholder:text-ink/35 focus:outline-none"
         />
@@ -140,12 +132,12 @@ export function LocalitePicker({ localites, lieuxSpeciaux, value, onChange }: Pr
       {ouverte && suggestions.length > 0 && (
         <ul
           ref={listeRef}
-          id="localite-suggestions"
+          id="lieu-special-suggestions"
           role="listbox"
           className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-xl border border-ink/15 bg-surface shadow-lg"
         >
           {suggestions.map((s, i) => (
-            <li key={`${s.type}-${s.id}`} role="option" aria-selected={i === actifBorne}>
+            <li key={s.id} role="option" aria-selected={i === actifBorne}>
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
@@ -156,12 +148,7 @@ export function LocalitePicker({ localites, lieuxSpeciaux, value, onChange }: Pr
                 }`}
               >
                 <MapPin size={14} className="mt-0.5 shrink-0 text-ink/40" aria-hidden="true" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">{s.nom}</span>
-                  {s.type === "special" && (
-                    <span className="text-[11px] font-medium text-brand">Cas particulier</span>
-                  )}
-                </span>
+                <span className="min-w-0 flex-1 truncate">{s.nom}</span>
               </button>
             </li>
           ))}
@@ -170,7 +157,7 @@ export function LocalitePicker({ localites, lieuxSpeciaux, value, onChange }: Pr
 
       {aucunResultat && (
         <div className="absolute left-0 right-0 top-full z-20 mt-1 flex flex-col gap-2 rounded-xl border border-ink/15 bg-surface p-3 shadow-lg">
-          <p className="text-xs text-ink/60">Cette localité n&apos;est pas encore desservie.</p>
+          <p className="text-xs text-ink/60">Ce lieu n&apos;est pas dans la liste.</p>
           <a
             href={lienLocaliteLivraison(texte.trim())}
             target="_blank"

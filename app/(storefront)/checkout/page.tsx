@@ -9,7 +9,7 @@ import { usePanierDetaille } from "@/lib/local/use-panier-detaille";
 import { useIdentite } from "@/lib/local/identite";
 import { marquerCommandeFraiche } from "@/lib/local/push-invite";
 import { useKitsPanier } from "@/lib/local/kits-panier";
-import { getLieuxSpeciaux, getLocalites } from "@/lib/supabase/queries";
+import { getLieuxSpeciaux } from "@/lib/supabase/queries";
 import { formatDateLivraison, formatPrice } from "@/lib/format";
 import {
   demarrerPaiementWave,
@@ -19,8 +19,8 @@ import {
   passerCommande,
 } from "@/lib/checkout/actions";
 import { MENTION_BENEFICIAIRE_WAVE } from "@/lib/legal";
-import { LocalitePicker, type SelectionLocalite } from "@/components/checkout/localite-picker";
-import { LocalisationInput, type ValeurLocalisation } from "@/components/checkout/localisation-input";
+import { LieuSpecialPicker, type SelectionLieuSpecial } from "@/components/checkout/localite-picker";
+import { LocalisationCarte, type ValeurLocalisation } from "@/components/checkout/localisation-carte";
 import { lienGoogleMapsDepuisCoordonnees } from "@/lib/checkout/localisation";
 import { useAjoutMode } from "@/lib/local/ajout-mode";
 import { mesurerVisite } from "@/lib/trafic/mesure-client";
@@ -29,7 +29,7 @@ import {
   useAllowNextNavigation,
   useUnsavedChanges,
 } from "@/components/ui/navigation-guard";
-import type { Localite, LieuSpecial, ModeLivraison, ModePaiement } from "@/lib/supabase/types";
+import type { LieuSpecial, ModeLivraison, ModePaiement } from "@/lib/supabase/types";
 
 // crypto.randomUUID() exige un contexte sécurisé (HTTPS/localhost) : absent
 // en HTTP simple sur une IP réseau (cas de test courant sur mobile), ce qui
@@ -63,9 +63,12 @@ export default function CheckoutPage() {
   // permet au serveur de reconnaître un clic double ou une requête retentée
   // et de renvoyer la même commande au lieu d'en créer une deuxième.
   const [reference] = useState(genererReference);
-  const [localites, setLocalites] = useState<Localite[]>([]);
   const [lieuxSpeciaux, setLieuxSpeciaux] = useState<LieuSpecial[]>([]);
-  const [selectionLocalite, setSelectionLocalite] = useState<SelectionLocalite | null>(null);
+  // Alternative "je ne me fais pas livrer à domicile" (PROMPT_CLIENT_
+  // LOCALISATION.md Lot 1) : repliée par défaut, la localité "normale" est
+  // désormais déterminée depuis le point de livraison, pas choisie ici.
+  const [lieuSpecialOuvert, setLieuSpecialOuvert] = useState(false);
+  const [selectionLieuSpecial, setSelectionLieuSpecial] = useState<SelectionLieuSpecial>(null);
   // Pré-remplis depuis l'identité mémorisée (onboarding / commande passée) tant
   // que l'utilisateur n'a rien saisi ; sa frappe (même vide) prend le dessus.
   const [nomSaisi, setNomSaisi] = useState<string | null>(null);
@@ -92,9 +95,15 @@ export default function CheckoutPage() {
   const [suggestionAjout, setSuggestionAjout] = useState<{ commandeId: number; jeton: string } | null>(null);
   const [suggestionRejetee, setSuggestionRejetee] = useState(false);
 
-  // Obligatoire (PROMPT_CLIENT_V2 Lot 2) : remplace le champ libre "Comment
-  // trouver ta porte" — position GPS ou lien Google Maps collé.
-  const [localisation, setLocalisation] = useState<ValeurLocalisation>({ lat: null, lng: null, lien: null });
+  // Obligatoire (PROMPT_CLIENT_LOCALISATION.md Lot 1) : détermine la localité
+  // et les frais côté serveur — remplace le choix manuel de localité et le
+  // champ libre "Comment trouver ta porte".
+  const [localisation, setLocalisation] = useState<ValeurLocalisation>({
+    lat: null,
+    lng: null,
+    lien: null,
+    source: null,
+  });
 
   // Le checkout contient un travail non enregistré dès que l'utilisateur a
   // saisi/choisi quelque chose (CONFIRMATION_RETOUR.md). Repasse à false à la
@@ -104,7 +113,6 @@ export default function CheckoutPage() {
   const autoriserProchaineNavigation = useAllowNextNavigation();
 
   useEffect(() => {
-    getLocalites().then(setLocalites);
     getLieuxSpeciaux().then(setLieuxSpeciaux);
   }, []);
 
@@ -167,29 +175,24 @@ export default function CheckoutPage() {
       setLocalisation((actuel) =>
         actuel.lien
           ? actuel
-          : { lat: pos.lat, lng: pos.lng, lien: lienGoogleMapsDepuisCoordonnees(pos.lat, pos.lng) },
+          : {
+              lat: pos.lat,
+              lng: pos.lng,
+              lien: lienGoogleMapsDepuisCoordonnees(pos.lat, pos.lng),
+              source: "position",
+            },
       );
     });
-    // Localité choisie dans Préférences (§C.6) : appliquée seulement si rien
+    // Lieu spécial choisi dans Préférences (§C.6) : appliqué seulement si rien
     // n'est déjà sélectionné (une saisie de l'utilisateur reste prioritaire).
+    // La localité "normale" par défaut n'existe plus — elle vient toujours du
+    // point de livraison (PROMPT_CLIENT_LOCALISATION.md Lot 2).
     getLivraisonDefaut(numero, jeton).then((defaut) => {
-      if (!defaut) return;
-      setSelectionLocalite((actuel) => {
-        if (actuel) return actuel;
-        if (defaut.localite) return { type: "localite", id: defaut.localite.id, nom: defaut.localite.nom };
-        if (defaut.lieuSpecial) return { type: "special", id: defaut.lieuSpecial.id, nom: defaut.lieuSpecial.nom };
-        return actuel;
-      });
+      if (!defaut?.lieuSpecial) return;
+      setSelectionLieuSpecial((actuel) => actuel ?? { id: defaut.lieuSpecial!.id, nom: defaut.lieuSpecial!.nom });
+      setLieuSpecialOuvert(true);
     });
   }, [telephone, identite]);
-
-  // Libellé de la localité actuellement saisie/choisie (déterminant côté
-  // serveur pour le tarif, jamais fait confiance côté client) — vide tant que
-  // rien n'a été tapé.
-  const localiteTexteCourant = selectionLocalite?.nom ?? "";
-  const localiteKey = selectionLocalite
-    ? `${selectionLocalite.type}:${selectionLocalite.id}`
-    : "";
 
   // Règle du seuil ET tarif de livraison recalculés côté serveur (INTEGRATION_WAVE.md,
   // W2 + IMPLEMENTATION_TARIFS_LIVRAISON.md §6). Signature stable du panier +
@@ -213,10 +216,15 @@ export default function CheckoutPage() {
   const panierSignature = detail
     .map((d) => `${d.produit.id}:${d.variante?.id ?? 0}x${d.quantite}`)
     .join(",");
-  const sig = `${panierSignature}|${localiteKey}|${modeLivraison}`;
+  const localisationKey = selectionLieuSpecial
+    ? `special:${selectionLieuSpecial.id}`
+    : localisation.lat != null && localisation.lng != null
+      ? `${localisation.lat.toFixed(5)},${localisation.lng.toFixed(5)}`
+      : "";
+  const sig = `${panierSignature}|${localisationKey}|${modeLivraison}`;
 
   useEffect(() => {
-    if (!localiteTexteCourant || detail.length === 0) return;
+    if (!localisationKey || detail.length === 0) return;
     let annule = false;
     getOptionsPaiement(
       detail.map((d) => ({
@@ -226,9 +234,9 @@ export default function CheckoutPage() {
       })),
       {
         modeLivraison,
-        localiteId: selectionLocalite?.type === "localite" ? selectionLocalite.id : null,
-        lieuSpecialId: selectionLocalite?.type === "special" ? selectionLocalite.id : null,
-        localiteTexte: localiteTexteCourant,
+        lieuSpecialId: selectionLieuSpecial?.id ?? null,
+        lat: selectionLieuSpecial ? null : localisation.lat,
+        lng: selectionLieuSpecial ? null : localisation.lng,
       },
     ).then((r) => {
       if (annule || !r.ok) return;
@@ -252,7 +260,7 @@ export default function CheckoutPage() {
       annule = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panierSignature, localiteKey, modeLivraison]);
+  }, [panierSignature, localisationKey, modeLivraison]);
 
   // Le serveur fait autorité sur les modes de paiement proposés (règle du seuil,
   // Wave branché ou non) et sur le tarif. Tant qu'il n'a pas répondu : « à la
@@ -270,11 +278,7 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!selectionLocalite) {
-      setError("Choisis ta localité dans la liste.");
-      return;
-    }
-    if (!localisation.lien) {
+    if (localisation.lat == null || localisation.lng == null || !localisation.lien) {
       setError("Indique ta position de livraison (position actuelle ou lien Google Maps).");
       return;
     }
@@ -294,12 +298,11 @@ export default function CheckoutPage() {
     const commandeInput = {
       nom,
       telephone,
-      localiteId: selectionLocalite?.type === "localite" ? selectionLocalite.id : null,
-      lieuSpecialId: selectionLocalite?.type === "special" ? selectionLocalite.id : null,
-      localiteTexte: localiteTexteCourant,
+      lieuSpecialId: selectionLieuSpecial?.id ?? null,
       lat: localisation.lat,
       lng: localisation.lng,
       lienLocalisation: localisation.lien,
+      source: localisation.source,
       modeLivraison,
       consentementAppel,
       reference,
@@ -442,40 +445,66 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5 text-sm">
-          <span className="text-xs font-medium text-ink/60">Ta localité</span>
-          <LocalitePicker
-            localites={localites}
-            lieuxSpeciaux={lieuxSpeciaux}
-            value={selectionLocalite}
-            onChange={(v) => {
-              setSelectionLocalite(v);
-              setModifie(true);
-            }}
-          />
-          {opts && (
-            <p className="rounded-xl bg-brand/5 px-3 py-2 text-xs text-ink/75">
-              Livraison vers <span className="font-semibold text-ink">{opts.localiteNom}</span>
-              {" — "}
-              <span className="font-semibold text-ink">
-                {opts.aConfirmer
-                  ? "tarif à confirmer"
-                  : opts.fraisLivraison === 0
-                    ? "livraison gratuite"
-                    : formatPrice(opts.fraisLivraison)}
-              </span>
-              {opts.aConfirmer && " . On te contactera pour convenir du tarif après ta commande."}
-            </p>
-          )}
-        </div>
-
-        <LocalisationInput
+        <LocalisationCarte
           value={localisation}
           onChange={(v) => {
             setLocalisation(v);
             setModifie(true);
           }}
         />
+
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span className="text-xs font-medium text-ink/60">Localité</span>
+          {opts ? (
+            <p className="rounded-xl bg-brand/5 px-3 py-2 text-xs text-ink/75">
+              Localité : <span className="font-semibold text-ink">{opts.localiteNom}</span>
+              {" · "}
+              <span className="font-semibold text-ink">
+                {opts.aConfirmer
+                  ? "livraison à confirmer"
+                  : opts.fraisLivraison === 0
+                    ? "livraison gratuite"
+                    : `Livraison ${formatPrice(opts.fraisLivraison)}`}
+              </span>
+              {opts.aConfirmer &&
+                (selectionLieuSpecial
+                  ? " . On te contactera pour convenir du tarif après ta commande."
+                  : " . Livraison hors zone habituelle : les frais seront confirmés par téléphone.")}
+            </p>
+          ) : (
+            <p className="rounded-xl bg-ink/5 px-3 py-2 text-xs text-ink/50">
+              Indique ta localisation pour calculer la livraison.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 text-sm">
+          <button
+            type="button"
+            onClick={() => {
+              setLieuSpecialOuvert((v) => !v);
+              // Revenir à la livraison à domicile doit vraiment repartir du
+              // point de livraison, pas garder un lieu spécial choisi puis
+              // "oublié" ouvert (il pilotait silencieusement la localité).
+              if (lieuSpecialOuvert) setSelectionLieuSpecial(null);
+            }}
+            className="w-fit text-xs font-medium text-brand underline-offset-2 hover:underline"
+          >
+            {lieuSpecialOuvert
+              ? "Me faire livrer à domicile plutôt"
+              : "Retrait ou destination spéciale (hors domicile) →"}
+          </button>
+          {lieuSpecialOuvert && (
+            <LieuSpecialPicker
+              lieuxSpeciaux={lieuxSpeciaux}
+              value={selectionLieuSpecial}
+              onChange={(v) => {
+                setSelectionLieuSpecial(v);
+                setModifie(true);
+              }}
+            />
+          )}
+        </div>
       </section>
 
       {opts?.messageLivraison ? (
@@ -671,7 +700,8 @@ export default function CheckoutPage() {
           type="submit"
           disabled={
             submitting ||
-            !selectionLocalite ||
+            localisation.lat == null ||
+            localisation.lng == null ||
             !localisation.lien ||
             (modePaiementEffectif === "livraison" && !consentementAppel)
           }

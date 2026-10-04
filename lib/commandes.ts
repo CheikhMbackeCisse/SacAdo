@@ -41,3 +41,11 @@ export const LIBELLES_STATUT_PAIEMENT: Record<StatutPaiement, string> = {
   echoue: "Échouée",
   annulee: "Annulée",
 };
+
+// Comment le point de livraison a été obtenu (PROMPT_CLIENT_LOCALISATION.md
+// Lot 2, migration 0115) — affiché sur la fiche commande admin.
+export const LIBELLES_SOURCE_LOCALISATION: Record<"position" | "lien" | "deplace", string> = {
+  position: "position GPS",
+  lien: "lien Google Maps",
+  deplace: "point déplacé sur la carte",
+};

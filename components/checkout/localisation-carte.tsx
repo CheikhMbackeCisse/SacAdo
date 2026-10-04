@@ -1,19 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, LocateFixed, Loader2, MapPin } from "lucide-react";
+import { LocateFixed, Loader2, MapPin } from "lucide-react";
 import { lienGoogleMapsDepuisCoordonnees } from "@/lib/checkout/localisation";
 import { resoudreLienLocalisation } from "@/lib/checkout/localisation-actions";
+import { CartePin, type Coordonnees } from "@/components/checkout/carte-pin";
+
+export type SourceLocalisation = "position" | "lien" | "deplace" | null;
 
 export type ValeurLocalisation = {
   lat: number | null;
   lng: number | null;
   lien: string | null;
+  // Comment le point a été obtenu — PROMPT_CLIENT_LOCALISATION.md Lot 2,
+  // traçabilité posée sur la commande (purement descriptif).
+  source: SourceLocalisation;
 };
 
-// Bloc "Localisation" du checkout (PROMPT_CLIENT_V2 Lot 2) : position GPS ou
-// lien Google Maps collé — remplace le champ libre "Comment trouver ta porte".
-export function LocalisationInput({
+// Bloc "Localisation" du checkout (PROMPT_CLIENT_LOCALISATION.md Lot 1) :
+// position GPS, lien Google Maps collé, ou point déplacé/cliqué directement
+// sur la petite carte — les trois méthodes alimentent le même point, qui
+// détermine ensuite la localité et les frais côté serveur.
+export function LocalisationCarte({
   value,
   onChange,
 }: {
@@ -40,7 +48,7 @@ export function LocalisationInput({
         const lien = lienGoogleMapsDepuisCoordonnees(lat, lng);
         setTexteLien(lien);
         setErreurLien(null);
-        onChange({ lat, lng, lien });
+        onChange({ lat, lng, lien, source: "position" });
       },
       () => setGeoloc("refus"),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
@@ -50,11 +58,12 @@ export function LocalisationInput({
   const validerLien = async () => {
     const saisie = texteLien.trim();
     if (!saisie) {
-      onChange({ lat: null, lng: null, lien: null });
+      onChange({ lat: null, lng: null, lien: null, source: null });
       setErreurLien(null);
       return;
     }
-    // Déjà validé tel quel (ex. reconstruit depuis la géoloc) : rien à refaire.
+    // Déjà validé tel quel (ex. reconstruit depuis la géoloc ou la carte) :
+    // rien à refaire.
     if (saisie === value.lien) return;
 
     setResolution("chargement");
@@ -67,11 +76,28 @@ export function LocalisationInput({
         return;
       }
       setResolution("idle");
-      onChange({ lat: r.lat, lng: r.lng, lien: r.lien });
+      if (r.lat == null || r.lng == null) {
+        // Lien accepté (gardé pour l'admin) mais sans coordonnées exploitables :
+        // on guide vers les deux autres méthodes plutôt que de laisser un point
+        // fantôme (PROMPT_CLIENT_LOCALISATION.md Lot 2).
+        setErreurLien("Lien non reconnu. Utilise le bouton « Ma position » ou déplace le point sur la carte.");
+        return;
+      }
+      onChange({ lat: r.lat, lng: r.lng, lien: r.lien, source: "lien" });
     } catch {
       setResolution("erreur");
       setErreurLien("La connexion a été interrompue. Réessaie.");
     }
+  };
+
+  const positionCarte: Coordonnees | null =
+    value.lat != null && value.lng != null ? { lat: value.lat, lng: value.lng } : null;
+
+  const deplacerSurCarte = (pos: Coordonnees) => {
+    const lien = lienGoogleMapsDepuisCoordonnees(pos.lat, pos.lng);
+    setTexteLien(lien);
+    setErreurLien(null);
+    onChange({ lat: pos.lat, lng: pos.lng, lien, source: "deplace" });
   };
 
   return (
@@ -96,32 +122,15 @@ export function LocalisationInput({
           {geoloc === "chargement" ? "Localisation…" : "Utiliser ma position actuelle"}
         </button>
 
-        {value.lat != null && value.lng != null && (
-          <p className="flex items-center gap-1.5 text-xs text-ink/60">
-            Position enregistrée
-            {value.lien && (
-              <a
-                href={value.lien}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-medium text-brand"
-              >
-                Voir sur la carte
-                <ExternalLink size={11} aria-hidden="true" />
-              </a>
-            )}
-          </p>
-        )}
-
         {geoloc === "refus" && (
           <p className="text-xs text-ink/60">
-            Position refusée. Colle ton lien Google Maps ci-dessous à la place.
+            Position refusée. Colle ton lien Google Maps ci-dessous, ou place le point à la main sur la carte.
           </p>
         )}
         {geoloc === "indispo" && (
           <p className="text-xs text-ink/60">
             La localisation n&apos;est pas disponible sur cet appareil. Colle ton lien Google Maps
-            ci-dessous à la place.
+            ci-dessous, ou place le point à la main sur la carte.
           </p>
         )}
       </div>
@@ -157,6 +166,13 @@ export function LocalisationInput({
         </p>
       )}
       {erreurLien && <p className="text-[11px] text-red-600">{erreurLien}</p>}
+
+      <CartePin position={positionCarte} onChange={deplacerSurCarte} />
+      <p className="text-[11px] text-ink/45">
+        {positionCarte
+          ? "Ajuste l'épingle si elle n'est pas au bon endroit."
+          : "Tu peux aussi placer l'épingle directement sur la carte."}
+      </p>
     </section>
   );
 }

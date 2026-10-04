@@ -72,7 +72,8 @@ export async function getRecapComptabilite(periode: Periode): Promise<RecapCompt
 
   const { data: commandesRows } = await supabaseAdmin
     .from("commandes")
-    .select("id, statut, statut_paiement, mode_paiement, total, date");
+    .select("id, statut, statut_paiement, mode_paiement, total, date")
+    .eq("est_test", false);
   const commandes = (commandesRows ?? []) as CommandeAllegee[];
 
   const encaissees = commandes.filter(estEncaissee);
@@ -195,7 +196,8 @@ export async function reverserVendeur(vendeurId: string): Promise<ActionResult> 
 
   const { data: commandesRows } = await supabaseAdmin
     .from("commandes")
-    .select("id, statut, statut_paiement, mode_paiement");
+    .select("id, statut, statut_paiement, mode_paiement")
+    .eq("est_test", false);
   const idsEncaissees = ((commandesRows ?? []) as Pick<Commande, "id" | "statut" | "statut_paiement" | "mode_paiement">[])
     .filter(estEncaissee)
     .map((c) => c.id);
@@ -298,7 +300,8 @@ export async function getBenefice(debut: string, fin: string): Promise<Benefice>
 
   const { data: commandesRows } = await supabaseAdmin
     .from("commandes")
-    .select("id, statut, statut_paiement, mode_paiement, total, date");
+    .select("id, statut, statut_paiement, mode_paiement, total, date")
+    .eq("est_test", false);
   const commandes = (commandesRows ?? []) as CommandeAllegee[];
   const encaissees = commandes.filter((c) => estEncaissee(c) && dansPeriode(c.date));
   const encaissements = encaissees.reduce((s, c) => s + c.total, 0);

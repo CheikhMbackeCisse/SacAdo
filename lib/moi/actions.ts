@@ -43,6 +43,7 @@ export async function getCommandesParTelephone(
     .from("commandes")
     .select("*")
     .eq("client_id", clientId)
+    .eq("est_test", false)
     .order("date", { ascending: false });
   if (error) return [];
   return data ?? [];

@@ -55,6 +55,9 @@ function mapCommandeRow(
     date_livraison_prevue: row.date_livraison_prevue,
     appel_tentatives: row.appel_tentatives,
     appel_dernier_essai_le: row.appel_dernier_essai_le,
+    est_test: row.est_test,
+    source_localisation: row.source_localisation,
+    distance_localite_km: row.distance_localite_km,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
     facture_id: facture?.id ?? null,
@@ -72,7 +75,8 @@ export async function getCommandesAdmin(
     offset = 0,
     limit = TAILLE_PAGE_COMMANDES,
     dateLivraison,
-  }: { offset?: number; limit?: number; dateLivraison?: string } = {},
+    test = false,
+  }: { offset?: number; limit?: number; dateLivraison?: string; test?: boolean } = {},
 ): Promise<{ items: CommandeAvecClient[]; hasMore: boolean }> {
   await requireAdmin();
 
@@ -85,6 +89,9 @@ export async function getCommandesAdmin(
   // Filtre "préparer la tournée" (maj-accueil §7) : une date précise pour les
   // commandes à date donnée.
   if (dateLivraison) query = query.eq("date_livraison_prevue", dateLivraison);
+  // Filtre "Commandes de test" (PROMPT_ADMIN_COMPTA_LOCALITES.md Lot 1) : vue
+  // normale = commandes réelles uniquement ; vue dédiée = uniquement les tests.
+  query = query.eq("est_test", test);
 
   const { data, error } = await query;
   if (error) return { items: [], hasMore: false };
@@ -196,8 +203,18 @@ export async function compterCommandesRecues(): Promise<number> {
   const { count, error } = await supabaseAdmin
     .from("commandes")
     .select("id", { count: "exact", head: true })
-    .eq("statut", "recue");
+    .eq("statut", "recue")
+    .eq("est_test", false);
   return error ? 0 : (count ?? 0);
+}
+
+// Bascule manuelle du marqueur "test" (PROMPT_ADMIN_COMPTA_LOCALITES.md Lot 1
+// §5) : pour qu'un futur test ne fausse plus la comptabilité ni les stats.
+export async function basculerCommandeTest(id: number, estTest: boolean): Promise<ActionResult> {
+  await requireAdmin();
+  const { error } = await supabaseAdmin.from("commandes").update({ est_test: estTest }).eq("id", id);
+  if (error) return { ok: false, error: "Impossible de changer le statut de test." };
+  return { ok: true };
 }
 
 // Action groupée : passe une sélection de commandes au même statut en un

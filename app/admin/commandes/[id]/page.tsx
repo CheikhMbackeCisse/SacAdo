@@ -11,9 +11,10 @@ import {
 import { getBlocWhatsApp } from "@/lib/admin/whatsapp-actions";
 import { Download, ExternalLink } from "lucide-react";
 import { formatDateLivraison, formatPrice } from "@/lib/format";
-import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
+import { LIBELLES_SOURCE_LOCALISATION, LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
 import { numeroFacture } from "@/lib/factures/config";
 import { StatutSelect } from "@/components/admin/statut-select";
+import { CommandeTestToggle } from "@/components/admin/commande-test-toggle";
 import { ConfirmationAppel } from "@/components/admin/confirmation-appel";
 import { BlocWhatsAppFiche } from "@/components/admin/bloc-whatsapp";
 import { CommandeLocalisation } from "@/components/checkout/commande-localisation";
@@ -244,9 +245,12 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
         ← Toutes les commandes
       </Link>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="font-heading text-xl font-bold text-ink">Commande #{commande.id}</h1>
-        <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
+        <div className="flex items-center gap-2">
+          <CommandeTestToggle commandeId={commande.id} estTest={commande.est_test} />
+          <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
+        </div>
       </div>
 
       {commande.statut === "a_confirmer_appel" && (
@@ -278,6 +282,14 @@ export default async function AdminCommandeDetailPage(props: PageProps<"/admin/c
                   : "datée"}
             {commande.localite_nom && ` — ${commande.localite_nom}`}
           </p>
+          {(commande.source_localisation || commande.distance_localite_km != null) && (
+            <p className="text-xs text-ink/45">
+              {commande.source_localisation && LIBELLES_SOURCE_LOCALISATION[commande.source_localisation]}
+              {commande.source_localisation && commande.distance_localite_km != null && " · "}
+              {commande.distance_localite_km != null &&
+                `${commande.distance_localite_km.toFixed(1)} km du centre de la localité`}
+            </p>
+          )}
           {commande.message_livraison && (
             <p className="mt-1 text-xs text-ink/60">
               Message affiché au client : « {commande.message_livraison} »

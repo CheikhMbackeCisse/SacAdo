@@ -17,6 +17,7 @@ import {
 } from "@/lib/parametres";
 import { calculerDateLivraison } from "@/lib/checkout/date-livraison";
 import { coordonneesValides } from "@/lib/checkout/localisation";
+import { distanceKm, pointDansPolygone } from "@/lib/geo";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { notifierPushAdminNouvelleCommande } from "@/lib/admin/notifier-commande";
@@ -29,7 +30,6 @@ import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/
 const TELEPHONE_REGEX = /^[0-9+\s.-]{6,20}$/;
 const NOM_MAX = 100;
 const PRECISION_LIVREUR_MAX = 300;
-const LOCALITE_TEXTE_MAX = 150;
 const LIGNES_MAX = 50;
 const QUANTITE_MAX = 999;
 // Même borne que le champ de la fiche produit (migration 0111).
@@ -38,25 +38,28 @@ const PERSONNALISATION_MAX = 30;
 export type CheckoutInput = {
   nom: string;
   telephone: string;
-  // Localité choisie dans le sélecteur dédié (IMPLEMENTATION_TARIFS_LIVRAISON.md) :
-  // détermine le tarif. `localiteId`/`lieuSpecialId` sont mutuellement exclusifs ;
-  // si aucun des deux ne correspond (saisie libre non reconnue), `localiteTexte`
-  // sert de libellé et le tarif reste "à confirmer" — la commande n'est pas bloquée.
-  localiteId: number | null;
+  // Lieu spécial choisi explicitement (retrait, ville hors zone habituelle à
+  // confirmer…) : reste le seul choix manuel de destination. Si absent, la
+  // localité est déterminée côté serveur à partir du point de livraison
+  // (lat/lng ci-dessous) — jamais envoyée par le client (PROMPT_CLIENT_
+  // LOCALISATION.md Lot 2).
   lieuSpecialId: number | null;
-  localiteTexte: string;
-  // Point de livraison, jamais utilisé pour le tarif (la localité s'en charge) :
-  // coordonnées GPS si le client a autorisé la position, sinon celles extraites
-  // du lien Google Maps collé (lienLocalisation) — peuvent être null si cette
-  // extraction a échoué (lien gardé quand même, voir resoudreLienLocalisation).
+  // Point de livraison : coordonnées GPS si le client a autorisé la position,
+  // celles extraites du lien Google Maps collé, ou celles du point déplacé/
+  // cliqué à la main sur la carte. Détermine la localité ET les frais côté
+  // serveur (resoudreLocaliteDepuisPoint ci-dessous) — jamais fait confiance
+  // sur une valeur de localité/frais envoyée par le client.
   lat: number | null;
   lng: number | null;
-  // Obligatoire (PROMPT_CLIENT_V2 Lot 2) : lien Google Maps, collé par le
-  // client ou reconstruit depuis sa position GPS — remplace le champ libre
-  // « Comment trouver ta porte ». Ouvert en un toucher par l'admin/le livreur.
+  // Obligatoire : lien Google Maps, collé par le client ou reconstruit depuis
+  // sa position GPS/le point déplacé — remplace le champ libre "Comment
+  // trouver ta porte". Ouvert en un toucher par l'admin/le livreur.
   lienLocalisation: string | null;
-  // Champ libre historique : plus proposé au checkout depuis le Lot 2
-  // ci-dessus, gardé en lecture pour les anciennes commandes uniquement.
+  // Comment le point a été obtenu — purement descriptif (fiche commande
+  // admin), jamais utilisé pour une décision métier.
+  source: "position" | "lien" | "deplace" | null;
+  // Champ libre historique : plus proposé au checkout depuis PROMPT_CLIENT_V2
+  // Lot 2, gardé en lecture pour les anciennes commandes uniquement.
   precisionLivreur?: string | null;
   modeLivraison: ModeLivraison;
   // Case à cocher obligatoire côté checkout pour un paiement à la livraison
@@ -167,6 +170,9 @@ type CommandeResolue = {
   aConfirmer: boolean;
   // Message de la destination qui remplace le délai « 24h / 6j » (0054).
   messageLivraison: string | null;
+  // Distance (km) entre le point de livraison et le point de référence de la
+  // localité retenue. NULL si lieu spécial ou hors couverture.
+  distanceLocaliteKm: number | null;
   lignesResolues: LigneResolue[];
   sousTotal: number;
   fraisLivraison: number;
@@ -187,15 +193,62 @@ type ResolutionLivraison = {
   fraisLivraison6j: number;
   aConfirmer: boolean;
   messageLivraison: string | null;
+  distanceLocaliteKm: number | null;
 };
 
-// Tarif recalculé EN BASE à partir de l'id envoyé (jamais du libellé ou du
-// montant que le client pourrait forger) — IMPLEMENTATION_TARIFS_LIVRAISON.md §6.
+type LocaliteGeo = {
+  id: number;
+  nom: string;
+  groupe_id: number;
+  lat: number;
+  lng: number;
+  rayon_km: number;
+  zone_polygone: [number, number][] | null;
+};
+
+// Localité = celle dont la zone dessinée contient le point (prioritaire), sinon
+// la plus proche du point de référence parmi celles dont le point tombe dans
+// son rayon de couverture (PROMPT_CLIENT_LOCALISATION.md Lot 2, localités
+// géolocalisées par PROMPT_ADMIN_COMPTA_LOCALITES.md Lot 2). null = hors
+// couverture (aucune localité assez proche, aucune zone ne contient le point).
+async function resoudreLocaliteDepuisPoint(
+  lat: number,
+  lng: number,
+): Promise<{ localite: LocaliteGeo; distanceKm: number } | null> {
+  const { data } = await supabaseAdmin
+    .from("localites")
+    .select("id, nom, groupe_id, lat, lng, rayon_km, zone_polygone")
+    .not("lat", "is", null)
+    .not("lng", "is", null);
+  const localites = (data ?? []) as LocaliteGeo[];
+  if (localites.length === 0) return null;
+
+  for (const l of localites) {
+    if (l.zone_polygone && l.zone_polygone.length >= 3 && pointDansPolygone(lat, lng, l.zone_polygone)) {
+      return { localite: l, distanceKm: distanceKm(lat, lng, l.lat, l.lng) };
+    }
+  }
+
+  let meilleure: LocaliteGeo | null = null;
+  let meilleureDistance = Infinity;
+  for (const l of localites) {
+    const d = distanceKm(lat, lng, l.lat, l.lng);
+    if (d <= l.rayon_km && d < meilleureDistance) {
+      meilleure = l;
+      meilleureDistance = d;
+    }
+  }
+  return meilleure ? { localite: meilleure, distanceKm: meilleureDistance } : null;
+}
+
+// Tarif recalculé EN BASE à partir du point de livraison (jamais du libellé ou
+// du montant que le client pourrait forger) — IMPLEMENTATION_TARIFS_LIVRAISON.md
+// §6 et PROMPT_CLIENT_LOCALISATION.md Lot 2.
 async function resoudreLivraison(params: {
   modeLivraison: ModeLivraison;
-  localiteId: number | null;
   lieuSpecialId: number | null;
-  localiteTexte: string;
+  lat: number | null;
+  lng: number | null;
 }): Promise<{ ok: true; data: ResolutionLivraison } | { ok: false; error: string }> {
   if (params.lieuSpecialId != null) {
     const { data: lieu, error } = await supabaseAdmin
@@ -219,55 +272,56 @@ async function resoudreLivraison(params: {
         fraisLivraison6j: tarif,
         aConfirmer: lieu.mode === "a_confirmer",
         messageLivraison: lieu.message ?? null,
+        distanceLocaliteKm: null,
       },
     };
   }
 
-  if (params.localiteId != null) {
-    const { data: localite, error } = await supabaseAdmin
-      .from("localites")
-      .select("*, groupe:zones(*)")
-      .eq("id", params.localiteId)
-      .maybeSingle();
-    if (error) return { ok: false, error: "Une erreur est survenue, réessaie." };
-    type LocaliteJointe = { id: number; nom: string; groupe: Zone | Zone[] | null };
-    const row = localite as unknown as LocaliteJointe | null;
-    const groupe = row ? (Array.isArray(row.groupe) ? row.groupe[0] : row.groupe) : null;
-    if (!row || !groupe) {
-      return { ok: false, error: "Cette localité n'est plus disponible, choisis-en une autre." };
-    }
+  if (params.lat == null || params.lng == null || !coordonneesValides(params.lat, params.lng)) {
+    return { ok: false, error: "Indique ta position de livraison (position actuelle ou lien Google Maps)." };
+  }
+
+  const trouvee = await resoudreLocaliteDepuisPoint(params.lat, params.lng);
+  if (!trouvee) {
+    // Hors couverture : on ne bloque pas la commande, l'admin confirme le
+    // tarif ensuite par téléphone (PROMPT_CLIENT_LOCALISATION.md Lot 2).
     return {
       ok: true,
       data: {
-        zoneId: groupe.id,
-        localiteId: row.id,
+        zoneId: null,
+        localiteId: null,
         lieuSpecialId: null,
-        localiteNom: row.nom,
-        fraisLivraison: params.modeLivraison === "24h" ? groupe.tarif_24h : groupe.tarif_6j,
-        fraisLivraison24h: groupe.tarif_24h,
-        fraisLivraison6j: groupe.tarif_6j,
-        aConfirmer: false,
-        messageLivraison: groupe.message_special ?? null,
+        localiteNom: "Livraison hors zone habituelle",
+        fraisLivraison: 0,
+        fraisLivraison24h: 0,
+        fraisLivraison6j: 0,
+        aConfirmer: true,
+        messageLivraison: null,
+        distanceLocaliteKm: null,
       },
     };
   }
 
-  // Rien de reconnu : saisie libre, on ne bloque pas la commande (§6) — l'admin
-  // confirme le tarif ensuite.
-  const texteLibre = params.localiteTexte.trim().slice(0, LOCALITE_TEXTE_MAX);
-  if (!texteLibre) return { ok: false, error: "Indique ta localité de livraison." };
+  const { data: groupe, error: errGroupe } = await supabaseAdmin
+    .from("zones")
+    .select("*")
+    .eq("id", trouvee.localite.groupe_id)
+    .maybeSingle<Zone>();
+  if (errGroupe || !groupe) return { ok: false, error: "Une erreur est survenue, réessaie." };
+
   return {
     ok: true,
     data: {
-      zoneId: null,
-      localiteId: null,
+      zoneId: groupe.id,
+      localiteId: trouvee.localite.id,
       lieuSpecialId: null,
-      localiteNom: texteLibre,
-      fraisLivraison: 0,
-      fraisLivraison24h: 0,
-      fraisLivraison6j: 0,
-      aConfirmer: true,
-      messageLivraison: null,
+      localiteNom: trouvee.localite.nom,
+      fraisLivraison: params.modeLivraison === "24h" ? groupe.tarif_24h : groupe.tarif_6j,
+      fraisLivraison24h: groupe.tarif_24h,
+      fraisLivraison6j: groupe.tarif_6j,
+      aConfirmer: false,
+      messageLivraison: groupe.message_special ?? null,
+      distanceLocaliteKm: trouvee.distanceKm,
     },
   };
 }
@@ -281,9 +335,9 @@ async function resoudreCommande(
   lignes: LignePanier[],
   params: {
     modeLivraison: ModeLivraison;
-    localiteId: number | null;
     lieuSpecialId: number | null;
-    localiteTexte: string;
+    lat: number | null;
+    lng: number | null;
   },
 ): Promise<{ ok: true; data: CommandeResolue } | { ok: false; error: string }> {
   const produitIds = [...new Set(lignes.map((l) => l.produitId))];
@@ -371,6 +425,7 @@ async function resoudreCommande(
       localiteNom: livraison.data.localiteNom,
       aConfirmer,
       messageLivraison: livraison.data.messageLivraison,
+      distanceLocaliteKm: livraison.data.distanceLocaliteKm,
       lignesResolues,
       sousTotal,
       fraisLivraison,
@@ -394,6 +449,21 @@ async function figerMessageLivraison(commandeId: number, message: string | null)
 async function figerLienLocalisation(commandeId: number, lien: string | null): Promise<void> {
   if (!lien) return;
   await supabaseAdmin.from("commandes").update({ lien_localisation: lien }).eq("id", commandeId);
+}
+
+// `creer_commande()` (RPC) ne connaît pas la source du point ni sa distance à
+// la localité retenue (migration 0115) : traçabilité posée juste après,
+// comme ci-dessus. Idempotent.
+async function figerSourceEtDistance(
+  commandeId: number,
+  source: CheckoutInput["source"],
+  distanceLocaliteKm: number | null,
+): Promise<void> {
+  if (!source && distanceLocaliteKm == null) return;
+  await supabaseAdmin
+    .from("commandes")
+    .update({ source_localisation: source, distance_localite_km: distanceLocaliteKm })
+    .eq("id", commandeId);
 }
 
 // Prix d'achat figé sur chaque ligne de commande (migration 0055) : base de la
@@ -463,9 +533,9 @@ export async function getOptionsPaiement(
   lignes: LignePanier[],
   params: {
     modeLivraison: ModeLivraison;
-    localiteId: number | null;
     lieuSpecialId: number | null;
-    localiteTexte: string;
+    lat: number | null;
+    lng: number | null;
   },
 ): Promise<OptionsPaiementResult> {
   if (!panierValide(lignes)) return { ok: false, error: "Panier invalide." };
@@ -499,20 +569,19 @@ function validerCheckout(input: CheckoutInput, lignes: LignePanier[]): string | 
   const nom = input.nom.trim();
   const telephone = input.telephone.trim();
   const precisionLivreur = (input.precisionLivreur ?? "").trim();
-  const localiteTexte = input.localiteTexte.trim();
   const lienLocalisation = (input.lienLocalisation ?? "").trim();
 
   if (lignes.length === 0) return "Ton panier est vide.";
   if (!nom || !telephone) return "Merci de renseigner ton nom et ton téléphone.";
-  if (!localiteTexte) return "Indique ta localité de livraison.";
-  if (localiteTexte.length > LOCALITE_TEXTE_MAX) return "Nom de localité trop long.";
-  // Obligatoire (PROMPT_CLIENT_V2 Lot 2) : position GPS ou lien Google Maps —
-  // jamais fait confiance côté client seul, revérifié ici avant la commande.
+  // Obligatoire (PROMPT_CLIENT_LOCALISATION.md Lot 1) : le point de livraison
+  // détermine la localité et les frais côté serveur — jamais fait confiance
+  // côté client seul, revérifié ici avant la commande.
+  if (input.lat == null || input.lng == null) {
+    return "Indique ta position de livraison (position actuelle ou lien Google Maps).";
+  }
+  if (!coordonneesValides(input.lat, input.lng)) return "Position invalide.";
   if (!lienLocalisation) return "Indique ta position de livraison (position actuelle ou lien Google Maps).";
   if (lienLocalisation.length > LIEN_LOCALISATION_MAX) return "Lien de localisation trop long.";
-  if (input.lat != null && input.lng != null && !coordonneesValides(input.lat, input.lng)) {
-    return "Position invalide.";
-  }
   if (nom.length > NOM_MAX || precisionLivreur.length > PRECISION_LIVREUR_MAX) {
     return "Un des champs est trop long.";
   }
@@ -644,9 +713,9 @@ export async function passerCommande(
   const [resolu, paiementLivraisonMax] = await Promise.all([
     resoudreCommande(lignes, {
       modeLivraison: input.modeLivraison,
-      localiteId: input.localiteId,
       lieuSpecialId: input.lieuSpecialId,
-      localiteTexte: input.localiteTexte,
+      lat: input.lat,
+      lng: input.lng,
     }),
     getPaiementLivraisonMax(),
   ]);
@@ -702,6 +771,7 @@ export async function passerCommande(
 
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
   await figerLienLocalisation(commandeId as number, input.lienLocalisation);
+  await figerSourceEtDistance(commandeId as number, input.source, resolu.data.distanceLocaliteKm);
   await figerDateLivraison(commandeId as number, input.modeLivraison);
   await figerPrixAchat(commandeId as number, lignesResolues);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
@@ -776,9 +846,9 @@ export async function demarrerPaiementWave(
 
   const resolu = await resoudreCommande(lignes, {
     modeLivraison: input.modeLivraison,
-    localiteId: input.localiteId,
     lieuSpecialId: input.lieuSpecialId,
-    localiteTexte: input.localiteTexte,
+    lat: input.lat,
+    lng: input.lng,
   });
   if (!resolu.ok) return { ok: false, error: resolu.error };
   const { zoneId, localiteId, lieuSpecialId, localiteNom, aConfirmer, lignesResolues, sousTotal, fraisLivraison, total } =
@@ -846,6 +916,7 @@ export async function demarrerPaiementWave(
 
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
   await figerLienLocalisation(commandeId as number, input.lienLocalisation);
+  await figerSourceEtDistance(commandeId as number, input.source, resolu.data.distanceLocaliteKm);
   await figerDateLivraison(commandeId as number, input.modeLivraison);
   await figerPrixAchat(commandeId as number, lignesResolues);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);

@@ -39,6 +39,20 @@ test("extraireCoordonneesDepuisUrl : paramètre q=", () => {
   assert.deepEqual(extraireCoordonneesDepuisUrl(url), { lat: 14.7167, lng: -17.4677 });
 });
 
+test("extraireCoordonneesDepuisUrl : fiche lieu, pattern !3d…!4d…", () => {
+  const url = new URL(
+    "https://www.google.com/maps/place/Un+lieu/@14.70,-17.40,15z/data=!4m5!3m4!1s0x0:0x0!8m2!3d14.7167!4d-17.4677",
+  );
+  assert.deepEqual(extraireCoordonneesDepuisUrl(url), { lat: 14.7167, lng: -17.4677 });
+});
+
+test("extraireCoordonneesDepuisUrl : !3d…!4d… prioritaire sur @lat,lng (centre de vue imprécis)", () => {
+  const url = new URL(
+    "https://www.google.com/maps/place/Un+lieu/@14.0,-17.0,15z/data=!3d14.7167!4d-17.4677",
+  );
+  assert.deepEqual(extraireCoordonneesDepuisUrl(url), { lat: 14.7167, lng: -17.4677 });
+});
+
 test("extraireCoordonneesDepuisUrl : lien court sans coordonnées -> null", () => {
   const url = new URL("https://maps.app.goo.gl/abcd1234");
   assert.equal(extraireCoordonneesDepuisUrl(url), null);

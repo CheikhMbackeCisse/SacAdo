@@ -80,12 +80,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select("total")
       .gte("date", debutJournee())
       .neq("statut", STATUT_EN_ATTENTE_PAIEMENT)
-      .neq("statut", "annulee"),
+      .neq("statut", "annulee")
+      .eq("est_test", false),
     supabaseAdmin
       .from("commande_items")
-      .select("quantite, produit:produits(nom), commande:commandes!inner(statut)")
+      .select("quantite, produit:produits(nom), commande:commandes!inner(statut, est_test)")
       .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT)
-      .neq("commande.statut", "annulee"),
+      .neq("commande.statut", "annulee")
+      .eq("commande.est_test", false),
     supabaseAdmin.from("produits").select("*"),
     compterPreparationsPretes(),
     compterProduitsEnModeration(),
@@ -130,9 +132,10 @@ export async function getArticlesVendus(): Promise<VenteAgregee[]> {
 
   const { data: items } = await supabaseAdmin
     .from("commande_items")
-    .select("produit_id, quantite, produit:produits(nom), commande:commandes!inner(statut)")
+    .select("produit_id, quantite, produit:produits(nom), commande:commandes!inner(statut, est_test)")
     .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT)
-    .neq("commande.statut", "annulee");
+    .neq("commande.statut", "annulee")
+    .eq("commande.est_test", false);
 
   type Row = { produit_id: number; quantite: number; produit: { nom: string } | { nom: string }[] | null };
   const parProduit = new Map<number, VenteAgregee>();

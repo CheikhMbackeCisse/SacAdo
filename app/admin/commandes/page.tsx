@@ -24,26 +24,29 @@ const STATUTS: { value: StatutCommande | "toutes"; label: string }[] = [
 const TAILLE_PAGE = 50;
 
 export default async function AdminCommandesPage(props: PageProps<"/admin/commandes">) {
-  const { statut, page: pageParam, dateLivraison: dateLivraisonParam } = await props.searchParams;
+  const { statut, page: pageParam, dateLivraison: dateLivraisonParam, test: testParam } = await props.searchParams;
   const filtre = typeof statut === "string" ? (statut as StatutCommande) : undefined;
   const dateLivraison = typeof dateLivraisonParam === "string" ? dateLivraisonParam : undefined;
+  const test = testParam === "1";
   const page = Math.max(1, Number(pageParam) || 1);
   const offset = (page - 1) * TAILLE_PAGE;
 
   const [{ items: commandes, hasMore }, nbRecues, modeleAppel] = await Promise.all([
-    getCommandesAdmin(filtre, { offset, limit: TAILLE_PAGE, dateLivraison }),
+    getCommandesAdmin(filtre, { offset, limit: TAILLE_PAGE, dateLivraison, test }),
     compterCommandesRecues(),
     getModeleAppelWhatsApp(),
   ]);
 
-  const hrefAvec = (params: { statut?: StatutCommande; page?: number; dateLivraison?: string }) => {
+  const hrefAvec = (params: { statut?: StatutCommande; page?: number; dateLivraison?: string; test?: boolean }) => {
     const qs = new URLSearchParams();
     const s = params.statut ?? filtre;
     const d = params.dateLivraison ?? dateLivraison;
     const p = params.page ?? page;
+    const t = params.test ?? test;
     if (s) qs.set("statut", s);
     if (d) qs.set("dateLivraison", d);
     if (p > 1) qs.set("page", String(p));
+    if (t) qs.set("test", "1");
     const q = qs.toString();
     return q ? `/admin/commandes?${q}` : "/admin/commandes";
   };
@@ -54,7 +57,17 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
   return (
     <PullToRefresh>
     <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-xl font-bold text-ink">Commandes</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="font-heading text-xl font-bold text-ink">Commandes</h1>
+        <Link
+          href={hrefAvec({ test: !test, page: 1 })}
+          className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+            test ? "border-brand bg-brand text-surface" : "border-ink/15 text-ink/70"
+          }`}
+        >
+          Commandes de test
+        </Link>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {STATUTS.map((option) => (

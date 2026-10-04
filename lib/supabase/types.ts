@@ -367,6 +367,11 @@ export type Localite = {
   groupe_id: number;
   lat: number | null;
   lng: number | null;
+  // Rayon de couverture autour du point de référence, en km (migration 0114).
+  rayon_km: number;
+  // Zone dessinée optionnelle ([[lng,lat], …]) : l'emporte sur rayon_km quand
+  // renseignée (migration 0114).
+  zone_polygone: [number, number][] | null;
   created_at: string;
 };
 
@@ -482,6 +487,17 @@ export type Commande = {
   // zéro jamais (historique), pertinent seulement tant que statut = 'a_confirmer_appel'.
   appel_tentatives: number;
   appel_dernier_essai_le: string | null;
+  // Commande de test (PROMPT_ADMIN_COMPTA_LOCALITES.md Lot 1, migration 0113) :
+  // exclue de la comptabilité, des stats, du tableau de bord, de Trafic, de
+  // "Mes commandes" côté client et des files de préparation. Reste visible à
+  // l'admin via le filtre dédié.
+  est_test: boolean;
+  // Comment le point de livraison a été obtenu, et sa distance (km) au point
+  // de référence de la localité retenue (PROMPT_CLIENT_LOCALISATION.md Lot 2,
+  // migration 0115). null/null pour un lieu spécial, une commande hors
+  // couverture, ou une commande antérieure à ce lot.
+  source_localisation: "position" | "lien" | "deplace" | null;
+  distance_localite_km: number | null;
 };
 
 export type CommandeItem = {

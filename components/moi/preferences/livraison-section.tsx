@@ -2,26 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { useIdentite } from "@/lib/local/identite";
-import { getLieuxSpeciaux, getLocalites } from "@/lib/supabase/queries";
-import type { Localite, LieuSpecial } from "@/lib/supabase/types";
+import { getLieuxSpeciaux } from "@/lib/supabase/queries";
+import type { LieuSpecial } from "@/lib/supabase/types";
 import {
-  LocalitePicker,
-  type SelectionLocalite,
+  LieuSpecialPicker,
+  type SelectionLieuSpecial,
 } from "@/components/checkout/localite-picker";
 import { getPreferencesNotifications, setLivraisonDefaut } from "@/lib/moi/preferences-actions";
 
-// Localité par défaut + précision pour le livreur (TACHE_nettoyage_carrousel_
-// preferences.md §C.6) : font gagner un écran entier à chaque commande. Même
-// composant de sélection que le checkout (components/checkout/localite-picker.tsx).
+// Lieu spécial par défaut + précision pour le livreur (TACHE_nettoyage_
+// carrousel_preferences.md §C.6) : font gagner un écran entier à chaque
+// commande. La localité "normale" n'est plus choisie ici ni au checkout —
+// elle est déterminée depuis le point de livraison (PROMPT_CLIENT_
+// LOCALISATION.md Lot 2). Même composant de sélection que le checkout
+// (components/checkout/localite-picker.tsx).
 export function LivraisonSection() {
   const { identite } = useIdentite();
-  const [localites, setLocalites] = useState<Localite[]>([]);
   const [lieuxSpeciaux, setLieuxSpeciaux] = useState<LieuSpecial[]>([]);
-  const [selection, setSelection] = useState<SelectionLocalite | null>(null);
+  const [selection, setSelection] = useState<SelectionLieuSpecial>(null);
   const [precision, setPrecision] = useState("");
 
   useEffect(() => {
-    getLocalites().then(setLocalites);
     getLieuxSpeciaux().then(setLieuxSpeciaux);
   }, []);
 
@@ -30,39 +31,36 @@ export function LivraisonSection() {
     getPreferencesNotifications(identite.telephone, identite.jeton).then((prefs) => {
       if (!prefs) return;
       setPrecision(prefs.precision_livreur ?? "");
-      if (prefs.localite_defaut_id != null) {
-        const l = localites.find((x) => x.id === prefs.localite_defaut_id);
-        if (l) setSelection({ type: "localite", id: l.id, nom: l.nom });
-      } else if (prefs.lieu_special_defaut_id != null) {
+      if (prefs.lieu_special_defaut_id != null) {
         const l = lieuxSpeciaux.find((x) => x.id === prefs.lieu_special_defaut_id);
-        if (l) setSelection({ type: "special", id: l.id, nom: l.nom });
+        if (l) setSelection({ id: l.id, nom: l.nom });
       }
     });
-    // Ne redéclenche pas à chaque frappe : seulement quand les listes arrivent
-    // (nécessaires pour résoudre le nom affiché) ou que l'identité change.
+    // Ne redéclenche pas à chaque frappe : seulement quand la liste arrive
+    // (nécessaire pour résoudre le nom affiché) ou que l'identité change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identite, localites.length, lieuxSpeciaux.length]);
+  }, [identite, lieuxSpeciaux.length]);
 
   if (!identite?.jeton) {
     return (
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated px-4 py-3">
         <span className="text-sm text-ink">Livraison</span>
         <p className="text-xs text-ink/50">
-          Passe une commande pour enregistrer une localité et une précision par défaut.
+          Passe une commande pour enregistrer un lieu spécial et une précision par défaut.
         </p>
       </section>
     );
   }
 
   const enregistrer = async (valeur: {
-    selection?: SelectionLocalite | null;
+    selection?: SelectionLieuSpecial;
     precision?: string;
   }) => {
     const s = valeur.selection !== undefined ? valeur.selection : selection;
     const p = valeur.precision !== undefined ? valeur.precision : precision;
     await setLivraisonDefaut(identite.telephone, identite.jeton!, {
-      localiteDefautId: s?.type === "localite" ? s.id : null,
-      lieuSpecialDefautId: s?.type === "special" ? s.id : null,
+      localiteDefautId: null,
+      lieuSpecialDefautId: s?.id ?? null,
       precisionLivreur: p.trim() || null,
     });
   };
@@ -71,9 +69,8 @@ export function LivraisonSection() {
     <section className="flex flex-col gap-3 rounded-2xl border border-ink/10 bg-elevated px-4 py-3">
       <span className="text-sm text-ink">Livraison</span>
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-ink/50">Localité par défaut</span>
-        <LocalitePicker
-          localites={localites}
+        <span className="text-xs text-ink/50">Lieu spécial par défaut (retrait, destination hors domicile)</span>
+        <LieuSpecialPicker
           lieuxSpeciaux={lieuxSpeciaux}
           value={selection}
           onChange={(v) => {

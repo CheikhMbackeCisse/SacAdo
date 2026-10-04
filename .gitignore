@@ -68,3 +68,7 @@ next-env.d.ts
 
 # planches de vérification photo générées localement (pas destinées au site)
 /verification_*.html
+
+# sauvegardes contenant des données réelles de commandes/paiements (identifiants
+# de transaction Wave inclus) : utiles en local, jamais dans le dépôt public
+/backups/compta_*.json

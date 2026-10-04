@@ -27,7 +27,7 @@ const GROUPES = [
   { titre: "Clients", hrefs: ["/admin/clients", "/admin/modeles", "/admin/notifications"] },
   {
     titre: "Livraison et paiement",
-    hrefs: ["/admin/livraisons", "/admin/zones", "/admin/localites", "/admin/lieux-speciaux"],
+    hrefs: ["/admin/livraisons", "/admin/zones", "/admin/localites", "/admin/localites/carte", "/admin/lieux-speciaux"],
   },
   { titre: "Partenaires", hrefs: ["/admin/fournisseurs", "/admin/moderation", "/admin/preparations"] },
   { titre: "Suivi", hrefs: ["/admin/ventes", "/admin/editions", "/admin/prix-a-verifier", "/admin/comptabilite"] },
