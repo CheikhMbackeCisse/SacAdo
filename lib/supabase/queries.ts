@@ -162,10 +162,11 @@ export type FiltresProduitsCategorie = {
   tailleEcran?: number | null;
   ecranTactile?: boolean | null;
   marque?: string | null;
-  // 'nom' (défaut, catalogue général) ; 'prix_asc'/'score_desc' (ordinateurs :
-  // "Prix croissant" / "Pertinence") — doit être un tri serveur, pas un tri du
-  // seul lot chargé, sinon incohérent d'une page "Charger plus" à l'autre.
-  ordre?: "nom" | "prix_asc" | "score_desc";
+  // 'nom' (défaut, catalogue général) ; 'prix_asc'/'prix_desc' (tri par prix,
+  // toutes catégories) ; 'score_desc' (ordre par défaut d'Ordinateurs
+  // portables) — doit être un tri serveur, pas un tri du seul lot chargé,
+  // sinon incohérent d'une page "Charger plus" à l'autre.
+  ordre?: "nom" | "prix_asc" | "prix_desc" | "score_desc";
 };
 
 // Classement secondaire (migration 0111, « Aussi visible dans ») : un produit
@@ -246,6 +247,7 @@ export async function getProduitsByCategorie(
   if (marque) requete = requete.eq("marque", marque);
 
   if (ordre === "prix_asc") requete = requete.order("prix", { ascending: true });
+  else if (ordre === "prix_desc") requete = requete.order("prix", { ascending: false });
   else if (ordre === "score_desc") requete = requete.order("score_global", { ascending: false, nullsFirst: false });
   else requete = requete.order("nom", { ascending: true });
 

@@ -18,6 +18,7 @@ import { mesurer } from "@/lib/mesure-client";
 import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
 import { useRestaurerDefilement } from "@/lib/hooks/use-restaurer-defilement";
 import { DemanderProduit } from "@/components/demande/demander-produit";
+import { TriPrixSelect, type TriPrix } from "@/components/product/tri-prix-select";
 import type { Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
 type CategoryProductListProps = {
@@ -115,7 +116,7 @@ type FiltresEtat = {
   ecran: string | null;
   tactile: string | null;
   marque: string | null;
-  tri: string | null;
+  tri: TriPrix | null;
 };
 
 const FILTRES_VIDES: FiltresEtat = {
@@ -266,7 +267,14 @@ export function CategoryProductList({
           tailleEcran,
           ecranTactile: f.tactile ? f.tactile === "Oui" : null,
           marque: f.marque,
-          ordre: estOrdinateursPortables ? (f.tri === "Prix croissant" ? "prix_asc" : "score_desc") : "nom",
+          ordre:
+            f.tri === "Prix croissant"
+              ? "prix_asc"
+              : f.tri === "Prix décroissant"
+                ? "prix_desc"
+                : estOrdinateursPortables
+                  ? "score_desc"
+                  : "nom",
         });
         const filtres_S = f.serie === "S" ? items.filter((p) => serieCorrespond("S", p.serie)) : items;
         setProduits((current) => (remplacer ? filtres_S : [...current, ...filtres_S]));
@@ -428,6 +436,13 @@ export function CategoryProductList({
         </div>
       )}
 
+      {/* Tri par prix (retour testeur) : commun à toutes les catégories, pas
+          seulement Ordinateurs portables comme avant — "Tout" = ordre par
+          défaut de la catégorie (score pour Ordinateurs, nom partout ailleurs). */}
+      <div className="flex flex-wrap gap-2 px-4">
+        <TriPrixSelect actif={filtres.tri} onChoisir={(v) => majFiltre({ tri: v })} />
+      </div>
+
       {/* Filtres livres (§1.5) : Niveau, Série (si lycée), Matière, Type
           d'ouvrage — des selects compacts plutôt qu'une rangée de puces
           (retour testeur : trop de place verticale). */}
@@ -473,12 +488,6 @@ export function CategoryProductList({
           premier critère pour un étudiant. */}
       {estOrdinateursPortables && facettesOrdinateurs && (
         <div className="flex flex-wrap gap-2 px-4">
-          <FiltreSelect
-            label="Trier"
-            valeurs={["Pertinence", "Prix croissant"]}
-            actif={filtres.tri}
-            onChoisir={(v) => majFiltre({ tri: v })}
-          />
           <FiltreSelect
             label="Prix"
             valeurs={tranchesPrix.map((t) => t.label)}

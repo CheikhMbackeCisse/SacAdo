@@ -9,7 +9,15 @@ import { DemanderProduit } from "@/components/demande/demander-produit";
 import { chargerRecherchePage } from "@/lib/recherche/actions";
 import { useChargementAuto } from "@/lib/hooks/use-chargement-auto";
 import { useRestaurerDefilement } from "@/lib/hooks/use-restaurer-defilement";
+import { TriPrixSelect, type TriPrix } from "@/components/product/tri-prix-select";
 import type { ProduitTrouve } from "@/lib/supabase/queries";
+
+function trierParPrix<T extends { prix: number }>(items: T[], tri: TriPrix | null): T[] {
+  if (!tri) return items;
+  const copie = [...items];
+  copie.sort((a, b) => (tri === "Prix croissant" ? a.prix - b.prix : b.prix - a.prix));
+  return copie;
+}
 
 const MAX_CATEGORIE = 12;
 const TAILLE_INITIALE = 48;
@@ -23,6 +31,7 @@ export function ResultatsRecherche({
   resultats: ProduitTrouve[];
 }) {
   const [resultats, setResultats] = useState(resultatsInitiaux);
+  const [tri, setTri] = useState<TriPrix | null>(null);
   const [taille, setTaille] = useState(TAILLE_INITIALE);
   const [chargement, setChargement] = useState(false);
   const [hasMore, setHasMore] = useState(resultatsInitiaux.length >= TAILLE_INITIALE);
@@ -63,10 +72,11 @@ export function ResultatsRecherche({
     );
   }
 
-  const parNom = resultats.filter((p) => p.type_resultat === "nom");
-  const parCategorie = resultats
-    .filter((p) => p.type_resultat === "categorie")
-    .slice(0, MAX_CATEGORIE);
+  const parNom = trierParPrix(resultats.filter((p) => p.type_resultat === "nom"), tri);
+  const parCategorie = trierParPrix(
+    resultats.filter((p) => p.type_resultat === "categorie").slice(0, MAX_CATEGORIE),
+    tri,
+  );
 
   if (parNom.length === 0 && parCategorie.length === 0) {
     return (
@@ -89,6 +99,10 @@ export function ResultatsRecherche({
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap gap-2 px-4">
+        <TriPrixSelect actif={tri} onChoisir={setTri} />
+      </div>
+
       {parNom.length > 0 && <ProductGrid produits={parNom} />}
 
       {parCategorie.length > 0 && (
