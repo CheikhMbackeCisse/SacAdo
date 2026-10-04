@@ -6,9 +6,11 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
   ajouterDateFermee,
   getHeureLimiteSamedi,
+  getPaiementLivraisonMax,
   getSeuilLivraisonGratuite,
   retirerDateFermee,
   setHeureLimiteSamedi,
+  setPaiementLivraisonMax,
   setSeuilLivraisonGratuite,
 } from "@/lib/parametres";
 import type { Zone } from "@/lib/supabase/types";
@@ -109,4 +111,16 @@ export async function ajouterDateFermeeAdmin(date: string, motif: string | null)
 export async function retirerDateFermeeAdmin(date: string): Promise<ActionResult> {
   await requireAdmin();
   return retirerDateFermee(date);
+}
+
+// Montant maximum pour le paiement à la livraison (PROMPT_ADMIN_V2 Lot 2) :
+// au-delà, seul Wave est proposé au checkout. `null` = pas de limite.
+export async function getPaiementLivraisonMaxActuel(): Promise<number | null> {
+  await requireAdmin();
+  return getPaiementLivraisonMax();
+}
+
+export async function reglerPaiementLivraisonMax(valeur: number | null): Promise<ActionResult> {
+  await requireAdmin();
+  return setPaiementLivraisonMax(valeur);
 }

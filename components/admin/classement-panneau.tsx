@@ -2,20 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   basculerPersonnalisation,
   chercherProduitScore,
-  definirClassementManuel,
   definirCoefficientSaison,
   enregistrerPoids,
   enregistrerSaison,
   getApercu,
   recalculerScoreGlobal,
-  retirerClassementManuel,
   supprimerSaison,
   type ConfigClassement,
   type LigneApercu,
-  type LigneManuel,
   type LigneScore,
   type RendementExploration,
   type SaisonAdmin,
@@ -24,7 +22,6 @@ import {
 type Props = {
   config: ConfigClassement;
   top: LigneScore[];
-  manuel: LigneManuel[];
   saisons: SaisonAdmin[];
   categories: { id: number; nom: string }[];
   rendement: RendementExploration[];
@@ -47,14 +44,14 @@ function formatHeure(iso: string): string {
   });
 }
 
-export function ClassementPanneau({ config, top, manuel, saisons, categories, rendement }: Props) {
+export function ClassementPanneau({ config, top, saisons, categories, rendement }: Props) {
   const router = useRouter();
   return (
     <div className="flex flex-col gap-5">
       <SectionPersonnalisation actif={config.persoActive} onChange={() => router.refresh()} />
       <SectionPoids config={config} onDone={() => router.refresh()} />
       <SectionClassement top={top} />
-      <SectionManuel manuel={manuel} onDone={() => router.refresh()} />
+      <SectionManuel />
       <SectionSaisons saisons={saisons} categories={categories} onDone={() => router.refresh()} />
       <SectionRendement rendement={rendement} />
     </div>
@@ -302,27 +299,10 @@ function SectionClassement({ top }: { top: LigneScore[] }) {
 }
 
 // --- 6.4 Épinglage / exclusion --------------------------------------------------
-function SectionManuel({ manuel, onDone }: { manuel: LigneManuel[]; onDone: () => void }) {
-  const [id, setId] = useState("");
-  const [pos, setPos] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-
-  const appliquer = async (produitId: number, champs: { position?: number | null; exclu?: boolean }) => {
-    const r = await definirClassementManuel(produitId, champs);
-    setMsg(r.ok ? null : ("error" in r ? r.error : "Échec."));
-    if (r.ok) onDone();
-  };
-  const ajouter = async (exclu: boolean) => {
-    const pid = Number(id);
-    if (!Number.isInteger(pid)) {
-      setMsg("Id produit invalide.");
-      return;
-    }
-    await appliquer(pid, exclu ? { exclu: true } : { position: pos ? Number(pos) : null });
-    setId("");
-    setPos("");
-  };
-
+// Déplacé vers /admin/decouvrir (PROMPT_ADMIN_V2 Lot 4) : même mécanisme en
+// base (`classement_manuel`), mais un aperçu identique à l'accueil client,
+// réordonnable, plutôt qu'un formulaire id + position.
+function SectionManuel() {
   return (
     <div className={CARTE}>
       <div>
@@ -332,63 +312,9 @@ function SectionManuel({ manuel, onDone }: { manuel: LigneManuel[]; onDone: () =
           d&apos;accueil sans le rendre invisible ailleurs.
         </p>
       </div>
-
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs text-ink/60">
-          Id produit
-          <input value={id} onChange={(e) => setId(e.target.value)} className={`${CHAMP} w-28`} />
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-ink/60">
-          Position (épingler)
-          <input value={pos} onChange={(e) => setPos(e.target.value)} className={`${CHAMP} w-28`} />
-        </label>
-        <button
-          type="button"
-          onClick={() => ajouter(false)}
-          className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface"
-        >
-          Épingler
-        </button>
-        <button
-          type="button"
-          onClick={() => ajouter(true)}
-          className="rounded-full border border-ink/15 px-4 py-2 text-sm font-medium text-ink"
-        >
-          Exclure
-        </button>
-      </div>
-      {msg && <p className="text-xs text-red-600">{msg}</p>}
-
-      {manuel.length > 0 && (
-        <ul className="flex flex-col divide-y divide-ink/10">
-          {manuel.map((l) => (
-            <li key={l.produitId} className="flex items-center justify-between gap-3 py-2 text-sm">
-              <span className="min-w-0 flex-1 truncate">
-                <span className="text-ink/40">#{l.produitId}</span> {l.nom}
-                {l.exclu ? (
-                  <span className="ml-2 rounded-full bg-ink/10 px-2 py-0.5 text-[11px] text-ink/60">
-                    exclu
-                  </span>
-                ) : (
-                  <span className="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] text-brand">
-                    position {l.position}
-                  </span>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={async () => {
-                  await retirerClassementManuel(l.produitId);
-                  onDone();
-                }}
-                className="shrink-0 text-xs font-medium text-ink/50 hover:text-ink"
-              >
-                Retirer
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <Link href="/admin/decouvrir" className="w-fit rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface">
+        Ouvrir l&apos;éditeur « À découvrir »
+      </Link>
     </div>
   );
 }

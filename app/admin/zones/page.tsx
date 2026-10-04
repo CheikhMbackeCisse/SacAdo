@@ -1,21 +1,24 @@
 import {
   getDatesFermeesAdmin,
   getHeureLimiteSamediActuelle,
+  getPaiementLivraisonMaxActuel,
   getSeuilLivraisonGratuiteActuel,
   getZonesAdmin,
 } from "@/lib/admin/zones-actions";
 import { ZonesEditor } from "@/components/admin/zones-editor";
 import { ReglageSeuilLivraison } from "@/components/admin/reglage-seuil-livraison";
 import { ReglageLivraisonDatee } from "@/components/admin/reglage-livraison-datee";
+import { ReglagePaiementLivraisonMax } from "@/components/admin/reglage-paiement-livraison-max";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminZonesPage() {
-  const [zones, seuilGratuite, heureLimiteSamedi, datesFermees] = await Promise.all([
+  const [zones, seuilGratuite, heureLimiteSamedi, datesFermees, paiementLivraisonMax] = await Promise.all([
     getZonesAdmin(),
     getSeuilLivraisonGratuiteActuel(),
     getHeureLimiteSamediActuelle(),
     getDatesFermeesAdmin(),
+    getPaiementLivraisonMaxActuel(),
   ]);
 
   return (
@@ -29,6 +32,7 @@ export default async function AdminZonesPage() {
         </p>
       </div>
       <ReglageSeuilLivraison valeur={seuilGratuite} />
+      <ReglagePaiementLivraisonMax valeur={paiementLivraisonMax} />
       <ReglageLivraisonDatee heureLimiteSamedi={heureLimiteSamedi} datesFermees={datesFermees} />
       <ZonesEditor zones={zones} />
     </div>

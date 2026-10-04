@@ -1,6 +1,5 @@
 import {
   getClassementApercu,
-  getClassementManuel,
   getConfigClassement,
   getRendementExploration,
   getSaisonsAdmin,
@@ -10,10 +9,9 @@ import { ClassementPanneau } from "@/components/admin/classement-panneau";
 export const dynamic = "force-dynamic";
 
 export default async function AdminClassementPage() {
-  const [config, top, manuel, saisonsData, rendement] = await Promise.all([
+  const [config, top, saisonsData, rendement] = await Promise.all([
     getConfigClassement(),
     getClassementApercu(20),
-    getClassementManuel(),
     getSaisonsAdmin(),
     getRendementExploration(30),
   ]);
@@ -31,7 +29,6 @@ export default async function AdminClassementPage() {
       <ClassementPanneau
         config={config}
         top={top}
-        manuel={manuel}
         saisons={saisonsData.saisons}
         categories={saisonsData.categories}
         rendement={rendement}

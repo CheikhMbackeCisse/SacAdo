@@ -6,6 +6,7 @@ import {
   Package,
   PackageCheck,
   ShieldCheck,
+  Sparkles,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -24,6 +25,17 @@ export default async function AdminDashboardPage() {
       <div className="lg:max-w-md">
         <InstallCard appName="SacAdo Admin" />
       </div>
+
+      <Link
+        href="/admin/decouvrir"
+        className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white p-4 transition-colors hover:border-brand/40"
+      >
+        <Sparkles size={20} className="shrink-0 text-brand" aria-hidden="true" />
+        <span className="text-sm text-ink">
+          <span className="font-semibold">Accueil : À découvrir</span> — changer ce que les
+          clients voient en premier.
+        </span>
+      </Link>
 
       {stats.preparationsPretes > 0 && (
         <Link

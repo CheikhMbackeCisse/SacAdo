@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   BellRing,
   BookOpen,
@@ -20,6 +21,7 @@ import {
   Repeat2,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   TriangleAlert,
   Truck,
   Wallet,
@@ -27,19 +29,21 @@ import {
   Users,
 } from "lucide-react";
 
-// Les 26 onglets admin. Module neutre (pas de "use client") : importé aussi
+// Les 28 onglets admin. Module neutre (pas de "use client") : importé aussi
 // bien par des composants serveur (app/admin/plus/page.tsx) que client
 // (AdminNav, RechercheAllerA) — faire traverser un tableau contenant des
 // références de composants depuis un fichier "use client" vers un composant
 // serveur plante au runtime même si le build passe, d'où ce fichier séparé.
 export const LIENS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },
+  { href: "/admin/trafic", label: "Trafic", icon: Activity },
   { href: "/admin/livraisons", label: "Livraisons", icon: Truck },
   { href: "/admin/preparations", label: "Préparations", icon: PackageCheck },
-  { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },
   { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/prix-a-verifier", label: "Prix à vérifier", icon: TriangleAlert },
   { href: "/admin/editions", label: "Éditions", icon: History },
+  { href: "/admin/decouvrir", label: "Accueil : À découvrir", icon: Sparkles },
   { href: "/admin/classement", label: "Classement accueil", icon: ListOrdered },
   { href: "/admin/moderation", label: "Modération vendeurs", icon: ShieldCheck },
   { href: "/admin/categories", label: "Catégories", icon: FolderTree },

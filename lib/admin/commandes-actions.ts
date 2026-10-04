@@ -4,7 +4,7 @@ import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
-import type { Commande, CommandeItem, StatutCommande } from "@/lib/supabase/types";
+import type { Commande, CommandeAjout, CommandeItem, StatutCommande } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
 export type CommandeAvecClient = Commande & {
@@ -53,6 +53,8 @@ function mapCommandeRow(
     message_livraison: row.message_livraison,
     telephone_normalise: row.telephone_normalise,
     date_livraison_prevue: row.date_livraison_prevue,
+    appel_tentatives: row.appel_tentatives,
+    appel_dernier_essai_le: row.appel_dernier_essai_le,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
     facture_id: facture?.id ?? null,
@@ -121,11 +123,25 @@ export async function changerStatutCommande(id: number, statut: StatutCommande):
     return { ok: false, error: "Cette commande attend la confirmation du paiement Wave." };
   }
 
-  // Le trigger DB insère automatiquement le message de suivi côté client
-  // (boîte de réception). Le push suit une matrice de canaux différente
-  // (TACHE_notifications_client.md §2) : géré à part, ci-dessous.
-  const { error } = await supabaseAdmin.from("commandes").update({ statut }).eq("id", id);
-  if (error) return { ok: false, error: "Impossible de changer le statut." };
+  // Annulation (PROMPT_ADMIN_V2 Lot 2, migration 0108) : passe par une
+  // fonction dédiée qui relâche le stock réservé à la création, kit-aware —
+  // un simple update laisserait le stock bloqué indéfiniment.
+  if (statut === "annulee") {
+    const { data, error: erreurRpc } = await supabaseAdmin.rpc("annuler_commande_admin", {
+      p_commande_id: id,
+    });
+    if (erreurRpc) return { ok: false, error: "Impossible d'annuler cette commande." };
+    if (data === "trop_tard") {
+      return { ok: false, error: "Cette commande est déjà en livraison ou livrée." };
+    }
+    if (data === "deja_annulee") return { ok: true };
+  } else {
+    // Le trigger DB insère automatiquement le message de suivi côté client
+    // (boîte de réception). Le push suit une matrice de canaux différente
+    // (TACHE_notifications_client.md §2) : géré à part, ci-dessous.
+    const { error } = await supabaseAdmin.from("commandes").update({ statut }).eq("id", id);
+    if (error) return { ok: false, error: "Impossible de changer le statut." };
+  }
 
   if (statut === "livree") await figerGarantieCommande([id]);
 
@@ -211,6 +227,24 @@ export async function changerStatutCommandesGroupe(
             .eq("mode_livraison", "24h")
         ).data?.map((c) => (c as { id: number }).id) ?? []
       : [];
+
+  // Annulation groupée (migration 0108) : une fonction par commande, pour
+  // relâcher le stock de chacune — un update de masse ne le ferait pas.
+  if (statut === "annulee") {
+    const { data: candidates } = await supabaseAdmin
+      .from("commandes")
+      .select("id")
+      .in("id", ids)
+      .neq("statut", "paiement_en_attente");
+    const idsCandidats = (candidates ?? []).map((c) => (c as { id: number }).id);
+    const idsModifiees: number[] = [];
+    for (const commandeId of idsCandidats) {
+      const { data } = await supabaseAdmin.rpc("annuler_commande_admin", { p_commande_id: commandeId });
+      if (data === "ok") idsModifiees.push(commandeId);
+    }
+    await Promise.all(idsModifiees.map((id) => notifierPushStatutCommande(id, statut)));
+    return { ok: true };
+  }
 
   // Une commande Wave en attente ne doit pas être basculée par une action
   // groupée (même règle que le changement individuel) : on l'exclut plutôt
@@ -313,4 +347,56 @@ export async function getCommandeItemsAdmin(commandeId: number): Promise<Command
       kit_beneficiaire_prenom: row.kit_beneficiaire_prenom,
     };
   });
+}
+
+// Lots d'ajout d'une commande (PROMPT_ADMIN_V2 Lot 2, migration 0107) : la
+// fiche commande les affiche à part ("Ajout du …"), chacun avec son propre
+// paiement — jamais noyés dans les lignes d'origine.
+export async function getCommandeAjoutsAdmin(commandeId: number): Promise<CommandeAjout[]> {
+  await requireAdmin();
+  const { data } = await supabaseAdmin
+    .from("commande_ajouts")
+    .select("*")
+    .eq("commande_id", commandeId)
+    .order("cree_le", { ascending: true });
+  return (data ?? []) as CommandeAjout[];
+}
+
+// Confirmation par appel (PROMPT_ADMIN_V2 Lot 2) : "Injoignable" ne change pas
+// le statut — la commande reste 'a_confirmer_appel' —, elle compte seulement
+// la tentative pour que le fondateur voie qu'il a déjà essayé.
+export async function marquerAppelInjoignable(id: number): Promise<ActionResult> {
+  await requireAdmin();
+  const { data: actuelle } = await supabaseAdmin
+    .from("commandes")
+    .select("statut, appel_tentatives")
+    .eq("id", id)
+    .maybeSingle<{ statut: StatutCommande; appel_tentatives: number }>();
+  if (actuelle?.statut !== "a_confirmer_appel") {
+    return { ok: false, error: "Cette commande n'attend plus de confirmation par appel." };
+  }
+  const { error } = await supabaseAdmin
+    .from("commandes")
+    .update({
+      appel_tentatives: (actuelle.appel_tentatives ?? 0) + 1,
+      appel_dernier_essai_le: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: "Impossible d'enregistrer la tentative d'appel." };
+  return { ok: true };
+}
+
+// Modèle WhatsApp "appel de confirmation" (migration 0105), pré-chargé une
+// fois pour toute la liste des commandes plutôt qu'une requête par carte —
+// chaque carte ne fait plus que substituer ses propres variables.
+export async function getModeleAppelWhatsApp(): Promise<string | null> {
+  await requireAdmin();
+  const { data } = await supabaseAdmin
+    .from("modeles_messages")
+    .select("contenu")
+    .eq("code", "commande_a_confirmer")
+    .eq("canal", "whatsapp")
+    .eq("actif", true)
+    .maybeSingle();
+  return (data?.contenu as string | undefined) ?? null;
 }

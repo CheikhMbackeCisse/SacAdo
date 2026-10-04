@@ -3,6 +3,7 @@ import "../globals.css";
 import "../../styles/app-feel.css";
 import { bodyFont, headingFont } from "@/lib/fonts";
 import { AppBehavior } from "@/components/pwa/app-behavior";
+import { PageViewTracker } from "@/components/trafic/page-view-tracker";
 import { Header } from "@/components/layout/header";
 import { AjoutBandeau } from "@/components/ajout/ajout-bandeau";
 import { AppMain } from "@/components/layout/app-main";
@@ -97,6 +98,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
           Aller au contenu principal
         </a>
         <AppBehavior />
+        <PageViewTracker />
         <ProductPreviewProvider>
           <Header />
           <AjoutBandeau />

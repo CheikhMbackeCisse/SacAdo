@@ -164,57 +164,10 @@ export async function recalculerScoreGlobal(): Promise<RecalculResult> {
 }
 
 // ---------------------------------------------------------------------------
-// Épinglage / exclusion (§6.4)
+// Épinglage / exclusion (§6.4) : déplacé vers lib/admin/decouvrir-actions.ts
+// (PROMPT_ADMIN_V2 Lot 4, écran /admin/decouvrir) — même table
+// `classement_manuel`, remplace le formulaire id + position de ce panneau.
 // ---------------------------------------------------------------------------
-export type LigneManuel = {
-  produitId: number;
-  nom: string;
-  position: number | null;
-  exclu: boolean;
-};
-
-export async function getClassementManuel(): Promise<LigneManuel[]> {
-  await requireAdmin();
-  const { data } = await supabaseAdmin
-    .from("classement_manuel")
-    .select("produit_id, position, exclu, produits(nom)")
-    .order("position", { ascending: true, nullsFirst: false });
-  return (data ?? []).map((r: Record<string, unknown>) => ({
-    produitId: r.produit_id as number,
-    nom: ((r.produits as { nom?: string } | null)?.nom ?? `#${r.produit_id}`) as string,
-    position: (r.position ?? null) as number | null,
-    exclu: Boolean(r.exclu),
-  }));
-}
-
-export async function definirClassementManuel(
-  produitId: number,
-  champs: { position?: number | null; exclu?: boolean },
-): Promise<ActionResult> {
-  await requireAdmin();
-  if (!Number.isInteger(produitId)) return { ok: false, error: "Produit invalide." };
-  const patch: Record<string, unknown> = { produit_id: produitId };
-  if ("position" in champs) {
-    const p = champs.position;
-    patch.position = p == null ? null : Math.max(1, Math.min(60, Math.round(p)));
-  }
-  if ("exclu" in champs) patch.exclu = Boolean(champs.exclu);
-  const { error } = await supabaseAdmin
-    .from("classement_manuel")
-    .upsert(patch, { onConflict: "produit_id" });
-  if (error) return { ok: false, error: "Impossible d'enregistrer." };
-  return { ok: true };
-}
-
-export async function retirerClassementManuel(produitId: number): Promise<ActionResult> {
-  await requireAdmin();
-  const { error } = await supabaseAdmin
-    .from("classement_manuel")
-    .delete()
-    .eq("produit_id", produitId);
-  if (error) return { ok: false, error: "Impossible de retirer." };
-  return { ok: true };
-}
 
 // ---------------------------------------------------------------------------
 // Saisons (§6.6)

@@ -2,6 +2,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { rendreModele } from "@/lib/messages/modeles";
+import { notifierPushAdminAjout } from "@/lib/admin/notifier-commande";
 import type { EvenementWave } from "@/lib/wave/webhook-core";
 
 // Boîte de réception pour un ajout confirmé — dupliquée (volontairement) de
@@ -37,6 +38,7 @@ async function notifierAjoutConfirme(commandeId: number, sousTotal: number): Pro
   } catch (e) {
     console.error("notifierAjoutConfirme (webhook) a échoué", e);
   }
+  await notifierPushAdminAjout(commandeId, sousTotal);
 }
 
 // Appelé par la route webhook (app/api/wave/webhook/route.ts) quand

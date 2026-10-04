@@ -3,13 +3,16 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import {
   changerStatutCommandesGroupe,
   passerRecuesEnPreparation,
   type CommandeAvecClient,
 } from "@/lib/admin/commandes-actions";
 import { formatPrice } from "@/lib/format";
+import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
 import { StatutSelect } from "@/components/admin/statut-select";
+import { ConfirmationAppel } from "@/components/admin/confirmation-appel";
 import { CarteListe, CartesListe, ChampCarte, TableauDesktop } from "@/components/admin/liste-mobile";
 import type { StatutCommande } from "@/lib/supabase/types";
 
@@ -45,12 +48,58 @@ function BadgeLivraison({ commande }: { commande: CommandeAvecClient }) {
   return null;
 }
 
+// Paiement visible sur chaque commande (PROMPT_ADMIN_V2 Lot 2) : Wave payé
+// (avec la référence), en attente, échoué, ou à la livraison.
+function BadgePaiement({ commande }: { commande: CommandeAvecClient }) {
+  if (commande.mode_paiement !== "wave") {
+    return <span className="rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium text-ink/50">À la livraison</span>;
+  }
+  const reference = commande.wave_event_id ?? commande.wave_session_id;
+  return (
+    <span
+      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+        commande.statut_paiement === "payee"
+          ? "bg-success/10 text-success"
+          : commande.statut_paiement === "echoue"
+            ? "bg-red-50 text-red-600"
+            : "bg-brand/10 text-brand"
+      }`}
+      title={reference ? `Réf. ${reference}` : undefined}
+    >
+      Wave — {commande.statut_paiement ? LIBELLES_STATUT_PAIEMENT[commande.statut_paiement] : "—"}
+    </span>
+  );
+}
+
+// Localisation (PROMPT_ADMIN_V2 Lot 2) : un toucher pour l'ouvrir dans Google
+// Maps, directement depuis la liste.
+function LienMaps({ commande }: { commande: CommandeAvecClient }) {
+  const lien =
+    commande.lat != null && commande.lng != null
+      ? `https://www.google.com/maps/search/?api=1&query=${commande.lat},${commande.lng}`
+      : commande.lien_localisation;
+  if (!lien) return null;
+  return (
+    <a
+      href={lien}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-[11px] font-medium text-brand"
+    >
+      <ExternalLink size={11} aria-hidden="true" />
+      Maps
+    </a>
+  );
+}
+
 export function CommandesListe({
   commandes,
   nbRecues,
+  modeleAppel,
 }: {
   commandes: CommandeAvecClient[];
   nbRecues: number;
+  modeleAppel: string | null;
 }) {
   const router = useRouter();
   const [selection, setSelection] = useState<Set<number>>(new Set());
@@ -190,14 +239,13 @@ export function CommandesListe({
             <ChampCarte label="Client">
               {commande.client_nom}
               <span className="block text-xs text-ink/40">{commande.client_telephone}</span>
+              <LienMaps commande={commande} />
             </ChampCarte>
             <ChampCarte label="Total">
               {formatPrice(commande.total)}
-              {commande.mode_paiement === "wave" && (
-                <span className="ml-1.5 rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium text-ink/50">
-                  Wave{commande.statut_paiement === "payee" ? " ✓" : ""}
-                </span>
-              )}
+              <span className="ml-1.5">
+                <BadgePaiement commande={commande} />
+              </span>
             </ChampCarte>
             {commande.code_confirmation && (
               <ChampCarte label="Code confirmation">
@@ -206,10 +254,23 @@ export function CommandesListe({
                 </span>
               </ChampCarte>
             )}
-            <div className="mt-1.5 flex items-center justify-between gap-2">
-              <span className="text-xs text-ink/50">Statut</span>
-              <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
-            </div>
+            {commande.statut === "a_confirmer_appel" ? (
+              <ConfirmationAppel
+                commandeId={commande.id}
+                clientNom={commande.client_nom}
+                clientTelephone={commande.client_telephone}
+                telephoneNormalise={commande.telephone_normalise}
+                total={commande.total}
+                modeleWhatsApp={modeleAppel}
+                tentatives={commande.appel_tentatives}
+                dernierEssaiLe={commande.appel_dernier_essai_le}
+              />
+            ) : (
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <span className="text-xs text-ink/50">Statut</span>
+                <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
+              </div>
+            )}
           </CarteListe>
         ))}
       </CartesListe>
@@ -258,6 +319,7 @@ export function CommandesListe({
                 <td className="px-4 py-3 text-ink/70">
                   {commande.client_nom}
                   <div className="text-xs text-ink/40">{commande.client_telephone}</div>
+                  <LienMaps commande={commande} />
                 </td>
                 <td className="px-4 py-3 text-ink/60">{formatDate(commande.date)}</td>
                 <td className="px-4 py-3">
@@ -265,18 +327,28 @@ export function CommandesListe({
                 </td>
                 <td className="px-4 py-3 font-medium text-ink">
                   {formatPrice(commande.total)}
-                  {commande.mode_paiement === "wave" && (
-                    <span className="ml-2 rounded bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium text-ink/50">
-                      Wave
-                      {commande.statut_paiement === "payee" ? " ✓" : ""}
-                    </span>
-                  )}
+                  <div className="mt-1">
+                    <BadgePaiement commande={commande} />
+                  </div>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-ink/70">
                   {commande.code_confirmation ?? "—"}
                 </td>
                 <td className="px-4 py-3">
-                  <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
+                  {commande.statut === "a_confirmer_appel" ? (
+                    <ConfirmationAppel
+                      commandeId={commande.id}
+                      clientNom={commande.client_nom}
+                      clientTelephone={commande.client_telephone}
+                      telephoneNormalise={commande.telephone_normalise}
+                      total={commande.total}
+                      modeleWhatsApp={modeleAppel}
+                      tentatives={commande.appel_tentatives}
+                      dernierEssaiLe={commande.appel_dernier_essai_le}
+                    />
+                  ) : (
+                    <StatutSelect commandeId={commande.id} statutActuel={commande.statut} />
+                  )}
                 </td>
               </tr>
             ))}

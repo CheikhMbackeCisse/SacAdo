@@ -17,6 +17,7 @@ import { logoMarque } from "@/lib/marques";
 import { usePanier } from "@/lib/local/panier";
 import { useConsultes } from "@/lib/local/consultes";
 import { mesurer } from "@/lib/mesure-client";
+import { mesurerVisite } from "@/lib/trafic/mesure-client";
 import type { ComposantKit, EditionSoeur } from "@/lib/supabase/queries";
 import type { DocumentApercu, Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
@@ -72,6 +73,7 @@ export function ProductDetail({
   useEffect(() => {
     recordConsulte(produit.id);
     mesurer({ type: "vue_produit", produitId: produit.id });
+    mesurerVisite({ type: "produit_vu", produitId: produit.id, prixUnitaire: produit.prix });
     // On ne veut relancer l'enregistrement que si le produit affiché change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produit.id]);

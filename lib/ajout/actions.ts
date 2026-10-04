@@ -6,6 +6,7 @@ import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wa
 import { jetonClient, verifierJetonClient } from "@/lib/client-auth";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
 import { rendreModele } from "@/lib/messages/modeles";
+import { notifierPushAdminAjout } from "@/lib/admin/notifier-commande";
 import { origineSite } from "@/lib/site-url";
 import { commandeModifiablePourAjout } from "@/lib/ajout/eligibilite";
 import type { GroupeKitPanier, LignePanier } from "@/lib/local/panier";
@@ -222,6 +223,7 @@ async function notifierAjoutConfirme(commandeId: number, sousTotal: number): Pro
   } catch (e) {
     console.error("notifierAjoutConfirme a échoué", e);
   }
+  await notifierPushAdminAjout(commandeId, sousTotal);
 }
 
 // Déclenche les fournisseurs pour les articles tout juste ajoutés, si la

@@ -2,6 +2,7 @@
 
 import { useLocalList } from "./use-local-list";
 import { mesurer } from "@/lib/mesure-client";
+import { mesurerVisite } from "@/lib/trafic/mesure-client";
 import { cleActive, useAjoutMode } from "./ajout-mode";
 
 const KEY = "sacado_panier";
@@ -92,6 +93,7 @@ export function usePanier() {
     // Signal de classement (poids 3) : le contexte catégorie est résolu en base
     // à partir du produit côté /api/mesure.
     mesurer({ type: "ajout_panier", produitId });
+    mesurerVisite({ type: "ajout_panier", produitId, quantite });
   };
 
   // Ajoute (ou remplace, en mode "modifier") toutes les lignes d'un kit en un
@@ -115,7 +117,10 @@ export function usePanier() {
     });
 
     emettreAjout(quantiteAjoutee, totalApres);
-    items.forEach((it) => mesurer({ type: "ajout_panier", produitId: it.produitId }));
+    items.forEach((it) => {
+      mesurer({ type: "ajout_panier", produitId: it.produitId });
+      mesurerVisite({ type: "ajout_panier", produitId: it.produitId, quantite: it.quantite });
+    });
     return groupeComplet;
   };
 
@@ -124,6 +129,9 @@ export function usePanier() {
   const retirerGroupe = (groupeId: string): LignePanier[] => {
     const retirees = lignes.filter((l) => l.groupe?.id === groupeId);
     setLignes((current) => current.filter((l) => l.groupe?.id !== groupeId));
+    retirees.forEach((l) =>
+      mesurerVisite({ type: "retrait_panier", produitId: l.produitId, quantite: l.quantite }),
+    );
     return retirees;
   };
 
@@ -135,9 +143,11 @@ export function usePanier() {
   };
 
   const retirer = (produitId: number, varianteId: number | null) => {
+    const ligne = lignes.find((l) => l.produitId === produitId && l.varianteId === varianteId);
     setLignes((current) =>
       current.filter((l) => !(l.produitId === produitId && l.varianteId === varianteId)),
     );
+    if (ligne) mesurerVisite({ type: "retrait_panier", produitId, quantite: ligne.quantite });
   };
 
   const setQuantite = (produitId: number, varianteId: number | null, quantite: number) => {

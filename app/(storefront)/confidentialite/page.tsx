@@ -59,12 +59,25 @@ export default function ConfidentialitePage() {
       </section>
 
       <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
+        <h2 className="text-sm font-semibold text-ink">Mesure d&apos;audience</h2>
+        <p className="text-sm text-ink/70">
+          Nous mesurons aussi, de façon anonyme, la fréquentation du site : pages visitées, d&apos;où
+          vient la visite (recherche, réseau social, affiche, lien partagé…), type
+          d&apos;appareil et navigateur, et les grandes étapes d&apos;un achat (produit vu, ajout au
+          panier, commande). Un usage strictement interne, pour comprendre ce qui marche et
+          améliorer le site — ces données ne sont ni revendues, ni partagées avec un tiers, ni
+          utilisées pour te cibler individuellement.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-elevated p-4">
         <h2 className="text-sm font-semibold text-ink">Durées de conservation</h2>
         <p className="text-sm text-ink/70">
           Les données de navigation (session anonyme, produits consultés, recherches) sont
-          automatiquement supprimées après 24 mois. Les données liées à une commande (nom,
-          téléphone, adresse, historique) sont conservées tant que ton compte reste actif, ou
-          jusqu&apos;à ta demande de suppression.
+          automatiquement supprimées après 24 mois. Les données de mesure d&apos;audience sont
+          supprimées après 90 jours. Les données liées à une commande (nom, téléphone, adresse,
+          historique) sont conservées tant que ton compte reste actif, ou jusqu&apos;à ta demande
+          de suppression.
         </p>
       </section>
 

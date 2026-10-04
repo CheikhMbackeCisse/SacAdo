@@ -3,18 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, GraduationCap, LayoutDashboard, Menu, Package, Truck } from "lucide-react";
+import { Activity, ClipboardList, GraduationCap, LayoutDashboard, Menu } from "lucide-react";
 import { getBadges, marquerSectionVue, type Badges } from "@/lib/admin/lecture-actions";
 import { BadgeCompte } from "./badge-compte";
 
-type Section = "commandes" | "livraisons";
+type Section = "commandes";
 
 const ENTREES: { href: string; label: string; icon: typeof LayoutDashboard; section?: Section }[] = [
   { href: "/admin", label: "Accueil", icon: LayoutDashboard },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList, section: "commandes" },
-  { href: "/admin/livraisons", label: "Livraison", icon: Truck, section: "livraisons" },
-  { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
+  { href: "/admin/trafic", label: "Trafic", icon: Activity },
   { href: "/admin/plus", label: "Plus", icon: Menu },
 ];
 
@@ -22,13 +21,14 @@ function estActif(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
-// Bottom nav mobile, 6 entrées (PROMPT_ADMIN Lot 2). Remplace le tiroir
-// hamburger comme navigation principale sur téléphone ; "Plus" regroupe tout
-// le reste. Badges Commandes/Livraison : nombre non vu, remis à zéro dès que
-// l'onglet correspondant est ouvert.
+// Bottom nav mobile, 5 entrées (PROMPT_ADMIN_V2 Lot 1 : remplace les 6
+// entrées de PROMPT_ADMIN Lot 2 — Produits et Livraison passent dans "Plus",
+// "Trafic" apparaît). "Plus" regroupe tout le reste. Badge Commandes : nombre
+// de commandes à confirmer par appel + payées à préparer, remis à zéro dès
+// que l'onglet est ouvert.
 export function AdminBottomNav() {
   const pathname = usePathname();
-  const [badges, setBadges] = useState<Badges>({ commandes: 0, livraisons: 0 });
+  const [badges, setBadges] = useState<Badges>({ commandes: 0 });
   const vuPour = useRef<string | null>(null);
 
   useEffect(() => {

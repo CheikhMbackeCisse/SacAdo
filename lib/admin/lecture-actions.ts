@@ -3,18 +3,21 @@
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-// Badges de nouveauté (PROMPT_ADMIN Lot 2) : combien de commandes/livraisons
-// le fondateur n'a pas encore vues depuis sa dernière visite de l'onglet.
+// Badges de nouveauté (PROMPT_ADMIN Lot 2, formule du badge Commandes mise à
+// jour par PROMPT_ADMIN_V2 Lot 1) : combien de commandes à traiter le
+// fondateur n'a pas encore vues depuis sa dernière visite de l'onglet.
 // "Vu" = id <= dernier_id_vu (admin_etat_lecture, migration 0104).
 
-type Section = "commandes" | "livraisons";
+type Section = "commandes";
 
-const STATUT_PAR_SECTION: Record<Section, string> = {
-  commandes: "recue",
-  livraisons: "livraison",
+// Commandes à traiter = à confirmer par appel + payées (ou confirmées) à
+// préparer. 'paiement_en_attente' (Wave pas encore confirmé) ne compte pas :
+// rien à faire tant que le webhook n'a pas tranché.
+const STATUTS_PAR_SECTION: Record<Section, string[]> = {
+  commandes: ["a_confirmer_appel", "recue"],
 };
 
-export type Badges = { commandes: number; livraisons: number };
+export type Badges = { commandes: number };
 
 async function dernierIdVu(adminUserId: string, section: Section): Promise<number> {
   const { data } = await supabaseAdmin
@@ -31,18 +34,15 @@ async function compterNonVues(adminUserId: string, section: Section): Promise<nu
   const { count } = await supabaseAdmin
     .from("commandes")
     .select("id", { count: "exact", head: true })
-    .eq("statut", STATUT_PAR_SECTION[section])
+    .in("statut", STATUTS_PAR_SECTION[section])
     .gt("id", vu);
   return count ?? 0;
 }
 
 export async function getBadges(): Promise<Badges> {
   const user = await requireAdmin();
-  const [commandes, livraisons] = await Promise.all([
-    compterNonVues(user.id, "commandes"),
-    compterNonVues(user.id, "livraisons"),
-  ]);
-  return { commandes, livraisons };
+  const commandes = await compterNonVues(user.id, "commandes");
+  return { commandes };
 }
 
 export async function marquerSectionVue(section: Section): Promise<void> {
@@ -52,7 +52,7 @@ export async function marquerSectionVue(section: Section): Promise<void> {
     supabaseAdmin
       .from("commandes")
       .select("id")
-      .eq("statut", STATUT_PAR_SECTION[section])
+      .in("statut", STATUTS_PAR_SECTION[section])
       .order("id", { ascending: false })
       .limit(1)
       .maybeSingle(),

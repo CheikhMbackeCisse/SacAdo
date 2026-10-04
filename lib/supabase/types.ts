@@ -467,6 +467,11 @@ export type Commande = {
   // Livraison "à date donnée" (maj-accueil §7, migration 0089) : date calculée
   // à la commande pour mode_livraison = '6j'. Null en livraison express (24h).
   date_livraison_prevue: string | null;
+  // Confirmation par appel (PROMPT_ADMIN_V2 Lot 2, migration 0108) : nombre de
+  // fois où le client a été injoignable, et date du dernier essai. Remis à
+  // zéro jamais (historique), pertinent seulement tant que statut = 'a_confirmer_appel'.
+  appel_tentatives: number;
+  appel_dernier_essai_le: string | null;
 };
 
 export type CommandeItem = {

@@ -29,3 +29,25 @@ export async function notifierPushAdminNouvelleCommande(
     console.error("notifierPushAdminNouvelleCommande a échoué", e);
   }
 }
+
+// Déclenché quand un ajout à une commande en cours est validé (payé à la
+// livraison tout de suite, ou confirmé par le webhook Wave) — PROMPT_ADMIN_V2
+// Lot 2 : le fondateur doit le voir même s'il n'est pas sur l'onglet Commandes.
+export async function notifierPushAdminAjout(commandeId: number, sousTotal: number): Promise<void> {
+  try {
+    const { data: admins } = await supabaseAdmin.from("admins").select("user_id");
+    if (!admins || admins.length === 0) return;
+
+    await Promise.all(
+      admins.map((a) =>
+        envoyerPushAdmin(a.user_id, {
+          title: "Ajout à une commande",
+          body: `Commande #${commandeId} · ${formatPrice(sousTotal)}`,
+          url: `/admin/commandes/${commandeId}`,
+        }),
+      ),
+    );
+  } catch (e) {
+    console.error("notifierPushAdminAjout a échoué", e);
+  }
+}

@@ -23,6 +23,7 @@ import { LocalitePicker, type SelectionLocalite } from "@/components/checkout/lo
 import { LocalisationInput, type ValeurLocalisation } from "@/components/checkout/localisation-input";
 import { lienGoogleMapsDepuisCoordonnees } from "@/lib/checkout/localisation";
 import { useAjoutMode } from "@/lib/local/ajout-mode";
+import { mesurerVisite } from "@/lib/trafic/mesure-client";
 import { getCommandeModifiableParTelephone } from "@/lib/ajout/actions";
 import {
   useAllowNextNavigation,
@@ -105,6 +106,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     getLocalites().then(setLocalites);
     getLieuxSpeciaux().then(setLieuxSpeciaux);
+  }, []);
+
+  // Étape "début de commande" du parcours d'achat (PROMPT_ADMIN_V2 Lot 3) :
+  // une fois par arrivée sur la page, pas à chaque re-render.
+  useEffect(() => {
+    mesurerVisite({ type: "debut_commande" });
   }, []);
 
   // Déjà en mode ajout : /checkout créerait une 2e commande (et une 2e

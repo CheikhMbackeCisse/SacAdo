@@ -6,6 +6,7 @@ import { optionsPaiementPourTotal, paiementAutorise, type OptionsPaiement } from
 import { creerSessionWave, waveDisponible, waveEnModeSimulation } from "@/lib/wave/client";
 import { jetonClient, verifierJetonClient } from "@/lib/client-auth";
 import { journaliserCommande } from "@/lib/mesure";
+import { journaliserCommandeValidee } from "@/lib/trafic/mesure";
 import { fusionnerSessionCourante } from "@/lib/affinites";
 import {
   getDatesFermees,
@@ -689,6 +690,8 @@ export async function passerCommande(
   await journaliserCommande(lignesPourJournal(lignesResolues, input.attributions), {
     clientId: client.clientId,
   });
+  // Étape "commande validée" du parcours d'achat (PROMPT_ADMIN_V2 Lot 3).
+  await journaliserCommandeValidee(commandeId as number);
 
   // Une commande payée à la livraison part maintenant sur 'a_confirmer_appel'
   // (PROMPT_CLIENT_V2 Lot 1, migration 0105) : on ne prévient plus les
@@ -833,6 +836,10 @@ export async function demarrerPaiementWave(
   await journaliserCommande(lignesPourJournal(lignesResolues, input.attributions), {
     clientId: client.clientId,
   });
+  // Étape "commande validée" du parcours d'achat (PROMPT_ADMIN_V2 Lot 3) :
+  // comme pour le signal de classement, le paiement Wave n'étant pas encore
+  // confirmé n'empêche pas de compter la commande créée dans ce funnel.
+  await journaliserCommandeValidee(commandeId as number);
 
   return {
     ok: true,

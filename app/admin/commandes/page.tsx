@@ -1,19 +1,24 @@
 import Link from "next/link";
-import { compterCommandesRecues, getCommandesAdmin } from "@/lib/admin/commandes-actions";
+import {
+  compterCommandesRecues,
+  getCommandesAdmin,
+  getModeleAppelWhatsApp,
+} from "@/lib/admin/commandes-actions";
 import { CommandesListe } from "@/components/admin/commandes-liste";
 import type { StatutCommande } from "@/lib/supabase/types";
 import { PullToRefresh } from "@/components/admin/pull-to-refresh";
 
+// Libellés alignés sur PROMPT_ADMIN_V2 Lot 2 pour les filtres rapides.
 const STATUTS: { value: StatutCommande | "toutes"; label: string }[] = [
   { value: "toutes", label: "Toutes" },
-  { value: "paiement_en_attente", label: "Paiement en attente" },
   { value: "a_confirmer_appel", label: "À confirmer par appel" },
-  { value: "recue", label: "Reçue" },
+  { value: "paiement_en_attente", label: "En attente de paiement Wave" },
+  { value: "recue", label: "Payées à préparer" },
   { value: "preparation", label: "En préparation" },
   { value: "livraison", label: "En livraison" },
-  { value: "livree", label: "Livrée" },
+  { value: "livree", label: "Livrées" },
   { value: "probleme", label: "Souci" },
-  { value: "annulee", label: "Annulée" },
+  { value: "annulee", label: "Annulées" },
 ];
 
 const TAILLE_PAGE = 50;
@@ -25,9 +30,10 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
   const page = Math.max(1, Number(pageParam) || 1);
   const offset = (page - 1) * TAILLE_PAGE;
 
-  const [{ items: commandes, hasMore }, nbRecues] = await Promise.all([
+  const [{ items: commandes, hasMore }, nbRecues, modeleAppel] = await Promise.all([
     getCommandesAdmin(filtre, { offset, limit: TAILLE_PAGE, dateLivraison }),
     compterCommandesRecues(),
+    getModeleAppelWhatsApp(),
   ]);
 
   const hrefAvec = (params: { statut?: StatutCommande; page?: number; dateLivraison?: string }) => {
@@ -94,7 +100,7 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
           Aucune commande.
         </p>
       ) : (
-        <CommandesListe commandes={commandes} nbRecues={nbRecues} />
+        <CommandesListe commandes={commandes} nbRecues={nbRecues} modeleAppel={modeleAppel} />
       )}
 
       {(page > 1 || hasMore) && (
