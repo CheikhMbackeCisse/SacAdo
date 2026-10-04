@@ -5,3 +5,9 @@
 // plutôt origineSite() de lib/site-url.ts, qui peut retomber sur l'en-tête
 // `host` si la variable d'environnement est absente.
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://sacado.sn").replace(/\/$/, "");
+
+// Origine dédiée de l'administration (TACHE_admin_sous_domaine.md). Même
+// construction que SITE_URL : variable d'env si posée, sinon repli sur le
+// sous-domaine de prod. Utilisée par proxy.ts pour router par host et
+// rediriger sacado.sn/admin/* vers cette origine.
+export const ADMIN_URL = (process.env.NEXT_PUBLIC_ADMIN_URL || "https://admin.sacado.sn").replace(/\/$/, "");
