@@ -154,9 +154,7 @@ export type FiltresProduitsCategorie = {
   serie?: string | null;
   matiere?: string | null;
   typeOuvrage?: string | null;
-  // Ordinateurs / prix générique
-  prixMin?: number | null;
-  prixMax?: number | null;
+  // Ordinateurs
   ramGo?: number | null;
   stockageGo?: number | null;
   tailleEcran?: number | null;
@@ -204,8 +202,6 @@ export async function getProduitsByCategorie(
     serie,
     matiere,
     typeOuvrage,
-    prixMin,
-    prixMax,
     ramGo,
     stockageGo,
     tailleEcran,
@@ -238,8 +234,6 @@ export async function getProduitsByCategorie(
   if (serie) requete = requete.eq("serie", serie);
   if (matiere) requete = requete.eq("matiere", matiere);
   if (typeOuvrage) requete = requete.eq("type_ouvrage", typeOuvrage);
-  if (prixMin != null) requete = requete.gte("prix", prixMin);
-  if (prixMax != null) requete = requete.lt("prix", prixMax);
   if (ramGo != null) requete = requete.eq("ram_go", ramGo);
   if (stockageGo != null) requete = requete.eq("stockage_go", stockageGo);
   if (tailleEcran != null) requete = requete.eq("taille_ecran", tailleEcran);

@@ -35,27 +35,6 @@ type CategoryProductListProps = {
 // Niveaux lycée : le filtre Série ne s'affiche que pour ceux-là (TACHE_livres_korka §1.5).
 const NIVEAUX_LYCEE = new Set(["2nde", "1ere", "Terminale"]);
 
-// Tranches de prix pour Ordinateurs portables (§3) : fixes plutôt que dérivées
-// du lot chargé, pour rester stables d'une page à l'autre. `max` exclusif,
-// `null` = dernière tranche, illimitée.
-const TRANCHES_PRIX_ORDINATEURS: { label: string; min: number; max: number | null }[] = [
-  { label: "Moins de 150 000", min: 0, max: 150000 },
-  { label: "150 000 – 250 000", min: 150000, max: 250000 },
-  { label: "250 000 – 400 000", min: 250000, max: 400000 },
-  { label: "Plus de 400 000", min: 400000, max: null },
-];
-
-// Filtre prix générique (maj-26-09 §6 "remets le filtre de prix dans les
-// pages de catégorie") : toutes les catégories sauf Ordinateurs, qui garde
-// ses tranches dédiées (montants bien plus élevés).
-const TRANCHES_PRIX_GENERIQUE: { label: string; min: number; max: number | null }[] = [
-  { label: "Moins de 2 000", min: 0, max: 2000 },
-  { label: "2 000 – 5 000", min: 2000, max: 5000 },
-  { label: "5 000 – 15 000", min: 5000, max: 15000 },
-  { label: "15 000 – 50 000", min: 15000, max: 50000 },
-  { label: "Plus de 50 000", min: 50000, max: null },
-];
-
 // "S" est la série générique : S1/S2 en sont des sous-séries (retour
 // testeur), donc choisir "S" doit aussi remonter les titres S1 et S2. Les
 // filtres serveur ne connaissant qu'une égalité exacte, ce cas précis reste
@@ -110,7 +89,6 @@ type FiltresEtat = {
   serie: string | null;
   matiere: string | null;
   typeOuvrage: string | null;
-  prix: string | null; // label de tranche (générique OU ordinateurs selon la catégorie)
   ram: string | null;
   stockage: string | null;
   ecran: string | null;
@@ -124,7 +102,6 @@ const FILTRES_VIDES: FiltresEtat = {
   serie: null,
   matiere: null,
   typeOuvrage: null,
-  prix: null,
   ram: null,
   stockage: null,
   ecran: null,
@@ -158,7 +135,6 @@ export function CategoryProductList({
 
   const estLivres = categorieSlug === "livres-manuels";
   const estOrdinateursPortables = categorieSlug === "ordinateurs" && scSlug === "ordinateurs-portables";
-  const tranchesPrix = estOrdinateursPortables ? TRANCHES_PRIX_ORDINATEURS : TRANCHES_PRIX_GENERIQUE;
 
   // Facettes : valeurs calculées côté serveur sur TOUTE la catégorie, jamais
   // sur le seul lot chargé (maj-26-09 §6 — sinon les options elles-mêmes
@@ -244,7 +220,6 @@ export function CategoryProductList({
       for (const s of sousSousCategories) {
         if (s.sous_categorie_id === sousCategorieId) sscMap.set(s.slug, s.id);
       }
-      const tranche = f.prix ? tranchesPrix.find((t) => t.label === f.prix) : null;
       const ramGo = f.ram ? parseFloat(f.ram) : null;
       const stockageGo = f.stockage ? parseFloat(f.stockage) : null;
       const tailleEcran = f.ecran ? parseFloat(f.ecran) : null;
@@ -260,8 +235,6 @@ export function CategoryProductList({
           serie: f.serie && f.serie !== "S" ? f.serie : null,
           matiere: f.matiere,
           typeOuvrage: f.typeOuvrage,
-          prixMin: tranche?.min ?? null,
-          prixMax: tranche?.max ?? null,
           ramGo,
           stockageGo,
           tailleEcran,
@@ -289,7 +262,7 @@ export function CategoryProductList({
         return undefined;
       }
     },
-    [categorieId, idParSlug, sousSousCategories, tranchesPrix, estOrdinateursPortables],
+    [categorieId, idParSlug, sousSousCategories, estOrdinateursPortables],
   );
 
   const majUrl = (sc: string | null, ssc: string | null) => {
@@ -474,26 +447,13 @@ export function CategoryProductList({
             actif={filtres.typeOuvrage}
             onChoisir={(v) => majFiltre({ typeOuvrage: v })}
           />
-          <FiltreSelect
-            label="Prix"
-            valeurs={tranchesPrix.map((t) => t.label)}
-            actif={filtres.prix}
-            onChoisir={(v) => majFiltre({ prix: v })}
-          />
         </div>
       )}
 
-      {/* Filtres Ordinateurs portables (§3) : Prix, RAM, Stockage, Taille
-          d'écran, Écran tactile, Marque, dans cet ordre — le prix d'abord,
-          premier critère pour un étudiant. */}
+      {/* Filtres Ordinateurs portables (§3) : RAM, Stockage, Taille d'écran,
+          Écran tactile, Marque. */}
       {estOrdinateursPortables && facettesOrdinateurs && (
         <div className="flex flex-wrap gap-2 px-4">
-          <FiltreSelect
-            label="Prix"
-            valeurs={tranchesPrix.map((t) => t.label)}
-            actif={filtres.prix}
-            onChoisir={(v) => majFiltre({ prix: v })}
-          />
           <FiltreSelect
             label="RAM"
             valeurs={facettesOrdinateurs.rams}
@@ -523,19 +483,6 @@ export function CategoryProductList({
             valeurs={facettesOrdinateurs.marques}
             actif={filtres.marque}
             onChoisir={(v) => majFiltre({ marque: v })}
-          />
-        </div>
-      )}
-
-      {/* Filtre prix générique (§6) : les autres catégories, qui n'ont pas de
-          facettes dédiées. */}
-      {!estLivres && !estOrdinateursPortables && (
-        <div className="flex flex-wrap gap-2 px-4">
-          <FiltreSelect
-            label="Prix"
-            valeurs={tranchesPrix.map((t) => t.label)}
-            actif={filtres.prix}
-            onChoisir={(v) => majFiltre({ prix: v })}
           />
         </div>
       )}
