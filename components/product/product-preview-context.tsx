@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { slugAvecId } from "@/lib/slug";
 
 // CORRECTIONS_V16 §2.1 : panneau d'aperçu produit sur ordinateur (>= 1024 px).
@@ -29,6 +30,29 @@ const Contexte = createContext<ContexteApercu | null>(null);
 export function ProductPreviewProvider({ children }: { children: React.ReactNode }) {
   const [etat, setEtat] = useState<Etat>({ produitId: null });
 
+  // Changement de page réel (clic sur Accueil/Catégories/Kits/Panier/Moi, une
+  // catégorie, une recherche…) : ferme le panneau. Piège : Next.js patche
+  // `history.pushState`/`replaceState` globalement, donc MÊME notre propre
+  // appel dans `ouvrir()` (plus bas) fait bouger ce `pathname` — sans le
+  // drapeau `ignorerProchainChangement`, cet effet refermerait le panneau à
+  // l'instant même où il s'ouvre. `ouvrir()` arme ce drapeau juste avant son
+  // propre pushState/replaceState pour que cet effet l'ignore une fois ; tout
+  // changement de pathname NON précédé de ce drapeau est une vraie navigation
+  // Next (clic sur un lien) et ferme le panneau. Pas de `history.back()`
+  // ici : la nouvelle page a déjà posé sa propre entrée.
+  const pathname = usePathname();
+  const pathnamePrecedent = useRef(pathname);
+  const ignorerProchainChangement = useRef(false);
+  useEffect(() => {
+    if (pathnamePrecedent.current === pathname) return;
+    pathnamePrecedent.current = pathname;
+    if (ignorerProchainChangement.current) {
+      ignorerProchainChangement.current = false;
+      return;
+    }
+    setEtat({ produitId: null });
+  }, [pathname]);
+
   useEffect(() => {
     const onPopState = (event: PopStateEvent) => {
       const state = event.state as { [HISTORY_MARKER]?: number } | null;
@@ -41,6 +65,7 @@ export function ProductPreviewProvider({ children }: { children: React.ReactNode
   const ouvrir = useCallback((id: number, nom: string) => {
     const url = `/produits/${slugAvecId(nom, id)}`;
     const dejaOuvert = window.history.state?.[HISTORY_MARKER] != null;
+    ignorerProchainChangement.current = true;
     if (dejaOuvert) {
       window.history.replaceState({ [HISTORY_MARKER]: id }, "", url);
     } else {
