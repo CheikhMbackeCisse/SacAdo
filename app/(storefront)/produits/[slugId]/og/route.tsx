@@ -15,6 +15,7 @@ import { idDepuisSlug } from "@/lib/slug";
 export const revalidate = 3600;
 
 const BLEU_MARQUE = "#0B3D91";
+const ORANGE_ACTION = "#E07B39";
 const LARGEUR = 1200;
 const HAUTEUR = 630;
 
@@ -46,7 +47,7 @@ async function photoEnDataUri(url: string): Promise<string | null> {
     const reponse = await fetch(url);
     if (!reponse.ok) return null;
     const brut = Buffer.from(await reponse.arrayBuffer());
-    const jpeg = await sharp(brut).resize(540, 630, { fit: "cover" }).jpeg({ quality: 80 }).toBuffer();
+    const jpeg = await sharp(brut).resize(LARGEUR, HAUTEUR, { fit: "cover" }).jpeg({ quality: 80 }).toBuffer();
     return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
   } catch {
     return null;
@@ -58,7 +59,6 @@ export async function GET(_request: Request, props: { params: Promise<{ slugId: 
   const id = idDepuisSlug(slugId);
   const produit = id !== null ? await getProduitById(id) : null;
   const site = await origineSite();
-  const logo = `${site}/images/logo.jpg`;
   // Toujours la photo pleine résolution de la fiche, jamais une vignette de
   // liste. Certains produits (placeholders de kit) stockent un chemin
   // relatif /public plutôt qu'une URL Supabase Storage absolue.
@@ -68,47 +68,47 @@ export async function GET(_request: Request, props: { params: Promise<{ slugId: 
     chargerPolice(),
   ]);
 
+  const mention = (
+    <div style={{ display: "flex", fontSize: 44, fontWeight: 700, color: "#FEFDFF" }}>
+      Disponible sur&nbsp;<span style={{ color: ORANGE_ACTION }}>sacado.sn</span>
+    </div>
+  );
+
+  // Juste le produit en plein cadre, avec la mention en bandeau par-dessus
+  // (retour fondateur) : plus de logo ni de nom de produit qui dupliquaient
+  // ce que WhatsApp affiche déjà via og:title. Sans photo (repli), la même
+  // mention se retrouve centrée sur un fond bleu marque.
   const image = new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", background: "#FEFDFF" }}>
-        <div
-          style={{
-            width: photo ? "45%" : "0%",
-            height: "100%",
-            display: photo ? "flex" : "none",
-            background: "#f2f2f2",
-          }}
-        >
-          {photo && (
-            // eslint-disable-next-line @next/next/no-img-element
+      <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", background: BLEU_MARQUE }}>
+        {photo ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={photo}
               alt=""
-              style={{ width: 540, height: 630, objectFit: "cover" }}
+              style={{ position: "absolute", top: 0, left: 0, width: LARGEUR, height: HAUTEUR, objectFit: "cover" }}
             />
-          )}
-        </div>
-        <div
-          style={{
-            flex: 1,
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 24,
-            padding: "56px 64px",
-            background: BLEU_MARQUE,
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logo} alt="" width={72} height={72} style={{ borderRadius: 16 }} />
-          <div style={{ display: "flex", fontSize: 48, fontWeight: 700, color: "#FEFDFF", lineHeight: 1.2 }}>
-            {produit ? produit.nom.slice(0, 80) : "SacAdo"}
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                bottom: 0,
+                width: LARGEUR,
+                display: "flex",
+                justifyContent: "center",
+                padding: "28px 0",
+                background: "rgba(0, 19, 20, 0.55)",
+              }}
+            >
+              {mention}
+            </div>
+          </>
+        ) : (
+          <div style={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}>
+            {mention}
           </div>
-          <div style={{ display: "flex", fontSize: 26, color: "#FEFDFF", opacity: 0.85 }}>
-            Fournitures scolaires — livraison partout au Sénégal
-          </div>
-        </div>
+        )}
       </div>
     ),
     {
