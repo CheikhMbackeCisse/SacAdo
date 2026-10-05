@@ -542,19 +542,75 @@ export async function getSeuilLivraisonGratuite(): Promise<number | null> {
   return Number.isFinite(valeur) && valeur >= 0 ? valeur : SEUIL_LIVRAISON_GRATUITE_DEFAUT;
 }
 
+// « Vous aimerez aussi » (PROMPT_PARTAGE_MOBILIER_FOURNISSEURS Lot 2) : trois
+// paliers de pertinence décroissante — même sous-catégorie, puis même
+// catégorie, puis produits populaires — concaténés sans doublon. Chaque palier
+// est entièrement rapatrié (plafonné à PLAFOND_PALIER) puis tronqué en JS :
+// l'ordre doit rester stable d'une page « charger plus » à l'autre, ce
+// qu'un filtre posé après coup sur un lot partiel ne garantit pas.
+const PLAFOND_PALIER_SIMILAIRES = 300;
+
+function aUnePhoto(p: Produit): boolean {
+  return !!p.photo || p.photos.length > 0;
+}
+
 export async function getProduitsSimilaires(
-  categorieId: number,
-  excludeId: number,
-  limit = 4,
-): Promise<Produit[]> {
-  const { data, error } = await supabase
-    .from("produits")
-    .select(COLONNES_PRODUIT_PUBLIC)
-    .eq("categorie_id", categorieId)
-    .neq("id", excludeId)
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+  produit: { id: number; categorieId: number; sousCategorieId: number | null },
+  { offset = 0, limit = 12 }: { offset?: number; limit?: number } = {},
+): Promise<PageResultat<Produit>> {
+  const vus = new Set<number>([produit.id]);
+  const resultat: Produit[] = [];
+
+  const ajouterPalier = (rows: Produit[] | null) => {
+    for (const p of rows ?? []) {
+      if (vus.has(p.id) || !aUnePhoto(p)) continue;
+      vus.add(p.id);
+      resultat.push(p);
+    }
+  };
+
+  if (produit.sousCategorieId != null) {
+    const { data, error } = await supabase
+      .from("produits")
+      .select(COLONNES_PRODUIT_PUBLIC)
+      .eq("sous_categorie_id", produit.sousCategorieId)
+      .neq("id", produit.id)
+      .or(FILTRE_EDITION_AFFICHABLE)
+      .order("nom", { ascending: true })
+      .limit(PLAFOND_PALIER_SIMILAIRES);
+    if (error) throw error;
+    ajouterPalier(data);
+  }
+
+  // Tant que ce palier ne suffit pas encore à couvrir la page demandée (+1
+  // pour détecter hasMore), on va chercher le palier suivant.
+  if (resultat.length < offset + limit + 1) {
+    const { data, error } = await supabase
+      .from("produits")
+      .select(COLONNES_PRODUIT_PUBLIC)
+      .eq("categorie_id", produit.categorieId)
+      .neq("id", produit.id)
+      .or(FILTRE_EDITION_AFFICHABLE)
+      .order("nom", { ascending: true })
+      .limit(PLAFOND_PALIER_SIMILAIRES);
+    if (error) throw error;
+    ajouterPalier(data);
+  }
+
+  if (resultat.length < offset + limit + 1) {
+    const { data, error } = await supabase
+      .from("produits")
+      .select(COLONNES_PRODUIT_PUBLIC)
+      .or(FILTRE_EDITION_AFFICHABLE)
+      .order("score_global", { ascending: false, nullsFirst: false })
+      .limit(PLAFOND_PALIER_SIMILAIRES);
+    if (error) throw error;
+    ajouterPalier(data);
+  }
+
+  const page = resultat.slice(offset, offset + limit + 1);
+  const hasMore = page.length > limit;
+  return { items: hasMore ? page.slice(0, limit) : page, hasMore };
 }
 
 // Sacs proposés dans le sélecteur du kit (KIT_AMELIORATIONS.md §3) : les

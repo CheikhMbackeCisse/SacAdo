@@ -5,7 +5,6 @@ import sharp from "sharp";
 import { getProduitById } from "@/lib/supabase/queries";
 import { origineSite, urlAbsolue } from "@/lib/site-url";
 import { idDepuisSlug } from "@/lib/slug";
-import { formatPrice } from "@/lib/format";
 
 // Route dédiée (plutôt que la convention spéciale opengraph-image.tsx) : cette
 // dernière ne sait produire que du PNG, et une vraie photo de produit encodée
@@ -68,11 +67,6 @@ export async function GET(_request: Request, props: { params: Promise<{ slugId: 
     photoBrute ? photoEnDataUri(urlAbsolue(site, photoBrute)) : Promise.resolve(null),
     chargerPolice(),
   ]);
-  // toLocaleString("fr-FR") sépare les milliers par une espace fine
-  // insécable (U+202F) : glyphe absent de certaines polices, on la remplace
-  // par une espace normale pour cet aperçu (aucun impact sur l'affichage
-  // dans l'app, qui utilise formatPrice ailleurs sans repasser par ici).
-  const prixAffiche = produit ? formatPrice(produit.prix).replace(/[  ]/g, " ") : "";
 
   const image = new ImageResponse(
     (
@@ -111,11 +105,6 @@ export async function GET(_request: Request, props: { params: Promise<{ slugId: 
           <div style={{ display: "flex", fontSize: 48, fontWeight: 700, color: "#FEFDFF", lineHeight: 1.2 }}>
             {produit ? produit.nom.slice(0, 80) : "SacAdo"}
           </div>
-          {produit && (
-            <div style={{ display: "flex", fontSize: 40, fontWeight: 600, color: "#E07B39" }}>
-              {prixAffiche}
-            </div>
-          )}
           <div style={{ display: "flex", fontSize: 26, color: "#FEFDFF", opacity: 0.85 }}>
             Fournitures scolaires — livraison partout au Sénégal
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -12,12 +13,16 @@ import {
   deplacerLocalite,
 } from "@/lib/admin/localites-actions";
 import { cercleGeoJSON } from "@/lib/geo-circle";
-import type { Localite, Zone } from "@/lib/supabase/types";
+import type { Fournisseur, Localite, Zone } from "@/lib/supabase/types";
 
 maplibregl.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.mjs");
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const DAKAR: [number, number] = [-17.4467, 14.6928];
+// Vert « statut positif » (palette marque) : distinct de la palette des
+// groupes de livraison ci-dessous, pour que les fournisseurs se reconnaissent
+// d'un coup d'œil sur la carte (PROMPT_PARTAGE_MOBILIER_FOURNISSEURS Lot 4).
+const COULEUR_FOURNISSEUR = "#16A34A";
 const PALETTE = [
   "#0B3D91",
   "#E07B39",
@@ -38,11 +43,21 @@ type Mode =
   | { kind: "placer"; localiteId: number }
   | { kind: "dessiner"; localiteId: number; points: [number, number][] };
 
-export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; groupes: Zone[] }) {
+type SelectionFournisseur = { kind: "fournisseur"; f: Fournisseur };
+
+export function LocalitesCarte({
+  localites,
+  groupes,
+  fournisseurs,
+}: {
+  localites: Localite[];
+  groupes: Zone[];
+  fournisseurs: Fournisseur[];
+}) {
   const router = useRouter();
   const conteneurRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const marqueursRef = useRef<Map<number, maplibregl.Marker>>(new Map());
+  const marqueursRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const cadreFait = useRef(false);
   const modeRef = useRef<Mode>({ kind: "normal" });
 
@@ -50,6 +65,7 @@ export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; 
   const [carteHs, setCarteHs] = useState(false);
   const [mode, setMode] = useState<Mode>({ kind: "normal" });
   const [selectionId, setSelectionId] = useState<number | null>(null);
+  const [selectionFournisseur, setSelectionFournisseur] = useState<SelectionFournisseur | null>(null);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [nomAjout, setNomAjout] = useState("");
@@ -70,6 +86,14 @@ export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; 
 
   const avecCoords = useMemo(() => localites.filter((l) => l.lat != null && l.lng != null), [localites]);
   const sansCoords = useMemo(() => localites.filter((l) => l.lat == null || l.lng == null), [localites]);
+  const fournisseursAvecCoords = useMemo(
+    () => fournisseurs.filter((f) => f.lat != null && f.lng != null),
+    [fournisseurs],
+  );
+  const fournisseursSansCoords = useMemo(
+    () => fournisseurs.filter((f) => f.lat == null || f.lng == null),
+    [fournisseurs],
+  );
   const selection = localites.find((l) => l.id === selectionId) ?? null;
 
   async function deplacerLocaliteEtRafraichir(id: number, lat: number, lng: number) {
@@ -182,21 +206,29 @@ export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Synchronise les marqueurs avec les localités géocodées.
+  // Synchronise les marqueurs avec les localités géocodées et les fournisseurs
+  // positionnés (PROMPT_PARTAGE_MOBILIER_FOURNISSEURS Lot 4) : ces derniers ne
+  // sont pas déplaçables ici (ça se fait depuis /admin/fournisseurs), juste
+  // visibles en vert pour repérer d'un coup d'œil les points de retrait par
+  // rapport aux zones de livraison.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !prete) return;
 
-    const voulus = new Set(avecCoords.map((l) => l.id));
-    for (const [id, marqueur] of marqueursRef.current) {
-      if (!voulus.has(id)) {
+    const voulus = new Set([
+      ...avecCoords.map((l) => `l-${l.id}`),
+      ...fournisseursAvecCoords.map((f) => `f-${f.id}`),
+    ]);
+    for (const [cle, marqueur] of marqueursRef.current) {
+      if (!voulus.has(cle)) {
         marqueur.remove();
-        marqueursRef.current.delete(id);
+        marqueursRef.current.delete(cle);
       }
     }
     for (const l of avecCoords) {
       const couleur = couleurParGroupe.get(l.groupe_id) ?? PALETTE[0];
-      let marqueur = marqueursRef.current.get(l.id);
+      const cle = `l-${l.id}`;
+      let marqueur = marqueursRef.current.get(cle);
       if (!marqueur) {
         marqueur = new maplibregl.Marker({ color: couleur, draggable: true })
           .setLngLat([l.lng as number, l.lat as number])
@@ -209,22 +241,39 @@ export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; 
         el.style.cursor = "pointer";
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
+          setSelectionFournisseur(null);
           setSelectionId(l.id);
         });
-        marqueursRef.current.set(l.id, marqueur);
+        marqueursRef.current.set(cle, marqueur);
       } else {
         marqueur.setLngLat([l.lng as number, l.lat as number]);
       }
+    }
+    for (const f of fournisseursAvecCoords) {
+      const cle = `f-${f.id}`;
+      if (marqueursRef.current.has(cle)) continue;
+      const marqueur = new maplibregl.Marker({ color: COULEUR_FOURNISSEUR })
+        .setLngLat([f.lng as number, f.lat as number])
+        .addTo(map);
+      const el = marqueur.getElement();
+      el.style.cursor = "pointer";
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        setSelectionId(null);
+        setSelectionFournisseur({ kind: "fournisseur", f });
+      });
+      marqueursRef.current.set(cle, marqueur);
     }
 
     if (!cadreFait.current && voulus.size > 0) {
       const bounds = new maplibregl.LngLatBounds();
       for (const l of avecCoords) bounds.extend([l.lng as number, l.lat as number]);
+      for (const f of fournisseursAvecCoords) bounds.extend([f.lng as number, f.lat as number]);
       map.fitBounds(bounds, { padding: 60, maxZoom: 13, duration: 0 });
       cadreFait.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prete, avecCoords, couleurParGroupe]);
+  }, [prete, avecCoords, fournisseursAvecCoords, couleurParGroupe]);
 
   // Zones dessinées déjà enregistrées (toutes localités).
   useEffect(() => {
@@ -358,6 +407,17 @@ export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; 
         </div>
       )}
 
+      {fournisseursSansCoords.length > 0 && (
+        <div className="rounded-2xl border border-ink/10 bg-ink/[0.03] p-3">
+          <p className="mb-2 text-xs font-semibold text-ink/60">
+            Position à compléter : {fournisseursSansCoords.map((f) => f.nom).join(", ")}
+          </p>
+          <Link href="/admin/fournisseurs" className="text-xs text-brand hover:underline">
+            Renseigner leur position →
+          </Link>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <button
           type="button"
@@ -414,7 +474,7 @@ export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; 
           </span>
         )}
 
-        {/* Légende par groupe */}
+        {/* Légende par groupe + fournisseurs (en vert, Lot 4) */}
         <div className="absolute bottom-2 left-2 flex max-w-[11rem] flex-col gap-1 rounded-xl bg-white/95 px-3 py-2 text-[11px] shadow">
           {[...groupes]
             .sort((a, b) => a.id - b.id)
@@ -424,6 +484,12 @@ export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; 
                 <span className="truncate">{g.nom}</span>
               </span>
             ))}
+          {fournisseursAvecCoords.length > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 shrink-0 rounded-full" style={{ background: COULEUR_FOURNISSEUR }} />
+              <span className="truncate">En vert : nos fournisseurs</span>
+            </span>
+          )}
         </div>
 
         {/* Mini-formulaire d'ajout, après clic sur la carte en mode ajout */}
@@ -529,6 +595,34 @@ export function LocalitesCarte({ localites, groupes }: { localites: Localite[]; 
                 <MapPin size={13} aria-hidden="true" />
                 Replacer en cliquant sur la carte
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Panneau détail du fournisseur sélectionné (Lot 4) : lecture seule,
+            la position se modifie depuis /admin/fournisseurs. */}
+        {selectionFournisseur && (
+          <div className="absolute inset-x-2 bottom-2 z-10 max-h-[calc(100%-1rem)] overflow-y-auto sm:left-auto sm:right-2 sm:w-80">
+            <div className="flex flex-col gap-2 rounded-2xl border border-ink/10 bg-white p-4 text-sm shadow-lg">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold text-ink">{selectionFournisseur.f.nom}</p>
+                <button type="button" onClick={() => setSelectionFournisseur(null)} aria-label="Fermer">
+                  <X size={16} className="text-ink/40" />
+                </button>
+              </div>
+              {selectionFournisseur.f.adresse && (
+                <p className="text-ink/60">{selectionFournisseur.f.adresse}</p>
+              )}
+              <p className="text-xs text-ink/40">Point de retrait de marchandise</p>
+              <a
+                href={`https://www.google.com/maps?q=${selectionFournisseur.f.lat},${selectionFournisseur.f.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-fit items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70"
+              >
+                <MapPin size={13} aria-hidden="true" />
+                Ouvrir dans Google Maps
+              </a>
             </div>
           </div>
         )}

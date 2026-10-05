@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, MapPin, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { CartePin, type Coordonnees } from "@/components/checkout/carte-pin";
 import {
   creerFournisseur,
@@ -109,9 +109,77 @@ function EditeurGrille({
   );
 }
 
+function lienGoogleMaps(lat: number, lng: number): string {
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
+function CarteFournisseur({
+  f,
+  onModifier,
+}: {
+  f: Fournisseur;
+  onModifier: () => void;
+}) {
+  const positionne = f.lat != null && f.lng != null;
+  return (
+    <li className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-white p-3.5 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-semibold text-ink">{f.nom}</p>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={onModifier}
+            aria-label={`Modifier ${f.nom}`}
+            className="rounded-lg p-1.5 text-ink/60 hover:bg-ink/5"
+          >
+            <Pencil size={15} aria-hidden="true" />
+          </button>
+          <SupprimerBouton fournisseur={f} />
+        </div>
+      </div>
+      {f.adresse && <p className="text-ink/60">{f.adresse}</p>}
+      {f.telephone && (
+        <p className="flex items-center gap-1 text-xs text-ink/50">
+          <Phone size={12} aria-hidden="true" />
+          {f.telephone}
+        </p>
+      )}
+      <div className="flex items-center gap-2 text-xs text-ink/40">
+        <span className="flex items-center gap-1">
+          <MapPin size={12} aria-hidden="true" />
+          {positionne ? `${f.lat!.toFixed(5)}, ${f.lng!.toFixed(5)}` : "Position non renseignée"}
+        </span>
+        {positionne && (
+          <a
+            href={lienGoogleMaps(f.lat as number, f.lng as number)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 font-medium text-brand"
+          >
+            <ExternalLink size={11} aria-hidden="true" />
+            Google Maps
+          </a>
+        )}
+      </div>
+      {(f.grilleRemise || f.grilleMajoration) && (
+        <div className="flex flex-col gap-0.5 rounded-lg bg-ink/5 px-2.5 py-2 text-xs text-ink/60">
+          {f.grilleRemise && <p>Remise : {resumeGrille(f.grilleRemise)}</p>}
+          {f.grilleMajoration && <p>Majoration : {resumeGrille(f.grilleMajoration)}</p>}
+        </div>
+      )}
+    </li>
+  );
+}
+
 export function FournisseursEditor({ fournisseurs }: { fournisseurs: Fournisseur[] }) {
   // null = aucun formulaire ouvert ; "nouveau" = création ; un objet = édition.
   const [cible, setCible] = useState<Fournisseur | "nouveau" | null>(null);
+
+  // Position à compléter listée à part (PROMPT_PARTAGE_MOBILIER_FOURNISSEURS
+  // Lot 4) : ces fournisseurs n'apparaissent pas sur la carte des localités
+  // tant qu'on ne leur a pas donné une position.
+  const positionnes = fournisseurs.filter((f) => f.lat != null && f.lng != null);
+  const sansPosition = fournisseurs.filter((f) => f.lat == null || f.lng == null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -138,48 +206,23 @@ export function FournisseursEditor({ fournisseurs }: { fournisseurs: Fournisseur
           Aucun fournisseur enregistré.
         </p>
       ) : (
-        <ul className="flex flex-col gap-2.5">
-          {fournisseurs.map((f) => (
-            <li
-              key={f.id}
-              className="flex flex-col gap-1.5 rounded-2xl border border-ink/10 bg-white p-3.5 text-sm"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-semibold text-ink">{f.nom}</p>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCible(f)}
-                    aria-label={`Modifier ${f.nom}`}
-                    className="rounded-lg p-1.5 text-ink/60 hover:bg-ink/5"
-                  >
-                    <Pencil size={15} aria-hidden="true" />
-                  </button>
-                  <SupprimerBouton fournisseur={f} />
-                </div>
-              </div>
-              {f.adresse && <p className="text-ink/60">{f.adresse}</p>}
-              {f.telephone && (
-                <p className="flex items-center gap-1 text-xs text-ink/50">
-                  <Phone size={12} aria-hidden="true" />
-                  {f.telephone}
-                </p>
-              )}
-              <p className="flex items-center gap-1 text-xs text-ink/40">
-                <MapPin size={12} aria-hidden="true" />
-                {f.lat != null && f.lng != null
-                  ? `${f.lat.toFixed(5)}, ${f.lng.toFixed(5)}`
-                  : "Position non renseignée"}
+        <>
+          {sansPosition.length > 0 && (
+            <div className="rounded-2xl border border-ink/10 bg-ink/[0.03] p-3">
+              <p className="text-xs font-semibold text-ink/60">
+                Position à compléter : {sansPosition.map((f) => f.nom).join(", ")}
               </p>
-              {(f.grilleRemise || f.grilleMajoration) && (
-                <div className="flex flex-col gap-0.5 rounded-lg bg-ink/5 px-2.5 py-2 text-xs text-ink/60">
-                  {f.grilleRemise && <p>Remise : {resumeGrille(f.grilleRemise)}</p>}
-                  {f.grilleMajoration && <p>Majoration : {resumeGrille(f.grilleMajoration)}</p>}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+            </div>
+          )}
+          <ul className="flex flex-col gap-2.5">
+            {positionnes.map((f) => (
+              <CarteFournisseur key={f.id} f={f} onModifier={() => setCible(f)} />
+            ))}
+            {sansPosition.map((f) => (
+              <CarteFournisseur key={f.id} f={f} onModifier={() => setCible(f)} />
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
@@ -265,7 +308,22 @@ function FormFournisseur({
 
       <div className="flex flex-col gap-1.5 text-sm">
         <span className="text-xs font-medium text-ink/60">Où récupérer la marchandise ?</span>
-        <CartePin position={position} onChange={setPosition} />
+        <CartePin
+          position={position}
+          onChange={setPosition}
+          placeholder="Coordonnées, lien Google Maps, plus code ou adresse"
+        />
+        {position && (
+          <a
+            href={lienGoogleMaps(position.lat, position.lng)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-fit items-center gap-1.5 text-xs font-medium text-brand"
+          >
+            <ExternalLink size={12} aria-hidden="true" />
+            Ouvrir dans Google Maps
+          </a>
+        )}
       </div>
 
       <EditeurGrille

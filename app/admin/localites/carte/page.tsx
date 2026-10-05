@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { getLocalitesAdmin } from "@/lib/admin/localites-actions";
 import { getZonesAdmin } from "@/lib/admin/zones-actions";
+import { getFournisseurs } from "@/lib/admin/fournisseurs-actions";
 import { LocalitesCarte } from "@/components/admin/localites-carte";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLocalitesCartePage() {
-  const [localites, groupes] = await Promise.all([getLocalitesAdmin(), getZonesAdmin()]);
+  const [localites, groupes, fournisseurs] = await Promise.all([
+    getLocalitesAdmin(),
+    getZonesAdmin(),
+    getFournisseurs(),
+  ]);
 
   return (
     <div className="flex h-[calc(100dvh-5.5rem)] flex-col gap-3 lg:h-[calc(100dvh-3rem)]">
@@ -22,7 +27,7 @@ export default async function AdminLocalitesCartePage() {
         </Link>
       </div>
 
-      <LocalitesCarte localites={localites} groupes={groupes} />
+      <LocalitesCarte localites={localites} groupes={groupes} fournisseurs={fournisseurs} />
     </div>
   );
 }

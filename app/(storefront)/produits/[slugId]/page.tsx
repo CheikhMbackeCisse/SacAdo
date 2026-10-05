@@ -11,7 +11,7 @@ import {
 } from "@/lib/supabase/queries";
 import { getRedirectionEquivalent } from "@/lib/supabase/redirection-produit";
 import { ProductDetail } from "@/components/product/product-detail";
-import { ProductGrid } from "@/components/product/product-grid";
+import { SimilarProducts } from "@/components/product/similar-products";
 import { origineSite } from "@/lib/site-url";
 import { idDepuisSlug, slugAvecId } from "@/lib/slug";
 import { formatPrice, tronquer } from "@/lib/format";
@@ -45,7 +45,7 @@ function descriptionProduit(produit: Awaited<ReturnType<typeof getProduitById>>,
   const base = produit.description?.trim();
   if (base && base.length >= 40) return tronquer(base, 155);
   const delai = produit.delai === "24h" ? "Livraison en 24h" : "Livraison à date donnée";
-  const gabarit = `${produit.nom}${categorieNom ? ` (${categorieNom})` : ""} — ${formatPrice(produit.prix)}. ${delai}, partout au Sénégal.`;
+  const gabarit = `${produit.nom}${categorieNom ? ` (${categorieNom})` : ""} — Disponible sur SacAdo. ${delai}, partout au Sénégal.`;
   return tronquer(gabarit, 155);
 }
 
@@ -94,7 +94,10 @@ export default async function ProduitPage(props: PageProps<"/produits/[slugId]">
 
   const [variantes, similaires, categorie, autresEditions, composantsKit, documents] = await Promise.all([
     getVariantesByProduit(produit.id),
-    getProduitsSimilaires(produit.categorie_id, produit.id),
+    getProduitsSimilaires(
+      { id: produit.id, categorieId: produit.categorie_id, sousCategorieId: produit.sous_categorie_id },
+      { limit: 12 },
+    ),
     getCategorieById(produit.categorie_id),
     produit.ouvrage_id ? getAutresEditions(produit.ouvrage_id, produit.id) : Promise.resolve([]),
     produit.est_kit ? getCompositionKit(produit.id) : Promise.resolve([]),
@@ -124,20 +127,15 @@ export default async function ProduitPage(props: PageProps<"/produits/[slugId]">
         autresEditions={autresEditions}
         composantsKit={composantsKit}
         documents={documents}
-        similaires={similaires}
       />
 
-      {similaires.length > 0 && (
-        // Desktop (lg+) : ProductDetail affiche sa propre colonne "Vous aimerez
-        // aussi" à côté du bloc d'achat (CORRECTIONS_V16 §2.2) — celle-ci reste
-        // réservée au mobile.
-        <section className="lg:hidden">
-          <h2 className="px-4 pb-3 font-heading text-base font-semibold text-ink">
-            Vous aimerez aussi
-          </h2>
-          <ProductGrid produits={similaires} />
-        </section>
-      )}
+      <SimilarProducts
+        produitId={produit.id}
+        categorieId={produit.categorie_id}
+        sousCategorieId={produit.sous_categorie_id}
+        produitsInitiaux={similaires.items}
+        hasMoreInitial={similaires.hasMore}
+      />
     </div>
   );
 }

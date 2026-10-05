@@ -9,6 +9,7 @@ import {
   rechercherLieux,
   type ResultatLieu,
 } from "@/lib/geocoding";
+import { positionDepuisTexte } from "@/lib/position-texte";
 
 export type Coordonnees = { lat: number; lng: number };
 
@@ -45,9 +46,15 @@ type Props = {
   onChange: (position: Coordonnees) => void;
   // Lecture seule : épingle figée (fiche commande admin, suivi client).
   readOnly?: boolean;
+  placeholder?: string;
 };
 
-export function CartePin({ position, onChange, readOnly = false }: Props) {
+export function CartePin({
+  position,
+  onChange,
+  readOnly = false,
+  placeholder = "Rechercher un lieu (école, quartier, repère…)",
+}: Props) {
   const conteneurRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -158,6 +165,19 @@ export function CartePin({ position, onChange, readOnly = false }: Props) {
     if (valeur.trim().length < MIN_CARACTERES_RECHERCHE) {
       setResultats([]);
       setListeOuverte(false);
+      return;
+    }
+    // Coordonnées, lien Google Maps ou plus code complet collés directement
+    // (PROMPT_PARTAGE_MOBILIER_FOURNISSEURS Lot 4) : pas besoin de géocoder,
+    // la carte vole droit dessus — et la recherche Nominatim ne se déclenche
+    // pas (ignorerRecherche court-circuite l'effet ci-dessous).
+    const direct = positionDepuisTexte(valeur);
+    if (direct) {
+      ignorerRecherche.current = true;
+      setResultats([]);
+      setListeOuverte(false);
+      gesteInterne.current = false;
+      onChangeRef.current(direct);
     }
   };
 
@@ -215,7 +235,7 @@ export function CartePin({ position, onChange, readOnly = false }: Props) {
               onChange={(event) => majRecherche(event.target.value)}
               onFocus={() => resultats.length > 0 && setListeOuverte(true)}
               onBlur={() => setTimeout(() => setListeOuverte(false), 120)}
-              placeholder="Rechercher un lieu (école, quartier, repère…)"
+              placeholder={placeholder}
               autoComplete="off"
               className="w-full bg-transparent py-2.5 text-sm text-ink placeholder:text-ink/35 focus:outline-none"
             />
