@@ -28,6 +28,22 @@ body {
   touch-action: manipulation;
 }
 
+/* Ordinateur (souris) : texte sélectionnable et copiable. */
+@media (hover: hover) and (pointer: fine) {
+  body {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+
+  button,
+  [role="button"],
+  .barre-navigation,
+  .barre-navigation * {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 /* EXCEPTIONS OBLIGATOIRES.
    Sans ce bloc, la barre de recherche et les champs de formulaire deviennent
    inutilisables (impossible de placer le curseur, de coller, de sélectionner). */
