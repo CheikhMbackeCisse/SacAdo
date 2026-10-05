@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Minus, Plus, ZoomIn } from "lucide-react";
+import { Minus, Plus, ZoomIn } from "lucide-react";
+import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductImage } from "@/components/ui/product-image";
 import { ProductZoom } from "@/components/product/product-zoom";
 import { FavoriteButton } from "@/components/ui/favorite-button";
@@ -68,7 +69,6 @@ export function ProductDetail({
   const PERSO_MAX = 30;
   const [slide, setSlide] = useState(0);
   const [zoomOuvert, setZoomOuvert] = useState(false);
-  const carrouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     recordConsulte(produit.id);
@@ -148,20 +148,6 @@ export function ProductDetail({
     return lignes;
   }, [produit]);
 
-  const majSlide = () => {
-    const el = carrouselRef.current;
-    if (el && el.clientWidth > 0) setSlide(Math.round(el.scrollLeft / el.clientWidth));
-  };
-
-  // Flèches et miniatures (ordinateur) : font défiler le même conteneur que
-  // le balayage tactile, `majSlide` (déclenché par l'évènement scroll) garde
-  // les points/la miniature active synchronisés.
-  const allerAuSlide = (index: number) => {
-    const el = carrouselRef.current;
-    if (!el || el.clientWidth === 0) return;
-    el.scrollTo({ left: index * el.clientWidth, behavior: "smooth" });
-  };
-
   const varianteEpuisee = selectedVariante?.statut === "epuise";
   const produitEpuise = produit.statut === "epuise";
   const peutAjouter =
@@ -187,109 +173,28 @@ export function ProductDetail({
   return (
     <div className="flex flex-col gap-4 lg:mx-auto lg:w-full lg:max-w-[1200px] lg:flex-row lg:items-start lg:gap-8 lg:px-4">
       <div className="lg:w-[520px] lg:shrink-0 lg:sticky lg:top-20">
-      <div className="relative lg:overflow-hidden lg:rounded-2xl">
-        {galerie.length <= 1 ? (
-          <div className="relative aspect-square w-full bg-ink/5">
-            <ProductImage
-              src={galerie[0] ?? null}
-              alt={produit.nom}
-              className="h-full w-full"
-              sizes="100vw"
-              fit="contain"
-              priority
-            />
-          </div>
-        ) : (
-          <>
-            <div
-              ref={carrouselRef}
-              onScroll={majSlide}
-              className="flex snap-x snap-mandatory overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {galerie.map((src, index) => (
-                <div
-                  key={src}
-                  className="relative aspect-square w-full shrink-0 snap-center bg-ink/5"
+        <ProductGallery
+          photos={galerie}
+          alt={produit.nom}
+          onSlideChange={setSlide}
+          overlay={
+            <>
+              <div className="absolute right-3 top-3 flex flex-col gap-2">
+                <FavoriteButton produitId={produit.id} size={20} />
+              </div>
+              {galerie.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setZoomOuvert(true)}
+                  aria-label="Agrandir la photo"
+                  className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-full bg-ink/60 text-white"
                 >
-                  <ProductImage
-                    src={src}
-                    alt={`${produit.nom} — photo ${index + 1}`}
-                    className="h-full w-full"
-                    sizes="100vw"
-                    fit="contain"
-                    // Seule la 1re photo (visible au chargement, candidate LCP)
-                    // est préchargée en priorité — audit perf 2026-09-28, LOT 7.
-                    priority={index === 0}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5 lg:hidden">
-              {galerie.map((src, index) => (
-                <span
-                  key={src}
-                  className={`h-1.5 rounded-full transition-all ${
-                    index === slide ? "w-4 bg-brand" : "w-1.5 bg-white/70"
-                  }`}
-                />
-              ))}
-            </div>
-            {/* Ordinateur : flèches de navigation sur l'image (le balayage tactile
-                n'est pas disponible à la souris). */}
-            <button
-              type="button"
-              onClick={() => allerAuSlide(Math.max(0, slide - 1))}
-              disabled={slide === 0}
-              aria-label="Photo précédente"
-              className="absolute left-2 top-1/2 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-ink shadow disabled:opacity-0 lg:flex"
-            >
-              <ChevronLeft size={18} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={() => allerAuSlide(Math.min(galerie.length - 1, slide + 1))}
-              disabled={slide === galerie.length - 1}
-              aria-label="Photo suivante"
-              className="absolute right-2 top-1/2 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-ink shadow disabled:opacity-0 lg:flex"
-            >
-              <ChevronRight size={18} aria-hidden="true" />
-            </button>
-          </>
-        )}
-        <div className="absolute right-3 top-3 flex flex-col gap-2">
-          <FavoriteButton produitId={produit.id} size={20} />
-        </div>
-        {galerie.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setZoomOuvert(true)}
-            aria-label="Agrandir la photo"
-            className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-full bg-ink/60 text-white"
-          >
-            <ZoomIn size={18} aria-hidden="true" />
-          </button>
-        )}
-      </div>
-
-      {/* Ordinateur : miniatures sous l'image (le balayage tactile n'existe
-          qu'au doigt, les points ci-dessus sont donc masqués sur grand écran). */}
-      {galerie.length > 1 && (
-        <div className="hidden gap-2 pt-3 lg:flex">
-          {galerie.map((src, index) => (
-            <button
-              key={src}
-              type="button"
-              onClick={() => allerAuSlide(index)}
-              aria-label={`Photo ${index + 1}`}
-              className={`relative aspect-square w-16 shrink-0 overflow-hidden rounded-lg bg-ink/5 ring-2 transition-colors ${
-                index === slide ? "ring-brand" : "ring-transparent"
-              }`}
-            >
-              <ProductImage src={src} alt="" className="h-full w-full" sizes="64px" fit="contain" />
-            </button>
-          ))}
-        </div>
-      )}
+                  <ZoomIn size={18} aria-hidden="true" />
+                </button>
+              )}
+            </>
+          }
+        />
       </div>
 
       {zoomOuvert && (

@@ -11,8 +11,15 @@ const ZONES_LIBRES =
 // long appui ouvre quand même le menu Chrome (« Copier l'adresse du lien… ») ou
 // sélectionne le texte. On bloque les événements correspondants hors zones de
 // saisie. Voir TACHE_app_feel_et_recherche.md §1.2.
+// Réservé au tactile : sur ordinateur (souris), ces blocages n'ont pas lieu
+// d'être — sélection de texte, clic droit "Enregistrer l'image" doivent
+// fonctionner normalement (demande explicite). `matchMedia` plutôt qu'un test
+// de largeur d'écran : c'est bien la présence d'une souris précise qui
+// distingue les deux cas, pas la taille de la fenêtre.
 export function AppBehavior() {
   useEffect(() => {
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
     const dansZoneLibre = (cible: EventTarget | null) =>
       cible instanceof Element && cible.closest(ZONES_LIBRES);
 

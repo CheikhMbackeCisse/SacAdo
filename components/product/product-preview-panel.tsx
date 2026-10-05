@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, X } from "lucide-react";
-import { ProductImage } from "@/components/ui/product-image";
+import { ProductGallery } from "@/components/product/product-gallery";
 import { formatPrice, uniteVenteAffichee } from "@/lib/format";
 import { slugAvecId } from "@/lib/slug";
 import { usePanier } from "@/lib/local/panier";
@@ -132,9 +132,7 @@ function ApercuContenu({ produitId, fermer }: { produitId: number; fermer: () =>
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-ink/5">
-        <ProductImage src={galerie[0] ?? null} alt={produit.nom} className="h-full w-full" fit="contain" sizes="440px" />
-      </div>
+      <ProductGallery photos={galerie} alt={produit.nom} thumbSizeClassName="w-12" />
 
       <div className="flex flex-col gap-1">
         <h2 className="font-heading text-base font-bold text-ink">{produit.nom}</h2>
