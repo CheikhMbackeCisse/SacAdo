@@ -15,7 +15,7 @@ import { creerSousSousCategorie } from "@/lib/admin/sous-sous-categories-actions
 import { compresserImage } from "@/lib/images/compress-image";
 import { MAX_PHOTOS_PRODUIT } from "@/lib/vendeur/produits-shared";
 import { ChampSelect } from "@/components/ui/champ-select";
-import { useGlisserDeposer } from "@/lib/admin/use-glisser-deposer";
+import { ListeReordonnable } from "@/components/admin/liste-reordonnable";
 import type { Categorie, Produit, SousCategorie, SousSousCategorie } from "@/lib/supabase/types";
 
 const CHAMP =
@@ -226,13 +226,10 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
 
   // Glisser-déposer (souris sur ordinateur, appui long + glisser sur
   // téléphone) : l'index sert d'identifiant, stable le temps d'un geste de
-  // glisser (PROMPT_ADMIN_KITS_PRODUITS.md lot 2).
-  const { idDeplace: indexPhotoDeplacee, idSurvole: indexPhotoSurvolee, proprietesTuile: proprietesTuilePhoto } =
-    useGlisserDeposer(
-      photos.map((url, i) => ({ url, i })),
-      (p) => p.i,
-      (nouveaux) => setPhotos(nouveaux.map((p) => p.url)),
-    );
+  // glisser (PROMPT_ADMIN_KITS_PRODUITS.md lot 2 ; @dnd-kit depuis
+  // PROMPT_EXPORTS_ET_CORRECTIONS.md Lot 3).
+  const photosIndexees = photos.map((url, i) => ({ url, i }));
+  const reordonnerPhotos = (nouveaux: typeof photosIndexees) => setPhotos(nouveaux.map((p) => p.url));
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -518,15 +515,13 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
         </span>
 
         {photos.length > 0 && (
-          <div className="grid grid-cols-4 gap-2">
-            {photos.map((url, index) => (
-              <div
-                key={url}
-                {...proprietesTuilePhoto(index)}
-                className={`relative aspect-square touch-none overflow-hidden rounded-xl border bg-ink/5 transition-colors ${
-                  indexPhotoSurvolee === index && indexPhotoDeplacee !== index ? "border-brand" : "border-ink/10"
-                } ${indexPhotoDeplacee === index ? "opacity-40" : ""}`}
-              >
+          <ListeReordonnable
+            items={photosIndexees}
+            idDe={(p) => p.i}
+            onReorder={reordonnerPhotos}
+            className="grid grid-cols-4 gap-2"
+            renderItem={({ url, i: index }) => (
+              <div className="relative aspect-square overflow-hidden rounded-xl border border-ink/10 bg-ink/5">
                 <Image src={url} alt="" fill sizes="120px" className="cursor-grab object-cover active:cursor-grabbing" />
                 <span className="absolute left-1 top-1 rounded-full bg-white/90 p-0.5 text-ink/50 shadow">
                   <GripVertical size={12} />
@@ -585,8 +580,8 @@ export function ProduitForm({ produit, categories, sousCategories, sousSousCateg
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          />
         )}
 
         {placesLibres > 0 && (

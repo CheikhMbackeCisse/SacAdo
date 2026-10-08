@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, GripVertical, Loader2, Pin, Search, TriangleAlert, X } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
   rechercherProduitDecouvrir,
   type CarteDecouvrir,
 } from "@/lib/admin/decouvrir-actions";
+import { ListeReordonnable } from "@/components/admin/liste-reordonnable";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
 
@@ -21,7 +22,6 @@ export function DecouvrirEditeur({ initial }: { initial: CarteDecouvrir[] }) {
   const [saving, setSaving] = useState(false);
   const [ok, setOk] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  const dragIndex = useRef<number | null>(null);
 
   const modifie =
     retires.size > 0 ||
@@ -82,39 +82,26 @@ export function DecouvrirEditeur({ initial }: { initial: CarteDecouvrir[] }) {
     router.refresh();
   };
 
-  // Glisser-déposer natif (souris, ordinateur) ; sur téléphone, les flèches
-  // monter/descendre de chaque carte couvrent le même besoin.
-  const onDragStart = (index: number) => {
-    dragIndex.current = index;
-  };
-  const onDragOver = (e: React.DragEvent) => e.preventDefault();
-  const onDrop = (index: number) => {
-    const depart = dragIndex.current;
-    dragIndex.current = null;
-    if (depart == null || depart === index) return;
-    setCartes((liste) => {
-      const copie = [...liste];
-      const [retire] = copie.splice(depart, 1);
-      copie.splice(index, 0, retire);
-      return copie;
-    });
-  };
+  // Glisser-déposer réel, souris ET doigt (PROMPT_EXPORTS_ET_CORRECTIONS.md
+  // Lot 3 — avant ce lot, le drag natif HTML5 ne marchait qu'à la souris ;
+  // les flèches monter/descendre de chaque carte restent le repli.
+  const reordonnerCartes = (nouvelles: CarteDecouvrir[]) => setCartes(nouvelles);
 
   return (
     <div className="flex flex-col gap-4">
       <AjouterProduit onAjouter={(carte) => ajouter(carte, 0)} />
 
-      <ul className="flex flex-col gap-2">
-        {cartes.map((carte, index) => (
-          <li
-            key={carte.produitId}
-            draggable
-            onDragStart={() => onDragStart(index)}
-            onDragOver={onDragOver}
-            onDrop={() => onDrop(index)}
-            className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white p-3"
-          >
-            <GripVertical size={16} className="hidden shrink-0 cursor-grab text-ink/30 lg:block" aria-hidden="true" />
+      <ListeReordonnable
+        items={cartes}
+        idDe={(c) => c.produitId}
+        onReorder={reordonnerCartes}
+        disposition="liste"
+        className="flex flex-col gap-2"
+        renderItem={(carte) => {
+          const index = cartes.indexOf(carte);
+          return (
+          <div className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white p-3">
+            <GripVertical size={16} className="shrink-0 cursor-grab text-ink/30" aria-hidden="true" />
             <div className="relative size-14 shrink-0 overflow-hidden rounded-xl">
               <ProductImage src={carte.photo} alt={carte.nom} className="absolute inset-0 size-full" />
             </div>
@@ -163,9 +150,10 @@ export function DecouvrirEditeur({ initial }: { initial: CarteDecouvrir[] }) {
             >
               <X size={15} aria-hidden="true" />
             </button>
-          </li>
-        ))}
-      </ul>
+          </div>
+          );
+        }}
+      />
 
       {erreur && <p className="text-sm text-red-600">{erreur}</p>}
 

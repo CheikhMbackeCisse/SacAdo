@@ -14,7 +14,7 @@ import {
   type KitItemAvecProduit,
 } from "@/lib/admin/kits-actions";
 import { rechercherProduitsAdmin } from "@/lib/admin/produits-actions";
-import { useGlisserDeposer } from "@/lib/admin/use-glisser-deposer";
+import { ListeReordonnable } from "@/components/admin/liste-reordonnable";
 import { formatPrice } from "@/lib/format";
 import { ProductImage } from "@/components/ui/product-image";
 import { ChampSelect, type OptionSelect } from "@/components/ui/champ-select";
@@ -148,32 +148,26 @@ export function KitItemsManager({
 
   // Glisser-déposer (souris sur ordinateur, appui long + glisser sur
   // téléphone) : reçoit l'ordre final, réécrit `ordre` en une fois.
-  const { idDeplace, idSurvole, proprietesTuile } = useGlisserDeposer(
-    items,
-    (it) => it.id,
-    async (nouveaux) => {
-      const result = await reordonnerKitItems(kitId, nouveaux.map((it) => it.id));
-      if (!result.ok) setError(result.error);
-      router.refresh();
-    },
-  );
+  const reordonner = async (nouveaux: KitItemAvecProduit[]) => {
+    const result = await reordonnerKitItems(kitId, nouveaux.map((it) => it.id));
+    if (!result.ok) setError(result.error);
+    router.refresh();
+  };
 
   return (
     <div className="flex max-w-3xl flex-col gap-3 rounded-2xl border border-ink/10 bg-white p-5">
       {itemsAffiches.length === 0 ? (
         <p className="text-sm text-ink/50">Aucun article dans ce kit pour l&apos;instant.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {itemsAffiches.map((item) => {
+        <ListeReordonnable
+          items={itemsAffiches}
+          idDe={(it) => it.id}
+          onReorder={reordonner}
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+          renderItem={(item) => {
             const index = idsOrdonnes.indexOf(item.id);
             return (
-              <div
-                key={item.id}
-                {...proprietesTuile(item.id)}
-                className={`flex flex-col gap-1.5 rounded-xl border p-2 transition-colors ${
-                  idSurvole === item.id && idDeplace !== item.id ? "border-brand bg-brand/5" : "border-ink/10"
-                } ${idDeplace === item.id ? "opacity-40" : ""}`}
-              >
+              <div className="flex flex-col gap-1.5 rounded-xl border border-ink/10 p-2 transition-colors">
                 <div className="relative aspect-square cursor-grab touch-none overflow-hidden rounded-lg bg-ink/5 active:cursor-grabbing">
                   <ProductImage
                     src={item.produit_photo}
@@ -308,8 +302,8 @@ export function KitItemsManager({
                 )}
               </div>
             );
-          })}
-        </div>
+          }}
+        />
       )}
 
       {retraitEnAttente && (
