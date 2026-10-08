@@ -30,11 +30,16 @@ export const metadata: Metadata = {
   // il lui faut ce lien apple-touch-icon dédié. Nouveau logo fond bleu
   // (maj-26-09 §8) : favicon 16/32 explicites en plus du app/favicon.ico
   // auto-détecté par Next, pour un rendu net dans l'onglet du navigateur.
+  // 96/192 ajoutés (PROMPT_EXPORTS_ET_CORRECTIONS.md Lot 2) : Google Images/
+  // résultats de recherche affichait un globe à la place du logo — il lui
+  // faut une icône carrée de 48px ou un multiple, en plus du favicon.ico.
   icons: {
     apple: "/icons/client-apple-touch-icon-180.png",
     icon: [
       { url: "/icons/client-favicon-16.png", sizes: "16x16", type: "image/png" },
       { url: "/icons/client-favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/client-favicon-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icons/client-192.png", sizes: "192x192", type: "image/png" },
     ],
   },
   appleWebApp: {
