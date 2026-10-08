@@ -44,6 +44,17 @@ export function KitBeneficiairePicker({
     };
   }, [connecte, identite]);
 
+  // Resynchronise le prénom (PROMPT_EXPORTS_ET_CORRECTIONS.md Lot 5) : en
+  // changeant d'onglet de gamme, seul l'id voyage dans l'URL (jamais le
+  // prénom, donnée personnelle) — une fois la liste chargée, on retrouve le
+  // prénom correspondant et on le remonte au parent.
+  useEffect(() => {
+    if (value == null) return;
+    const match = benefs.find((b) => b.id === value);
+    if (match) onChange(match.id, match.prenom);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [benefs, value]);
+
   if (!connecte || !identite) return null;
 
   const enregistrer = async () => {

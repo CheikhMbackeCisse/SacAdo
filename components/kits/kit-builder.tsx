@@ -11,7 +11,7 @@ import { useKitsPanier } from "@/lib/local/kits-panier";
 import { useAjoutMode } from "@/lib/local/ajout-mode";
 import { KitBeneficiairePicker } from "@/components/kits/kit-beneficiaire-picker";
 import { ligneEstAffichable } from "@/lib/kits";
-import type { Produit, SectionKitItem, VarianteAvecAttributs } from "@/lib/supabase/types";
+import type { Gamme, Produit, SectionKitItem, VarianteAvecAttributs } from "@/lib/supabase/types";
 
 export type LigneKitBuilder = {
   id: number;
@@ -25,6 +25,10 @@ export type LigneKitBuilder = {
   variantes: VarianteAvecAttributs[];
 };
 
+// Onglet de gamme (PROMPT_EXPORTS_ET_CORRECTIONS.md Lot 5) : prix calculé
+// côté serveur pour chaque gamme encore disponible de la même classe.
+export type GammeOnglet = { gamme: Gamme; label: string; total: number; href: string };
+
 type EtatLigne = { checked: boolean; varianteId: number | null };
 
 type KitBuilderProps = {
@@ -35,6 +39,7 @@ type KitBuilderProps = {
   gammeLabel: string;
   photoKit: string | null;
   lignes: LigneKitBuilder[];
+  gammesOnglets: GammeOnglet[];
 };
 
 const GROUPE_CAHIERS = "Cahiers";
@@ -52,6 +57,7 @@ export function KitBuilder({
   gammeLabel,
   photoKit,
   lignes: toutesLesLignes,
+  gammesOnglets,
 }: KitBuilderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,6 +65,11 @@ export function KitBuilder({
   // Lot 2) : on repart de la sélection exacte de ce kit dans le panier, pas
   // des coches par défaut.
   const modifierGroupeId = searchParams.get("modifier");
+  // Choix « Pour qui ce kit ? » gardé en changeant d'onglet de gamme (Lot 5) :
+  // transmis par l'URL (même mécanique que `modifier` ci-dessus), jamais le
+  // prénom (donnée personnelle) — seulement l'id, le prénom se resynchronise
+  // depuis la liste des bénéficiaires une fois chargée (voir onChange ci-dessous).
+  const pourQuiParam = searchParams.get("pourQui");
 
   const { ajouterKit, lignes: lignesPanier } = usePanier();
   const { enregistrer: enregistrerKitClasse } = useKitsPanier();
@@ -75,12 +86,14 @@ export function KitBuilder({
   );
   const groupeExistant = lignesExistantesDuGroupe[0]?.groupe ?? null;
 
-  const [beneficiaireId, setBeneficiaireId] = useState<number | null>(
-    () => groupeExistant?.beneficiaireId ?? null,
-  );
-  const [beneficiairePrenom, setBeneficiairePrenom] = useState<string | null>(
-    () => groupeExistant?.beneficiairePrenom ?? null,
-  );
+  const [beneficiaireId, setBeneficiaireId] = useState<number | null>(() => {
+    if (pourQuiParam) return Number(pourQuiParam);
+    return groupeExistant?.beneficiaireId ?? null;
+  });
+  const [beneficiairePrenom, setBeneficiairePrenom] = useState<string | null>(() => {
+    if (pourQuiParam) return null;
+    return groupeExistant?.beneficiairePrenom ?? null;
+  });
   // Ouvert par défaut (CORRECTIONS_KITS Lot 5 §1) : fermé, les cahiers
   // passaient inaperçus (ex. kits 3e Confort, CM2 Confort).
   const [cahiersOuverts, setCahiersOuverts] = useState(true);
@@ -193,6 +206,32 @@ export function KitBuilder({
   return (
     <div className="flex flex-col lg:mx-auto lg:w-full lg:max-w-5xl lg:flex-row lg:items-start lg:gap-8">
     <div className="flex flex-1 flex-col">
+      {gammesOnglets.length > 1 && (
+        <div className="mx-4 mb-3 flex gap-2">
+          {gammesOnglets.map((onglet) => {
+            const actif = onglet.gamme === gamme;
+            const href = beneficiaireId ? `${onglet.href}?pourQui=${beneficiaireId}` : onglet.href;
+            const classesCommunes =
+              "flex flex-1 flex-col items-center gap-0.5 rounded-xl border px-2 py-2 text-center transition-colors";
+            return actif ? (
+              <span
+                key={onglet.gamme}
+                className={`${classesCommunes} border-brand bg-brand/10`}
+                aria-current="true"
+              >
+                <span className="text-xs font-semibold text-brand">{onglet.label}</span>
+                <span className="text-[11px] text-brand/70">{formatPrice(onglet.total)}</span>
+              </span>
+            ) : (
+              <Link key={onglet.gamme} href={href} className={`${classesCommunes} border-ink/10 hover:border-brand/40`}>
+                <span className="text-xs font-medium text-ink/70">{onglet.label}</span>
+                <span className="text-[11px] text-ink/50">{formatPrice(onglet.total)}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       <KitBeneficiairePicker
         cycle={cycle}
         niveau={niveau}

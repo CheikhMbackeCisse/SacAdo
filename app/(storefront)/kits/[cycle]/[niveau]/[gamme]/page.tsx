@@ -7,17 +7,19 @@ import { getCycleByValue } from "@/lib/cycles";
 import { getGammeDef, isGamme } from "@/lib/gammes";
 import {
   getKitByCycleNiveauGamme,
+  getKitsByCycleNiveau,
   getKitItemsAvecProduits,
   getVariantesByProduitIds,
   getClassesActives,
 } from "@/lib/supabase/queries";
-import { KitBuilder, type LigneKitBuilder } from "@/components/kits/kit-builder";
+import { KitBuilder, type LigneKitBuilder, type GammeOnglet } from "@/components/kits/kit-builder";
 import { ProductImage } from "@/components/ui/product-image";
 import { ShareButton } from "@/components/ui/share-button";
 import { origineSite } from "@/lib/site-url";
 import { tronquer } from "@/lib/format";
 import {
   aUneCleDesCracksAffichable,
+  calculerPrixKit,
   estClasseKitValide,
   estClasseRetiree,
   kitEstAffichable,
@@ -93,6 +95,26 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
       </>
     );
   }
+
+  // Onglets de gamme (PROMPT_EXPORTS_ET_CORRECTIONS.md Lot 5) : prix de chaque
+  // gamme disponible pour cette même classe, pour le bandeau en haut de page.
+  const kitsBruts = await getKitsByCycleNiveau(cycle, niveau);
+  const gammesOnglets: GammeOnglet[] = (
+    await Promise.all(
+      kitsBruts.map(async (k) => {
+        const itemsGamme = k.id === kit.id ? items : await getKitItemsAvecProduits(k.id);
+        const lignesGamme: LigneKit[] = itemsGamme.map((it) => ({ item: it, produit: it.produit }));
+        if (!kitEstAffichable(lignesGamme)) return null;
+        const { total } = calculerPrixKit(lignesGamme);
+        return {
+          gamme: k.gamme,
+          label: getGammeDef(k.gamme)?.label ?? k.gamme,
+          total,
+          href: `/kits/${cycle}/${encodeURIComponent(niveau)}/${k.gamme}`,
+        };
+      }),
+    )
+  ).filter((g): g is GammeOnglet => g !== null);
 
   const variantesParProduit = await getVariantesByProduitIds(items.map((it) => it.produit.id));
   const description =
@@ -181,6 +203,7 @@ export default async function KitGammePage(props: PageProps<"/kits/[cycle]/[nive
             gammeLabel={gammeDef?.label ?? ""}
             photoKit={photoKit}
             lignes={lignes}
+            gammesOnglets={gammesOnglets}
           />
         </Suspense>
       </div>
