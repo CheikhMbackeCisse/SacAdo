@@ -53,13 +53,13 @@ export function AdminNav({ email }: { email: string }) {
   const pathname = usePathname();
 
   return (
-    <nav className="hidden w-56 shrink-0 flex-col gap-3 border-r border-ink/10 bg-white p-4 lg:flex">
+    <nav className="hidden w-56 shrink-0 flex-col gap-3 border-r border-ink/10 bg-white p-4 lg:sticky lg:top-0 lg:flex lg:h-screen">
       <div>
         <p className="font-heading text-sm font-bold text-ink">SacAdo Admin</p>
         <p className="truncate text-[11px] text-ink/40">{email}</p>
       </div>
       <RechercheAllerA liens={LIENS.map(({ href, label }) => ({ href, label }))} />
-      <div className="flex flex-col gap-1 overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
         <ListeLiens pathname={pathname} />
       </div>
     </nav>
