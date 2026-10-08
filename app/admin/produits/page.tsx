@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import {
   getProduitsAdminPage,
   getNbKitsParProduit,
@@ -64,13 +64,22 @@ export default async function AdminProduitsPage(props: PageProps<"/admin/produit
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-xl font-bold text-ink">Produits</h1>
-        <Link
-          href="/admin/produits/nouveau"
-          className="flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface active:scale-95"
-        >
-          <Plus size={16} aria-hidden="true" />
-          Ajouter un produit
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/produits/export"
+            className="flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70"
+          >
+            <Download size={14} aria-hidden="true" />
+            Exporter en Excel
+          </Link>
+          <Link
+            href="/admin/produits/nouveau"
+            className="flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-surface active:scale-95"
+          >
+            <Plus size={16} aria-hidden="true" />
+            Ajouter un produit
+          </Link>
+        </div>
       </div>
 
       <FiltresProduits

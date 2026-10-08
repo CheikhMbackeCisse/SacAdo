@@ -1,12 +1,23 @@
 import * as XLSX from "xlsx";
 import { requireAdmin } from "@/lib/admin/guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getGammeDef } from "@/lib/gammes";
+import { calculerPrixKit, type LigneKit } from "@/lib/kits";
+import type { Produit } from "@/lib/supabase/types";
 
-// Export Excel du contenu de tous les kits (ADMIN.md Lot 2), même format que
-// scripts/exporter-kits-excel.mjs — pour rester compatible avec le fichier
-// `kits_sacado_final.xlsx` déjà connu du fondateur.
+// Export Excel des kits (PROMPT_EXPORTS_ET_CORRECTIONS.md Lot 1) : onglet
+// "Kits" (un résumé par kit) + onglet "Contenu des kits" (une ligne par
+// article), même format que scripts/exporter-kits-excel.mjs pour rester
+// compatible avec le fichier `kits_sacado_final.xlsx` déjà connu du fondateur.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const LABELS_CYCLE: Record<string, string> = {
+  prescolaire: "Préscolaire",
+  elementaire: "Élémentaire",
+  college: "Collège",
+  lycee: "Lycée",
+};
 
 const LIBELLE_SECTION: Record<string, string> = {
   principal: "Principal",
@@ -14,7 +25,11 @@ const LIBELLE_SECTION: Record<string, string> = {
   option: "Option",
 };
 
-type Produit = { nom: string; prix: number };
+// Seul marqueur disponible à la lecture pour reconnaître les lignes "cahiers"
+// (voir lib/kits.ts, GROUPE_CAHIERS).
+const GROUPE_CAHIERS = "Cahiers";
+
+type ProduitLite = { nom: string; prix: number; stock: number; statut_publication: string };
 type ItemRow = {
   kit_id: number;
   produit_id: number;
@@ -23,7 +38,8 @@ type ItemRow = {
   groupe_affichage: string | null;
   section: string;
   coche_defaut: boolean;
-  produits: Produit | Produit[] | null;
+  ordre: number;
+  produits: ProduitLite | ProduitLite[] | null;
 };
 
 export async function GET() {
@@ -35,13 +51,13 @@ export async function GET() {
 
   const { data: kits } = await supabaseAdmin
     .from("kits")
-    .select("id, cycle, niveau, gamme, nom, statut")
+    .select("id, cycle, niveau, gamme, nom, statut, description")
     .order("cycle")
     .order("niveau");
   const { data: items } = await supabaseAdmin
     .from("kit_items")
     .select(
-      "kit_id, produit_id, quantite_defaut, libelle_besoin, groupe_affichage, section, coche_defaut, ordre, produits(nom, prix)",
+      "kit_id, produit_id, quantite_defaut, libelle_besoin, groupe_affichage, section, coche_defaut, ordre, produits(nom, prix, stock, statut_publication)",
     )
     .order("ordre");
 
@@ -52,68 +68,137 @@ export async function GET() {
     itemsParKit.set(item.kit_id, liste);
   }
 
-  const lignes: Record<string, string | number>[] = [];
+  const lignesKits: Record<string, string | number>[] = [];
+  const lignesContenu: Record<string, string | number>[] = [];
+
   for (const kit of kits ?? []) {
     const contenu = itemsParKit.get(kit.id) ?? [];
+    const cycleLabel = LABELS_CYCLE[kit.cycle] ?? kit.cycle;
+    const gammeLabel = getGammeDef(kit.gamme)?.label ?? kit.gamme;
+
+    const ligneKit: LigneKit[] = contenu
+      .map((item) => {
+        const produit = Array.isArray(item.produits) ? item.produits[0] : item.produits;
+        if (!produit) return null;
+        return {
+          item: {
+            quantite_defaut: item.quantite_defaut,
+            coche_defaut: item.coche_defaut,
+            section: item.section as LigneKit["item"]["section"],
+            groupe_affichage: item.groupe_affichage,
+            ordre: item.ordre,
+          },
+          produit: produit as unknown as Produit,
+        };
+      })
+      .filter((l): l is LigneKit => l !== null);
+    const { total: totalCoche } = calculerPrixKit(ligneKit);
+
+    const nbCahiers = contenu
+      .filter((item) => item.groupe_affichage === GROUPE_CAHIERS)
+      .reduce((somme, item) => somme + item.quantite_defaut, 0);
+
+    lignesKits.push({
+      ID: kit.id,
+      Cycle: cycleLabel,
+      Classe: kit.niveau,
+      Gamme: gammeLabel,
+      Nom: kit.nom,
+      Statut: kit.statut === "publie" ? "Publié" : "Masqué",
+      Description: kit.description ?? "",
+      "Nombre de lignes": contenu.length,
+      "Nombre de cahiers": nbCahiers,
+      "Total coché (FCFA)": totalCoche,
+    });
+
     if (contenu.length === 0) {
-      lignes.push({
-        Cycle: kit.cycle,
-        Niveau: kit.niveau,
-        Gamme: kit.gamme,
+      lignesContenu.push({
+        Cycle: cycleLabel,
+        Classe: kit.niveau,
+        Gamme: gammeLabel,
         Kit: kit.nom,
-        Statut: kit.statut === "publie" ? "Publié" : "Masqué",
+        "ID kit": kit.id,
+        Ordre: "",
         Groupe: "",
+        "ID produit": "",
         Produit: "(aucun article)",
         Quantité: "",
         "Prix unitaire (FCFA)": "",
         Section: "",
         "Coché par défaut": "",
         "Libellé besoin": "",
+        Stock: "",
+        Visible: "",
       });
       continue;
     }
     for (const item of contenu) {
       const produit = Array.isArray(item.produits) ? item.produits[0] : item.produits;
-      lignes.push({
-        Cycle: kit.cycle,
-        Niveau: kit.niveau,
-        Gamme: kit.gamme,
+      lignesContenu.push({
+        Cycle: cycleLabel,
+        Classe: kit.niveau,
+        Gamme: gammeLabel,
         Kit: kit.nom,
-        Statut: kit.statut === "publie" ? "Publié" : "Masqué",
+        "ID kit": kit.id,
+        Ordre: item.ordre,
         Groupe: item.groupe_affichage ?? "",
+        "ID produit": item.produit_id,
         Produit: produit?.nom ?? `(produit ${item.produit_id} introuvable)`,
         Quantité: item.quantite_defaut,
         "Prix unitaire (FCFA)": produit?.prix ?? "",
         Section: LIBELLE_SECTION[item.section] ?? item.section,
         "Coché par défaut": item.coche_defaut ? "Oui" : "Non",
         "Libellé besoin": item.libelle_besoin ?? "",
+        Stock: produit?.stock ?? "",
+        Visible: produit ? (produit.statut_publication === "publie" ? "Oui" : "Non") : "",
       });
     }
   }
 
-  const feuille = XLSX.utils.json_to_sheet(lignes);
-  feuille["!cols"] = [
+  const classeur = XLSX.utils.book_new();
+
+  const feuilleKits = XLSX.utils.json_to_sheet(lignesKits);
+  feuilleKits["!cols"] = [
+    { wch: 6 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 32 },
+    { wch: 10 },
+    { wch: 42 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 16 },
+  ];
+  XLSX.utils.book_append_sheet(classeur, feuilleKits, "Kits");
+
+  const feuilleContenu = XLSX.utils.json_to_sheet(lignesContenu);
+  feuilleContenu["!cols"] = [
     { wch: 12 },
     { wch: 10 },
     { wch: 10 },
     { wch: 30 },
-    { wch: 10 },
+    { wch: 8 },
+    { wch: 8 },
     { wch: 16 },
+    { wch: 10 },
     { wch: 42 },
     { wch: 9 },
     { wch: 16 },
-    { wch: 16 },
     { wch: 14 },
+    { wch: 16 },
     { wch: 30 },
+    { wch: 8 },
+    { wch: 8 },
   ];
-  const classeur = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(classeur, feuille, "Contenu des kits");
+  XLSX.utils.book_append_sheet(classeur, feuilleContenu, "Contenu des kits");
+
   const buffer = XLSX.write(classeur, { type: "buffer", bookType: "xlsx" }) as Buffer;
 
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="kits_sacado_${new Date().toISOString().slice(0, 10)}.xlsx"`,
+      "Content-Disposition": `attachment; filename="sacado_kits_${new Date().toISOString().slice(0, 10)}.xlsx"`,
     },
   });
 }

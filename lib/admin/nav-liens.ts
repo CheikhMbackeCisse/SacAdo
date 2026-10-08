@@ -70,14 +70,25 @@ export const LIENS = [
 
 export type SectionBadge = "commandes";
 
-// Les 5 entrées regroupées (PROMPT_ADMIN_KITS_PRODUITS.md lot 4) : identiques
-// sur téléphone (bottom nav) et sur ordinateur (barre latérale) — « Plus »
-// ouvre /admin/plus, qui regroupe tout le reste par thème (Produits en
-// première tuile). Avant ce lot, la barre latérale listait les 28 `LIENS` à
-// plat ; seule la bottom nav mobile avait ce regroupement.
+// Les 5 entrées regroupées (PROMPT_ADMIN_KITS_PRODUITS.md lot 4) : sur
+// téléphone (bottom nav, 5 places comptées), « Plus » ouvre /admin/plus, qui
+// regroupe tout le reste par thème (Produits en première tuile, reste
+// accessible par la recherche "Aller à…").
 export const ENTREES_PRINCIPALES: { href: string; label: string; icon: (typeof LIENS)[number]["icon"]; section?: SectionBadge }[] = [
   { href: "/admin", label: "Accueil", icon: LayoutDashboard },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList, section: "commandes" },
+  { href: "/admin/kits", label: "Kits", icon: GraduationCap },
+  { href: "/admin/trafic", label: "Trafic", icon: Activity },
+  { href: "/admin/plus", label: "Plus", icon: Menu },
+];
+
+// Barre latérale desktop uniquement (PROMPT_EXPORTS_ET_CORRECTIONS.md Lot 1) :
+// la place n'y est pas comptée comme sur la bottom nav mobile, donc Produits
+// y figure en direct plutôt que caché dans "Plus".
+export const ENTREES_PRINCIPALES_DESKTOP: typeof ENTREES_PRINCIPALES = [
+  { href: "/admin", label: "Accueil", icon: LayoutDashboard },
+  { href: "/admin/commandes", label: "Commandes", icon: ClipboardList, section: "commandes" },
+  { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
   { href: "/admin/trafic", label: "Trafic", icon: Activity },
   { href: "/admin/plus", label: "Plus", icon: Menu },

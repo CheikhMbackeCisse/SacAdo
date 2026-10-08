@@ -129,6 +129,9 @@ export type Produit = {
   personnalisable?: boolean;
   prix_personnalisation?: number | null;
   achat_personnalisation?: number | null;
+  // Posée automatiquement par un trigger (migration 0117), jamais écrite par
+  // le code applicatif. Absente des lectures d'avant cette migration.
+  updated_at?: string;
 };
 
 // Notice de montage d'un kit électronique (migration 0077, TACHE_documents_
