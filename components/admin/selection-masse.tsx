@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { appliquerActionMasse, type ActionMasse } from "@/lib/admin/produits-actions";
+import { appliquerActionMasse, supprimerProduitsEnMasse, type ActionMasse } from "@/lib/admin/produits-actions";
 import { formatPrice } from "@/lib/format";
 import { ChampSelect, type OptionSelect } from "@/components/ui/champ-select";
 import type { Categorie, SousCategorie } from "@/lib/supabase/types";
@@ -111,6 +111,7 @@ const OPTIONS_ACTION: OptionSelect[] = [
   { value: "publier", label: "Publier" },
   { value: "masquer", label: "Masquer" },
   { value: "categorie", label: "Changer de catégorie" },
+  { value: "supprimer", label: "Supprimer" },
 ];
 
 function BarreActionMasse() {
@@ -163,6 +164,30 @@ function BarreActionMasse() {
   };
 
   const valider = async () => {
+    if (action === "supprimer") {
+      if (
+        !window.confirm(
+          `Supprimer ${ids.length} produit(s) ? Ils seront retirés des kits qui les contiennent ; ceux déjà présents dans une commande passée seront archivés plutôt que supprimés.`,
+        )
+      )
+        return;
+      setEnCours(true);
+      setError(null);
+      const result = await supprimerProduitsEnMasse(ids);
+      setEnCours(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      if (result.nbArchives) {
+        window.alert(`${result.nbSupprimes ?? 0} produit(s) supprimé(s), ${result.nbArchives} archivé(s) (déjà commandés).`);
+      }
+      toutSelectionner(ids);
+      setAction("");
+      router.refresh();
+      return;
+    }
+
     const a = construireAction();
     if (!a) return;
     const message =

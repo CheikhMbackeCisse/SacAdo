@@ -5,7 +5,9 @@ export type StatutProduit = "dispo" | "sur_commande" | "epuise";
 //   negociation : au moins une contre-proposition de prix a été faite ;
 //   publie      : prix accepté des deux côtés → visible au catalogue ;
 //   refuse      : abandonné par l'une des parties.
-export type StatutPublication = "en_attente" | "negociation" | "publie" | "refuse";
+//   archive     : supprimé du point de vue admin, conservé pour l'historique
+//                 des commandes (invisible partout, filtre "Archivé" seul à l'afficher).
+export type StatutPublication = "en_attente" | "negociation" | "publie" | "refuse" | "archive";
 export type StatutVariante = "dispo" | "epuise";
 export type Cycle = "prescolaire" | "elementaire" | "college" | "lycee";
 export type Gamme = "essentiel" | "confort" | "complet";

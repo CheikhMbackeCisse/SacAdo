@@ -127,7 +127,11 @@ export async function getProduitsAdminPage(
   if (filtres.sousCategorieId) query = query.eq("sous_categorie_id", filtres.sousCategorieId);
   if (filtres.vendeurId === "sacado") query = query.eq("vendeur_id", VENDEUR_SACADO_ID);
   else if (filtres.vendeurId) query = query.eq("vendeur_id", filtres.vendeurId);
+  // Un produit archivé (suppression "douce" d'un produit déjà commandé) ne
+  // doit jamais polluer la liste courante : il ne ressort que si on demande
+  // explicitement le filtre "Archivé".
   if (filtres.statutPublication) query = query.eq("statut_publication", filtres.statutPublication);
+  else query = query.neq("statut_publication", "archive");
   if (filtres.stock === "rupture") query = query.eq("statut", "epuise");
   else if (filtres.stock === "en_stock") query = query.neq("statut", "epuise");
   if (filtres.sansImage) query = query.is("photo", null);
@@ -511,16 +515,60 @@ export async function leverPrixAVerifier(id: number): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function supprimerProduit(id: number): Promise<ActionResult> {
+// Kits contenant ce produit, pour le message de confirmation avant
+// suppression (PROMPT_FINAL_CATALOGUE_KITS.md Lot 1).
+export async function getKitsUtilisantProduit(produitId: number): Promise<{ id: number; nom: string }[]> {
   await requireAdmin();
-  const { error } = await supabaseAdmin.from("produits").delete().eq("id", id);
-  if (error) {
-    return {
-      ok: false,
-      error: "Impossible de supprimer : ce produit est utilisé dans une commande ou un kit.",
-    };
+  const { data: items } = await supabaseAdmin.from("kit_items").select("kit_id").eq("produit_id", produitId);
+  const kitIds = [...new Set((items ?? []).map((i) => i.kit_id))];
+  if (kitIds.length === 0) return [];
+  const { data: kits } = await supabaseAdmin.from("kits").select("id, nom").in("id", kitIds);
+  return (kits ?? []).sort((a, b) => a.nom.localeCompare(b.nom));
+}
+
+// Retire le produit de tous les kits qui le contiennent, puis : s'il apparaît
+// dans une commande passée, l'archive (conserve la ligne pour l'historique,
+// invisible partout) ; sinon le supprime pour de bon.
+export async function supprimerProduit(id: number): Promise<ActionResult & { archive?: boolean }> {
+  await requireAdmin();
+  await supabaseAdmin.from("kit_items").delete().eq("produit_id", id);
+
+  const { count } = await supabaseAdmin
+    .from("commande_items")
+    .select("id", { count: "exact", head: true })
+    .eq("produit_id", id);
+
+  if (count && count > 0) {
+    const { error } = await supabaseAdmin
+      .from("produits")
+      .update({ statut_publication: "archive" })
+      .eq("id", id);
+    if (error) return { ok: false, error: "Impossible d'archiver ce produit." };
+    return { ok: true, archive: true };
   }
-  return { ok: true };
+
+  const { error } = await supabaseAdmin.from("produits").delete().eq("id", id);
+  if (error) return { ok: false, error: "Impossible de supprimer ce produit." };
+  return { ok: true, archive: false };
+}
+
+// Même règle que supprimerProduit, appliquée à une sélection (bouton "masse").
+export async function supprimerProduitsEnMasse(
+  produitIds: number[],
+): Promise<ActionResult & { nbSupprimes?: number; nbArchives?: number }> {
+  await requireAdmin();
+  if (produitIds.length === 0) return { ok: false, error: "Aucun produit sélectionné." };
+
+  let nbSupprimes = 0;
+  let nbArchives = 0;
+  for (const id of produitIds) {
+    const result = await supprimerProduit(id);
+    if (result.ok) {
+      if (result.archive) nbArchives += 1;
+      else nbSupprimes += 1;
+    }
+  }
+  return { ok: true, nbSupprimes, nbArchives };
 }
 
 const SELECT_VARIANTE_ADMIN = "*, variante_attributs(attribut_id, valeur, attributs(nom))";

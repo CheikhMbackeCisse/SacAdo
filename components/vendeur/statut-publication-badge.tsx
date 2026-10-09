@@ -5,6 +5,7 @@ const CONFIG: Record<StatutPublication, { label: string; className: string }> = 
   negociation: { label: "Négociation en cours", className: "bg-[#0B3D91]/10 text-[#0B3D91]" },
   publie: { label: "Publié", className: "bg-[#16A34A]/12 text-[#166534]" },
   refuse: { label: "Refusé", className: "bg-red-100 text-red-700" },
+  archive: { label: "Archivé", className: "bg-ink/10 text-ink/60" },
 };
 
 export function StatutPublicationBadge({ statut }: { statut: StatutPublication }) {

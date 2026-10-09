@@ -16,6 +16,7 @@ const STATUTS: OptionSelect[] = [
   { value: "en_attente", label: "Masqué / en attente" },
   { value: "negociation", label: "En négociation" },
   { value: "refuse", label: "Refusé" },
+  { value: "archive", label: "Archivé" },
 ];
 
 const STOCKS: OptionSelect[] = [

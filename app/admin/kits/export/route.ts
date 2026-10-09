@@ -54,15 +54,28 @@ export async function GET() {
     .select("id, cycle, niveau, gamme, nom, statut, description")
     .order("cycle")
     .order("niveau");
-  const { data: items } = await supabaseAdmin
-    .from("kit_items")
-    .select(
-      "kit_id, produit_id, quantite_defaut, libelle_besoin, groupe_affichage, section, coche_defaut, ordre, produits(nom, prix, stock, statut_publication)",
-    )
-    .order("ordre");
+
+  // PostgREST tronque silencieusement un select() sans range() au-delà de
+  // 1 000 lignes (même piège que getProduitsAdmin, cf. lib/admin/produits-
+  // actions.ts) : kit_items dépasse largement ce seuil (2 700+ lignes), d'où
+  // l'export arrêté à 1 000 lignes constaté. On pagine jusqu'à la dernière ligne.
+  const TAILLE_PAGE = 1000;
+  const items: ItemRow[] = [];
+  for (let offset = 0; ; offset += TAILLE_PAGE) {
+    const { data: page } = await supabaseAdmin
+      .from("kit_items")
+      .select(
+        "kit_id, produit_id, quantite_defaut, libelle_besoin, groupe_affichage, section, coche_defaut, ordre, produits(nom, prix, stock, statut_publication)",
+      )
+      .order("ordre")
+      .range(offset, offset + TAILLE_PAGE - 1);
+    const lot = (page ?? []) as unknown as ItemRow[];
+    items.push(...lot);
+    if (lot.length < TAILLE_PAGE) break;
+  }
 
   const itemsParKit = new Map<number, ItemRow[]>();
-  for (const item of (items ?? []) as unknown as ItemRow[]) {
+  for (const item of items) {
     const liste = itemsParKit.get(item.kit_id) ?? [];
     liste.push(item);
     itemsParKit.set(item.kit_id, liste);
