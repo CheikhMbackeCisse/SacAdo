@@ -79,20 +79,25 @@ self.addEventListener("fetch", (event) => {
   // se voit qu'à la visite suivante (le vieux HTML servi du cache référence les
   // anciens bundles). Le cache ne sert que de secours hors-ligne.
   if (event.request.mode === "navigate") {
+    const reseau = fetch(event.request).then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return response;
+    });
+
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() =>
-          caches
-            .match(event.request)
-            .then((cached) => cached || caches.match("/"))
-        )
+      // Connexion lente : au-delà de 4 s sans réponse, on sert la version déjà
+      // en cache (page déjà visitée) plutôt que de laisser l'utilisateur
+      // attendre indéfiniment ; le réseau continue en arrière-plan et met à
+      // jour le cache pour la prochaine visite (stale-while-revalidate).
+      Promise.race([
+        reseau,
+        new Promise((resolve) => setTimeout(resolve, 4000)).then(() =>
+          caches.match(event.request).then((cached) => cached || reseau)
+        ),
+      ]).catch(() => caches.match(event.request).then((cached) => cached || caches.match("/")))
     );
     return;
   }

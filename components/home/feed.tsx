@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ProductGridSkeleton } from "@/components/product/product-grid-skeleton";
 import { FinDeListe } from "@/components/product/fin-de-liste";
@@ -14,14 +14,35 @@ import type { Produit } from "@/lib/supabase/types";
 
 const LIMITE = 20;
 const PAGE = 20;
+const FEED_VIDE: AccueilFeed = { multi: false, profils: [{ source: "compte", id: null, prenom: null, produits: [] }] };
 
-export function Feed({ feed: feedInitial }: { feed: AccueilFeed }) {
-  const [feed, setFeed] = useState(feedInitial);
+// Sans `feed` initial (page d'accueil servie statique, voir app/(storefront)/page.tsx) :
+// le flux personnalisé, qui dépend du cookie `sacado_sid`, est chargé ici
+// après l'affichage plutôt que rendu côté serveur — garde la page instantanée
+// pour tous les visiteurs, personnalisation incluse une fois arrivée.
+export function Feed({ feed: feedInitial }: { feed?: AccueilFeed }) {
+  const [feed, setFeed] = useState(feedInitial ?? FEED_VIDE);
   const [taille, setTaille] = useState(LIMITE);
-  const [chargement, setChargement] = useState(false);
+  const [chargement, setChargement] = useState(!feedInitial);
   const [hasMore, setHasMore] = useState(true);
   const [enErreur, setEnErreur] = useState(false);
   const [selection, setSelection] = useState<"tous" | number>("tous");
+  const chargeInitial = useRef(Boolean(feedInitial));
+
+  useEffect(() => {
+    if (chargeInitial.current) return;
+    chargeInitial.current = true;
+    chargerPageAccueil(LIMITE, 0)
+      .then((initial) => {
+        setFeed(initial);
+        setHasMore((initial.profils[0]?.produits.length ?? 0) >= LIMITE);
+        setChargement(false);
+      })
+      .catch(() => {
+        setChargement(false);
+        setEnErreur(true);
+      });
+  }, []);
 
   // Chargement continu (maj-accueil §6) : descendre en bas de l'accueil
   // recalcule le flux avec une limite plus grande (même graine de session,

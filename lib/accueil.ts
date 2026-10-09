@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getPopulaires, getProduitsByIds } from "@/lib/supabase/queries";
 import {
@@ -149,11 +150,15 @@ export async function getAccueilFeed(limit = 20, dejaAffichees = 0): Promise<Acc
   // flux — seule la nouvelle portion est mesurée.
   const nouvelles = affichees.slice(dejaAffichees);
   if (nouvelles.length > 0) {
-    try {
-      await supabaseAdmin.rpc("enregistrer_impressions_accueil", { p_items: nouvelles });
-    } catch {
-      // best-effort
-    }
+    // Best-effort réel : exécuté après l'envoi de la réponse (évite d'ajouter
+    // un aller-retour Supabase supplémentaire au temps de réponse perçu).
+    after(async () => {
+      try {
+        await supabaseAdmin.rpc("enregistrer_impressions_accueil", { p_items: nouvelles });
+      } catch {
+        // best-effort
+      }
+    });
   }
 
   return { multi: profils.length > 1, profils };

@@ -58,9 +58,22 @@ export function SplashScreen() {
       return;
     }
 
+    // Connexion lente (`navigator.connection`, Chrome/Android uniquement) :
+    // même traitement que "mouvement réduit" ci-dessous — logo fixe, jamais
+    // d'attente supplémentaire pour l'animation de 6,6 s, le contenu prime.
+    const connexion = (
+      navigator as Navigator & {
+        connection?: { effectiveType?: string; saveData?: boolean };
+      }
+    ).connection;
+    const connexionLente =
+      connexion?.saveData === true ||
+      ["slow-2g", "2g", "3g"].includes(connexion?.effectiveType ?? "");
+
     const mouvementReduit =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      connexionLente ||
+      (typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
     const surAppPrete = () => {
       appPreteRef.current = true;
