@@ -25,7 +25,7 @@ alter table lieux_speciaux add column if not exists date_livraison_fixe date;
 update lieux_speciaux
    set lat = 14.78896,
        lng = -16.9246,
-       rayon_m = 800,
+       rayon_m = 6000,
        date_livraison_fixe = '2026-10-18',
        mots_cles = array[
          'EPT', 'E.P.T', 'polytechnique', 'polytech',
