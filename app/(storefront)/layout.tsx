@@ -11,7 +11,6 @@ import { CartToast } from "@/components/panier/cart-toast";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ProductPreviewProvider } from "@/components/product/product-preview-context";
 import { ProductPreviewPanel } from "@/components/product/product-preview-panel";
-import { WelcomeScreen } from "@/components/onboarding/welcome-screen";
 import { NavigationGuardProvider } from "@/components/ui/navigation-guard";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { AndroidInstallInvite } from "@/components/pwa/android-install-invite";
@@ -112,7 +111,6 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
             <NavigationGuardProvider>{children}</NavigationGuardProvider>
           </AppMain>
           <BottomNav />
-          <WelcomeScreen />
           <AndroidInstallInvite />
           <InstallBanner />
           <ServiceWorkerRegister />

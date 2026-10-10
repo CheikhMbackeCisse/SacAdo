@@ -6,7 +6,6 @@ import { ClipboardList } from "lucide-react";
 import { useIdentite } from "@/lib/local/identite";
 import { getCommandesParTelephone } from "@/lib/moi/actions";
 import { formatPrice } from "@/lib/format";
-import { IdentitePrompt } from "@/components/moi/identite-prompt";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LIBELLES_STATUT_COMMANDE } from "@/lib/commandes";
 import { BoutonReessayerPaiement } from "@/components/checkout/paiement-retour";
@@ -45,7 +44,11 @@ export default function MesCommandesPage() {
       <h1 className="font-heading text-xl font-bold text-ink">Mes commandes</h1>
 
       {!identite ? (
-        <IdentitePrompt contexte="vos commandes" />
+        <EmptyState
+          icon={ClipboardList}
+          title="Pas encore de commande"
+          description="Vos commandes apparaîtront ici après votre premier achat."
+        />
       ) : loading ? (
         <p className="text-sm text-ink/50">Chargement…</p>
       ) : sansHistorique ? (

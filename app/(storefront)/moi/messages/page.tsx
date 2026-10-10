@@ -5,7 +5,6 @@ import Link from "next/link";
 import { IconeBoiteReception } from "@/components/ui/icones-sacado";
 import { useIdentite } from "@/lib/local/identite";
 import { getMessagesParTelephone, marquerMessageLu } from "@/lib/moi/actions";
-import { IdentitePrompt } from "@/components/moi/identite-prompt";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Message } from "@/lib/supabase/types";
 
@@ -56,7 +55,11 @@ export default function MessagesPage() {
       <h1 className="font-heading text-xl font-bold text-ink">Boîte de réception</h1>
 
       {!identite ? (
-        <IdentitePrompt contexte="vos messages" />
+        <EmptyState
+          icon={IconeBoiteReception}
+          title="Pas encore de message"
+          description="Vos messages apparaîtront ici après votre premier achat."
+        />
       ) : loading ? (
         <p className="text-sm text-ink/50">Chargement…</p>
       ) : sansHistorique ? (
