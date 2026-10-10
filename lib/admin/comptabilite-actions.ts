@@ -3,7 +3,7 @@
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { calculerCommission } from "@/lib/commissions";
-import { estCommandeConfirmee } from "@/lib/commandes";
+import { estVenteConfirmee } from "@/lib/commandes";
 import { CATEGORIES_DEPENSE, LABEL_CATEGORIE_DEPENSE } from "./comptabilite-constants";
 import { estVendeurSacAdo } from "@/lib/vendeurs/constants";
 import type { ActionResult } from "./produits-actions";
@@ -38,14 +38,15 @@ type CommandeAllegee = Pick<Commande, "id" | "statut" | "statut_paiement" | "mod
 // seulement une fois livrée (cash remis au livreur). Voir CLAUDE.md §2 et
 // GROUPE_B_compte_compta.md §2.
 function estEncaissee(c: { statut: StatutCommande; statut_paiement: StatutPaiement | null; mode_paiement: ModePaiement }): boolean {
-  if (!estCommandeConfirmee(c.statut)) return false;
+  if (!estVenteConfirmee(c.statut)) return false;
   return c.mode_paiement === "wave" ? c.statut_paiement === "payee" : c.statut === "livree";
 }
 
-// Créance : commande confirmée, payée à la livraison, pas encore livrée —
-// argent qu'on va recevoir mais qui n'est pas encore en caisse.
+// Créance : vente confirmée (pas juste "à confirmer par appel"), payée à la
+// livraison, pas encore livrée — argent qu'on va recevoir mais qui n'est pas
+// encore en caisse.
 function estCreance(c: { statut: StatutCommande; mode_paiement: ModePaiement }): boolean {
-  return estCommandeConfirmee(c.statut) && c.mode_paiement === "livraison" && c.statut !== "livree";
+  return estVenteConfirmee(c.statut) && c.mode_paiement === "livraison" && c.statut !== "livree";
 }
 
 export type DetteVendeur = {

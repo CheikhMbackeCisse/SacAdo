@@ -4,6 +4,7 @@ import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
+import { STATUTS_COMMANDE_EFFECTUEE, STATUTS_COMMANDE_EN_ATTENTE } from "@/lib/commandes";
 import type { Commande, CommandeAjout, CommandeItem, StatutCommande } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
@@ -76,7 +77,20 @@ export async function getCommandesAdmin(
     limit = TAILLE_PAGE_COMMANDES,
     dateLivraison,
     test = false,
-  }: { offset?: number; limit?: number; dateLivraison?: string; test?: boolean } = {},
+    statutsVue,
+    injoignable = false,
+  }: {
+    offset?: number;
+    limit?: number;
+    dateLivraison?: string;
+    test?: boolean;
+    // Aucune puce précise choisie : filtre sur l'ensemble des statuts de
+    // l'onglet courant (En attente / Effectuées, Lot 1).
+    statutsVue?: StatutCommande[];
+    // Puce "Injoignable" (lot 1) : sous-ensemble de 'a_confirmer_appel' dont
+    // au moins une tentative d'appel a échoué (migration 0108).
+    injoignable?: boolean;
+  } = {},
 ): Promise<{ items: CommandeAvecClient[]; hasMore: boolean }> {
   await requireAdmin();
 
@@ -85,7 +99,12 @@ export async function getCommandesAdmin(
     .select("*, client:clients(nom, telephone), facture:factures(id, code_confirmation)")
     .order("date", { ascending: false })
     .range(offset, offset + limit);
-  if (statut) query = query.eq("statut", statut);
+  if (statut) {
+    query = query.eq("statut", statut);
+    if (injoignable) query = query.gt("appel_tentatives", 0);
+  } else if (statutsVue && statutsVue.length > 0) {
+    query = query.in("statut", statutsVue);
+  }
   // Filtre "préparer la tournée" (maj-accueil §7) : une date précise pour les
   // commandes à date donnée.
   if (dateLivraison) query = query.eq("date_livraison_prevue", dateLivraison);
@@ -99,6 +118,25 @@ export async function getCommandesAdmin(
   const rows = (data ?? []) as unknown as (Commande & { client: ClientJoint; facture: FactureJoint })[];
   const hasMore = rows.length > limit;
   return { items: (hasMore ? rows.slice(0, limit) : rows).map(mapCommandeRow), hasMore };
+}
+
+// Compteurs des deux onglets de /admin/commandes (Lot 1) : affichés dans le
+// libellé des onglets ("En attente (n)" / "Effectuées (n)").
+export async function compterCommandesParVue(): Promise<{ enAttente: number; effectuees: number }> {
+  await requireAdmin();
+  const [{ count: enAttente }, { count: effectuees }] = await Promise.all([
+    supabaseAdmin
+      .from("commandes")
+      .select("id", { count: "exact", head: true })
+      .in("statut", STATUTS_COMMANDE_EN_ATTENTE)
+      .eq("est_test", false),
+    supabaseAdmin
+      .from("commandes")
+      .select("id", { count: "exact", head: true })
+      .in("statut", STATUTS_COMMANDE_EFFECTUEE)
+      .eq("est_test", false),
+  ]);
+  return { enAttente: enAttente ?? 0, effectuees: effectuees ?? 0 };
 }
 
 export async function getCommandeAdmin(id: number): Promise<CommandeAvecClient | null> {

@@ -2,8 +2,14 @@
 
 import { requireAdmin } from "./guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { STATUT_EN_ATTENTE_PAIEMENT, estCommandeConfirmee } from "@/lib/commandes";
+import { STATUTS_COMMANDE_EFFECTUEE, estCommandeConfirmee } from "@/lib/commandes";
 import type { Commande, Produit } from "@/lib/supabase/types";
+
+// Ventes confirmées pour le CA / les compteurs admin : exclut aussi
+// 'a_confirmer_appel' (pas encore une vraie vente tant que l'appel n'a pas
+// eu lieu — TACHE_commandes_fournisseurs_promo_express.md Lot 1), en plus de
+// l'attente de paiement Wave et de l'annulation déjà exclues.
+const STATUTS_VENTE_CONFIRMEE = [...STATUTS_COMMANDE_EFFECTUEE, "probleme"];
 
 export type DashboardStats = {
   caDuJour: number;
@@ -79,14 +85,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .from("commandes")
       .select("total")
       .gte("date", debutJournee())
-      .neq("statut", STATUT_EN_ATTENTE_PAIEMENT)
-      .neq("statut", "annulee")
+      .in("statut", STATUTS_VENTE_CONFIRMEE)
       .eq("est_test", false),
     supabaseAdmin
       .from("commande_items")
       .select("quantite, produit:produits(nom), commande:commandes!inner(statut, est_test)")
-      .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT)
-      .neq("commande.statut", "annulee")
+      .in("commande.statut", STATUTS_VENTE_CONFIRMEE)
       .eq("commande.est_test", false),
     supabaseAdmin.from("produits").select("*"),
     compterPreparationsPretes(),
@@ -133,8 +137,7 @@ export async function getArticlesVendus(): Promise<VenteAgregee[]> {
   const { data: items } = await supabaseAdmin
     .from("commande_items")
     .select("produit_id, quantite, produit:produits(nom), commande:commandes!inner(statut, est_test)")
-    .neq("commande.statut", STATUT_EN_ATTENTE_PAIEMENT)
-    .neq("commande.statut", "annulee")
+    .in("commande.statut", STATUTS_VENTE_CONFIRMEE)
     .eq("commande.est_test", false);
 
   type Row = { produit_id: number; quantite: number; produit: { nom: string } | { nom: string }[] | null };
