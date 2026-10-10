@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Package } from "lucide-react";
 import {
   changerStatutCommandesGroupe,
   passerRecuesEnPreparation,
   type CommandeAvecClient,
+  type MiniaturesCommande,
 } from "@/lib/admin/commandes-actions";
 import { formatPrice } from "@/lib/format";
 import { LIBELLES_STATUT_PAIEMENT } from "@/lib/commandes";
@@ -92,14 +93,32 @@ function LienMaps({ commande }: { commande: CommandeAvecClient }) {
   );
 }
 
+// Colonne/carte "Articles" (Lot 2b) : jusqu'à 3 vignettes + "+n", clic vers
+// la page produits de cette commande.
+function ArticlesApercu({ commandeId, miniature }: { commandeId: number; miniature: MiniaturesCommande | undefined }) {
+  if (!miniature || miniature.nbArticles === 0) return <span className="text-xs text-ink/30">—</span>;
+  const reste = miniature.nbArticles - miniature.photos.length;
+  return (
+    <Link href={`/admin/commandes/produits?ids=${commandeId}`} className="flex items-center gap-1">
+      {miniature.photos.map((photo, i) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={i} src={photo} alt="" className="size-7 shrink-0 rounded-md border border-ink/10 object-cover" />
+      ))}
+      {reste > 0 && <span className="text-xs font-medium text-ink/50">+{reste}</span>}
+    </Link>
+  );
+}
+
 export function CommandesListe({
   commandes,
   nbRecues,
   modeleAppel,
+  miniatures,
 }: {
   commandes: CommandeAvecClient[];
   nbRecues: number;
   modeleAppel: string | null;
+  miniatures: Record<number, MiniaturesCommande>;
 }) {
   const router = useRouter();
   const [selection, setSelection] = useState<Set<number>>(new Set());
@@ -207,6 +226,13 @@ export function CommandesListe({
           >
             Annuler
           </button>
+          <Link
+            href={`/admin/commandes/produits?ids=${[...selection].join(",")}`}
+            className="ml-auto flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/70"
+          >
+            <Package size={13} aria-hidden="true" />
+            Voir les produits ({selection.size})
+          </Link>
         </div>
       )}
 
@@ -235,6 +261,9 @@ export function CommandesListe({
             </div>
             <ChampCarte label="Livraison">
               <BadgeLivraison commande={commande} />
+            </ChampCarte>
+            <ChampCarte label="Articles">
+              <ArticlesApercu commandeId={commande.id} miniature={miniatures[commande.id]} />
             </ChampCarte>
             <ChampCarte label="Client">
               {commande.client_nom}
@@ -292,6 +321,7 @@ export function CommandesListe({
               <th className="px-4 py-3 font-medium">Client</th>
               <th className="px-4 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium">Livraison</th>
+              <th className="px-4 py-3 font-medium">Articles</th>
               <th className="px-4 py-3 font-medium">Total</th>
               <th className="px-4 py-3 font-medium">Code</th>
               <th className="px-4 py-3 font-medium">Statut</th>
@@ -324,6 +354,9 @@ export function CommandesListe({
                 <td className="px-4 py-3 text-ink/60">{formatDate(commande.date)}</td>
                 <td className="px-4 py-3">
                   <BadgeLivraison commande={commande} />
+                </td>
+                <td className="px-4 py-3">
+                  <ArticlesApercu commandeId={commande.id} miniature={miniatures[commande.id]} />
                 </td>
                 <td className="px-4 py-3 font-medium text-ink">
                   {formatPrice(commande.total)}

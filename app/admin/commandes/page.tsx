@@ -3,6 +3,7 @@ import {
   compterCommandesParVue,
   compterCommandesRecues,
   getCommandesAdmin,
+  getMiniaturesParCommande,
   getModeleAppelWhatsApp,
 } from "@/lib/admin/commandes-actions";
 import { STATUTS_COMMANDE_EFFECTUEE, STATUTS_COMMANDE_EN_ATTENTE } from "@/lib/commandes";
@@ -58,6 +59,8 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
     getModeleAppelWhatsApp(),
     compterCommandesParVue(),
   ]);
+  const miniaturesMap = await getMiniaturesParCommande(commandes.map((c) => c.id));
+  const miniatures = Object.fromEntries(miniaturesMap);
 
   const hrefAvec = (params: {
     vue?: Vue;
@@ -180,7 +183,7 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
           Aucune commande.
         </p>
       ) : (
-        <CommandesListe commandes={commandes} nbRecues={nbRecues} modeleAppel={modeleAppel} />
+        <CommandesListe commandes={commandes} nbRecues={nbRecues} modeleAppel={modeleAppel} miniatures={miniatures} />
       )}
 
       {(page > 1 || hasMore) && (

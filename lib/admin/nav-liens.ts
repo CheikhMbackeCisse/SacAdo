@@ -22,6 +22,7 @@ import {
   PackageSearch,
   Repeat2,
   ShieldCheck,
+  ShoppingBag,
   SlidersHorizontal,
   Sparkles,
   TriangleAlert,
@@ -39,6 +40,7 @@ import {
 export const LIENS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },
+  { href: "/admin/achats", label: "Fournisseurs", icon: ShoppingBag },
   { href: "/admin/trafic", label: "Trafic", icon: Activity },
   { href: "/admin/livraisons", label: "Livraisons", icon: Truck },
   { href: "/admin/preparations", label: "Préparations", icon: PackageCheck },
@@ -62,7 +64,7 @@ export const LIENS = [
   { href: "/admin/localites", label: "Localités", icon: MapPinned },
   { href: "/admin/localites/carte", label: "Localités sur la carte", icon: Map },
   { href: "/admin/lieux-speciaux", label: "Lieux spéciaux", icon: Landmark },
-  { href: "/admin/fournisseurs", label: "Fournisseurs", icon: Warehouse },
+  { href: "/admin/fournisseurs", label: "Fiches fournisseurs", icon: Warehouse },
   { href: "/admin/ventes", label: "Articles vendus", icon: BarChart3 },
   { href: "/admin/clients", label: "Clients", icon: Users },
   { href: "/admin/comptabilite", label: "Comptabilité", icon: Wallet },
@@ -88,6 +90,7 @@ export const ENTREES_PRINCIPALES: { href: string; label: string; icon: (typeof L
 export const ENTREES_PRINCIPALES_DESKTOP: typeof ENTREES_PRINCIPALES = [
   { href: "/admin", label: "Accueil", icon: LayoutDashboard },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList, section: "commandes" },
+  { href: "/admin/achats", label: "Fournisseurs", icon: ShoppingBag },
   { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
   { href: "/admin/trafic", label: "Trafic", icon: Activity },

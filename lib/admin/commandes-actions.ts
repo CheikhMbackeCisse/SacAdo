@@ -457,3 +457,30 @@ export async function getModeleAppelWhatsApp(): Promise<string | null> {
     .maybeSingle();
   return (data?.contenu as string | undefined) ?? null;
 }
+
+export type MiniaturesCommande = { photos: string[]; nbArticles: number };
+
+// Colonne "Articles" de la liste des commandes (Lot 2b) : jusqu'à 3 vignettes
+// + le nombre total d'articles, en une seule requête pour toute la page.
+export async function getMiniaturesParCommande(
+  commandeIds: number[],
+): Promise<Map<number, MiniaturesCommande>> {
+  await requireAdmin();
+  const resultat = new Map<number, MiniaturesCommande>();
+  if (commandeIds.length === 0) return resultat;
+
+  const { data } = await supabaseAdmin
+    .from("commande_items")
+    .select("commande_id, quantite, produit:produits(photo)")
+    .in("commande_id", commandeIds);
+
+  type Row = { commande_id: number; quantite: number; produit: { photo: string | null } | { photo: string | null }[] | null };
+  for (const row of (data ?? []) as unknown as Row[]) {
+    const produit = Array.isArray(row.produit) ? row.produit[0] : row.produit;
+    const entree = resultat.get(row.commande_id) ?? { photos: [], nbArticles: 0 };
+    entree.nbArticles += row.quantite;
+    if (produit?.photo && entree.photos.length < 3) entree.photos.push(produit.photo);
+    resultat.set(row.commande_id, entree);
+  }
+  return resultat;
+}

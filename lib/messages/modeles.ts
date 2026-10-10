@@ -37,7 +37,12 @@ export type VariablesModele = Partial<
     | "articles"
     | "lien_commande"
     | "lien_produit"
-    | "lien",
+    | "lien"
+    // Modèle 'commande_fournisseur' (Lot 2e).
+    | "fournisseur"
+    | "reference"
+    | "liste_articles"
+    | "lien_bon",
     string | number | null | undefined
   >
 >;
@@ -51,6 +56,10 @@ export const VARIABLES_MODELE = [
   "lien_commande",
   "lien_produit",
   "lien",
+  "fournisseur",
+  "reference",
+  "liste_articles",
+  "lien_bon",
 ] as const;
 
 export function rendreModele(contenu: string, variables: VariablesModele): string {
