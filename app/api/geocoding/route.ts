@@ -42,9 +42,14 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const [lieuxConnus, osm] = await Promise.all([chercherLieuxConnus(q), chercherNominatim(q)]);
+  const lieuxConnus = await chercherLieuxConnus(q);
+  // Un lieu connu est un point curé (admin), toujours plus fiable qu'un
+  // résultat OSM pour la même recherche — qui peut tomber à plusieurs km du
+  // repère réel (vu sur "École Polytechnique de Thiès" : ~4,3 km d'écart) et
+  // induire le client en erreur sur l'endroit à choisir (TACHE_bug_checkout_
+  // ept.md). On ne va chercher sur OSM que si aucun lieu connu ne répond.
+  const osm = lieuxConnus.length > 0 ? [] : await chercherNominatim(q);
 
-  // Lieux connus d'abord, puis OSM en écartant les doublons géographiques.
   const resultats: ResultatLieu[] = [...lieuxConnus];
   for (const r of osm) {
     if (resultats.length >= MAX_RESULTATS) break;
