@@ -9,7 +9,8 @@ import { rendreModele } from "@/lib/messages/modeles";
 import { notifierPushAdminAjout } from "@/lib/admin/notifier-commande";
 import { origineSite } from "@/lib/site-url";
 import { commandeModifiablePourAjout } from "@/lib/ajout/eligibilite";
-import type { GroupeKitPanier, LignePanier } from "@/lib/local/panier";
+import type { GroupePanier, LignePanier } from "@/lib/local/panier";
+import { champsGroupePourRpc } from "@/lib/commande/groupe-rpc";
 import type { Commande, CommandeAjout, ModePaiement, Produit, ProduitVariante } from "@/lib/supabase/types";
 
 // Ajouter des produits à une commande déjà passée, pas encore en livraison
@@ -90,7 +91,7 @@ type LigneAjoutResolue = {
   varianteId: number | null;
   quantite: number;
   prixUnitaire: number;
-  groupe: GroupeKitPanier | null;
+  groupe: GroupePanier | null;
   personnalisationNom: string | null;
   personnalisationSpecialite: string | null;
 };
@@ -172,12 +173,7 @@ function lignesPourRpc(lignes: LigneAjoutResolue[]) {
     variante_id: l.varianteId,
     quantite: l.quantite,
     prix_unitaire: l.prixUnitaire,
-    kit_groupe_id: l.groupe?.id ?? null,
-    kit_id: l.groupe?.kitId ?? null,
-    kit_nom: l.groupe ? `${l.groupe.niveau} · ${l.groupe.gammeLabel}` : null,
-    kit_classe: l.groupe?.niveau ?? null,
-    kit_gamme: l.groupe?.gammeLabel ?? null,
-    kit_beneficiaire_prenom: l.groupe?.beneficiairePrenom ?? null,
+    ...champsGroupePourRpc(l.groupe),
     personnalisation_nom: l.personnalisationNom,
     personnalisation_specialite: l.personnalisationSpecialite,
   }));

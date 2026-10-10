@@ -11,6 +11,8 @@ import type {
   Gamme,
   Kit,
   KitItem,
+  Liste,
+  ListeItem,
   Localite,
   LieuSpecial,
   Produit,
@@ -899,4 +901,43 @@ export async function getKitItemsAvecProduits(kitId: number): Promise<KitItemAve
       return produit ? { ...row, produit } : null;
     })
     .filter((row): row is KitItemAvecProduit => row !== null);
+}
+
+// --- Listes personnalisées partageables (migration 0121) -------------------
+// Même pattern que les kits : statut filtré ici (requête applicative), jamais
+// dans la RLS (policy "using (true)" sur listes/liste_items).
+const COLONNES_LISTE_PUBLIC = "id,code,titre,description,statut,created_at,updated_at" as const;
+
+export async function getListeParCode(code: string): Promise<Liste | null> {
+  const { data, error } = await supabase
+    .from("listes")
+    .select(COLONNES_LISTE_PUBLIC)
+    .eq("code", code)
+    .eq("statut", "publie")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export type ListeItemAvecProduit = Pick<ListeItem, "id" | "quantite_defaut" | "coche_defaut" | "ordre"> & {
+  produit: Produit;
+};
+
+export async function getListeItemsAvecProduits(listeId: number): Promise<ListeItemAvecProduit[]> {
+  const { data, error } = await supabase
+    .from("liste_items")
+    .select(`id, quantite_defaut, coche_defaut, ordre, produit:produits(${COLONNES_PRODUIT_PUBLIC})`)
+    .eq("liste_id", listeId)
+    .order("ordre", { ascending: true });
+  if (error) throw error;
+
+  type RawRow = Omit<ListeItemAvecProduit, "produit"> & { produit: Produit | Produit[] | null };
+  const rows = (data ?? []) as unknown as RawRow[];
+
+  return rows
+    .map((row) => {
+      const produit = Array.isArray(row.produit) ? row.produit[0] : row.produit;
+      return produit ? { ...row, produit } : null;
+    })
+    .filter((row): row is ListeItemAvecProduit => row !== null);
 }

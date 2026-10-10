@@ -76,22 +76,26 @@ export async function getBlocWhatsApp(commandeId: number): Promise<BlocWhatsApp 
 
   const { data: items } = await supabaseAdmin
     .from("commande_items")
-    .select("quantite, kit_groupe_id, kit_nom, produit:produits(nom)")
+    .select("quantite, kit_groupe_id, kit_nom, kit_classe, produit:produits(nom)")
     .eq("commande_id", commandeId);
 
-  // Un kit scolaire ne doit pas exploser en 20+ noms de produits dans le
-  // message WhatsApp (CORRECTIONS_V15 Lot 2) : une seule mention par kit.
+  // Un kit scolaire/une liste personnalisée ne doit pas exploser en 20+ noms
+  // de produits dans le message WhatsApp (CORRECTIONS_V15 Lot 2) : une seule
+  // mention par groupe. kit_classe absent = ligne de liste (lib/commande/
+  // groupe-rpc.ts), jamais de kit scolaire (toujours une classe).
   type ItemRow = {
     quantite: number;
     kit_groupe_id: string | null;
     kit_nom: string | null;
+    kit_classe: string | null;
     produit: { nom: string } | { nom: string }[] | null;
   };
-  const kits = new Map<string, { nom: string; nbArticles: number }>();
+  const kits = new Map<string, { nom: string; estKit: boolean; nbArticles: number }>();
   const articlesHorsKit: string[] = [];
   for (const row of (items ?? []) as unknown as ItemRow[]) {
     if (row.kit_groupe_id) {
-      const kit = kits.get(row.kit_groupe_id) ?? { nom: row.kit_nom ?? "Kit", nbArticles: 0 };
+      const kit =
+        kits.get(row.kit_groupe_id) ?? { nom: row.kit_nom ?? "Article groupé", estKit: row.kit_classe !== null, nbArticles: 0 };
       kit.nbArticles += row.quantite;
       kits.set(row.kit_groupe_id, kit);
       continue;
@@ -101,7 +105,7 @@ export async function getBlocWhatsApp(commandeId: number): Promise<BlocWhatsApp 
   }
   const articles =
     [
-      ...[...kits.values()].map((k) => `Kit ${k.nom} (${k.nbArticles} articles)`),
+      ...[...kits.values()].map((k) => `${k.estKit ? "Kit" : "Liste"} ${k.nom} (${k.nbArticles} articles)`),
       ...articlesHorsKit,
     ].join(", ") || "un article";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePanier, type GroupeKitPanier, type LignePanier, type PersonnalisationPanier } from "./panier";
+import { usePanier, type GroupePanier, type LignePanier, type PersonnalisationPanier } from "./panier";
 import { getProduitsByIds, getVariantesByIds } from "@/lib/supabase/queries";
 import type { Produit, VarianteAvecAttributs } from "@/lib/supabase/types";
 
@@ -11,7 +11,7 @@ export type LigneDetaillee = {
   quantite: number;
   prixUnitaire: number;
   totalLigne: number;
-  groupe: GroupeKitPanier | null;
+  groupe: GroupePanier | null;
   personnalisation: PersonnalisationPanier | null;
 };
 

@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { usePanierDetaille, type LigneDetaillee } from "@/lib/local/use-panier-detaille";
-import type { GroupeKitPanier, LignePanier } from "@/lib/local/panier";
+import type { GroupePanier, LignePanier } from "@/lib/local/panier";
 import { useAjoutMode } from "@/lib/local/ajout-mode";
 import { PanierLine } from "@/components/panier/panier-line";
 import { PanierKitCard } from "@/components/panier/panier-kit-card";
 import { FreeShippingProgress } from "@/components/panier/free-shipping-progress";
 import { formatPrice } from "@/lib/format";
 
-type GroupeAffichage = { groupe: GroupeKitPanier; lignes: LigneDetaillee[] };
+type GroupeAffichage = { groupe: GroupePanier; lignes: LigneDetaillee[] };
 
 function regrouperParKit(detail: LigneDetaillee[]): {
   groupes: GroupeAffichage[];
@@ -40,7 +40,7 @@ export default function PanierPage() {
   const { mode: modeAjout } = useAjoutMode();
   const { detail, sousTotal, loading, retirer, retirerGroupe, restaurerLignes, setQuantite } =
     usePanierDetaille();
-  const [kitRetire, setKitRetire] = useState<{ groupe: GroupeKitPanier; lignes: LignePanier[] } | null>(
+  const [kitRetire, setKitRetire] = useState<{ groupe: GroupePanier; lignes: LignePanier[] } | null>(
     null,
   );
 
@@ -59,7 +59,7 @@ export default function PanierPage() {
   // Retirer le dernier kit du panier vide la liste : l'écran "panier vide"
   // ne doit pas pour autant avaler la bannière d'annulation, sinon "Annuler"
   // devient impossible à atteindre (CORRECTIONS_V15 Lot 2, bug constaté).
-  const retirerKit = (groupe: GroupeKitPanier) => {
+  const retirerKit = (groupe: GroupePanier) => {
     const lignesRetirees = retirerGroupe(groupe.id);
     setKitRetire({ groupe, lignes: lignesRetirees });
     setTimeout(() => setKitRetire((c) => (c?.groupe.id === groupe.id ? null : c)), 5000);

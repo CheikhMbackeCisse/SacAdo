@@ -5,11 +5,11 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatPrice } from "@/lib/format";
-import type { GroupeKitPanier } from "@/lib/local/panier";
+import { estGroupeListe, type GroupePanier } from "@/lib/local/panier";
 import type { LigneDetaillee } from "@/lib/local/use-panier-detaille";
 
 type PanierKitCardProps = {
-  groupe: GroupeKitPanier;
+  groupe: GroupePanier;
   lignes: LigneDetaillee[];
   onRetirer: () => void;
 };
@@ -21,10 +21,16 @@ export function PanierKitCard({ groupe, lignes, onRetirer }: PanierKitCardProps)
   const total = lignes.reduce((sum, l) => sum + l.totalLigne, 0);
   const nbIndisponibles = lignes.filter((l) => l.produit.statut === "epuise").length;
 
-  const titre = groupe.beneficiairePrenom
-    ? `Kit ${groupe.niveau} · ${groupe.gammeLabel}, pour ${groupe.beneficiairePrenom}`
-    : `Votre kit ${groupe.niveau} · ${groupe.gammeLabel}`;
-  const lienModifier = `/kits/${groupe.cycle}/${encodeURIComponent(groupe.niveau)}/${groupe.gamme}?modifier=${groupe.id}`;
+  const estListe = estGroupeListe(groupe);
+  const titre = estListe
+    ? groupe.titre
+    : groupe.beneficiairePrenom
+      ? `Kit ${groupe.niveau} · ${groupe.gammeLabel}, pour ${groupe.beneficiairePrenom}`
+      : `Votre kit ${groupe.niveau} · ${groupe.gammeLabel}`;
+  const lienModifier = estListe
+    ? `/liste/${groupe.code}?modifier=${groupe.id}`
+    : `/kits/${groupe.cycle}/${encodeURIComponent(groupe.niveau)}/${groupe.gamme}?modifier=${groupe.id}`;
+  const vignetteTexte = estListe ? "Liste" : groupe.niveau;
 
   return (
     <div className="flex flex-col gap-2.5 rounded-2xl border border-ink/10 bg-elevated p-3">
@@ -34,7 +40,7 @@ export function PanierKitCard({ groupe, lignes, onRetirer }: PanierKitCardProps)
             <ProductImage src={groupe.photo} alt="" className="h-full w-full" sizes="64px" />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-center text-[10px] font-semibold text-brand">
-              {groupe.niveau}
+              {vignetteTexte}
             </span>
           )}
         </div>

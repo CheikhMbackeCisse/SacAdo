@@ -25,7 +25,8 @@ import { estJourPromoActif } from "@/lib/promo-express-regles";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { notifierPushAdminNouvelleCommande } from "@/lib/admin/notifier-commande";
 import { origineSite } from "@/lib/site-url";
-import type { GroupeKitPanier, LignePanier } from "@/lib/local/panier";
+import type { GroupePanier, LignePanier } from "@/lib/local/panier";
+import { champsGroupePourRpc } from "@/lib/commande/groupe-rpc";
 import type { Commande, ModeLivraison, Produit, ProduitVariante, Zone } from "@/lib/supabase/types";
 
 // Formats larges exprès (numéros sénégalais et internationaux varient), mais
@@ -159,7 +160,7 @@ type LigneResolue = {
   // Kit scolaire d'où vient la ligne (CORRECTIONS_V15 Lot 2), pour regrouper
   // l'affichage de la commande (admin, WhatsApp) sans exploser en produits un
   // par un. null pour un produit ajouté hors kit.
-  groupe: GroupeKitPanier | null;
+  groupe: GroupePanier | null;
   // Personnalisation payante (migration 0111) : null si la ligne n'en porte pas.
   personnalisationNom: string | null;
   personnalisationSpecialite: string | null;
@@ -759,14 +760,10 @@ function lignesPourRpc(lignesResolues: LigneResolue[]) {
     variante_id: l.varianteId,
     quantite: l.quantite,
     prix_unitaire: l.prixUnitaire,
-    // Regroupement kit (CORRECTIONS_V15 Lot 2, migration 0100) : dénormalisé
-    // sur chaque ligne pour n'avoir besoin d'aucune jointure côté admin/WhatsApp.
-    kit_groupe_id: l.groupe?.id ?? null,
-    kit_id: l.groupe?.kitId ?? null,
-    kit_nom: l.groupe ? `${l.groupe.niveau} · ${l.groupe.gammeLabel}` : null,
-    kit_classe: l.groupe?.niveau ?? null,
-    kit_gamme: l.groupe?.gammeLabel ?? null,
-    kit_beneficiaire_prenom: l.groupe?.beneficiairePrenom ?? null,
+    // Regroupement kit/liste (CORRECTIONS_V15 Lot 2, migration 0100) :
+    // dénormalisé sur chaque ligne pour n'avoir besoin d'aucune jointure côté
+    // admin/WhatsApp.
+    ...champsGroupePourRpc(l.groupe),
     personnalisation_nom: l.personnalisationNom,
     personnalisation_specialite: l.personnalisationSpecialite,
   }));

@@ -36,6 +36,10 @@ type GroupeItemsAdmin = {
   id: string | null;
   nom: string | null;
   prenom: string | null;
+  // Une ligne de liste personnalisée (lib/commande/groupe-rpc.ts) ne porte
+  // jamais kit_classe (pas de taxonomie catalogue) : seul moyen de distinguer
+  // "Kit {nom}" de "Liste {nom}" à l'affichage sans nouvelle colonne.
+  estKit: boolean;
   items: CommandeItemAvecProduit[];
 };
 
@@ -47,14 +51,20 @@ function regrouperItemsParKit(items: CommandeItemAvecProduit[]): GroupeItemsAdmi
     if (item.kit_groupe_id) {
       let g = parGroupeId.get(item.kit_groupe_id);
       if (!g) {
-        g = { id: item.kit_groupe_id, nom: item.kit_nom, prenom: item.kit_beneficiaire_prenom, items: [] };
+        g = {
+          id: item.kit_groupe_id,
+          nom: item.kit_nom,
+          prenom: item.kit_beneficiaire_prenom,
+          estKit: item.kit_classe !== null,
+          items: [],
+        };
         parGroupeId.set(item.kit_groupe_id, g);
         groupes.push(g);
       }
       g.items.push(item);
     } else {
       if (!horsGroupe) {
-        horsGroupe = { id: null, nom: null, prenom: null, items: [] };
+        horsGroupe = { id: null, nom: null, prenom: null, estKit: false, items: [] };
         groupes.push(horsGroupe);
       }
       horsGroupe.items.push(item);
@@ -73,7 +83,7 @@ function BlocArticles({ groupesItems }: { groupesItems: GroupeItemsAdmin[] }) {
           <div key={groupe.id ?? "hors-groupe"} className="flex flex-col gap-1">
             {groupe.nom && (
               <p className="px-1 text-xs font-semibold text-ink/70">
-                Kit {groupe.nom}
+                {groupe.estKit ? "Kit" : "Liste"} {groupe.nom}
                 {groupe.prenom ? ` — pour ${groupe.prenom}` : ""}
               </p>
             )}
@@ -137,7 +147,7 @@ function BlocArticles({ groupesItems }: { groupesItems: GroupeItemsAdmin[] }) {
                 {groupe.nom && (
                   <tr key={`${groupe.id}-titre`} className="border-b border-ink/5">
                     <td colSpan={5} className="px-4 pt-3 text-xs font-semibold text-ink/70">
-                      Kit {groupe.nom}
+                      {groupe.estKit ? "Kit" : "Liste"} {groupe.nom}
                       {groupe.prenom ? ` — pour ${groupe.prenom}` : ""}
                     </td>
                   </tr>

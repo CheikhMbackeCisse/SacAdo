@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { slugAvecId } from "@/lib/slug";
-import { usePanier } from "@/lib/local/panier";
+import { estGroupeListe, usePanier } from "@/lib/local/panier";
 import { useKitsPanier } from "@/lib/local/kits-panier";
 import { useAjoutMode } from "@/lib/local/ajout-mode";
 import { KitBeneficiairePicker } from "@/components/kits/kit-beneficiaire-picker";
@@ -84,7 +84,11 @@ export function KitBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  const groupeExistant = lignesExistantesDuGroupe[0]?.groupe ?? null;
+  const groupeBrut = lignesExistantesDuGroupe[0]?.groupe ?? null;
+  // Une page kit ne rouvre jamais un groupe "liste" (son lien "Modifier"
+  // pointe toujours vers /liste/[code]) : narrowing défensif plutôt
+  // qu'un cast, au cas où modifierGroupeId pointerait vers un autre type.
+  const groupeExistant = groupeBrut && !estGroupeListe(groupeBrut) ? groupeBrut : null;
 
   const [beneficiaireId, setBeneficiaireId] = useState<number | null>(() => {
     if (pourQuiParam) return Number(pourQuiParam);

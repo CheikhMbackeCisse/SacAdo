@@ -321,6 +321,32 @@ export type KitItem = {
   ordre: number;
 };
 
+// Listes personnalisées partageables (migration 0121) : liste de produits
+// créée par l'admin, un seul lien public réutilisable par plusieurs
+// visiteurs. Contrairement aux kits, pas de cycle/niveau/gamme et la
+// quantité de chaque ligne est seulement une proposition de départ,
+// modifiable par le client sur la page publique.
+export type StatutListe = "masque" | "publie";
+
+export type Liste = {
+  id: number;
+  code: string;
+  titre: string;
+  description: string | null;
+  statut: StatutListe;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ListeItem = {
+  id: number;
+  liste_id: number;
+  produit_id: number;
+  quantite_defaut: number;
+  coche_defaut: boolean;
+  ordre: number;
+};
+
 // Ebook PDF offert à l'achat d'un kit (MODULE_EBOOKS.md). Fichier rangé dans le
 // bucket privé `ebooks` ; jamais servi en public, seulement via URL signée.
 export type Ebook = {

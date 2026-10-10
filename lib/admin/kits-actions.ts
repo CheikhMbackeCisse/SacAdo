@@ -8,14 +8,9 @@ import { calculerPrixKit, ligneEstAffichable, type LigneKit } from "@/lib/kits";
 import type { Cycle, Gamme, Kit, Produit, SectionKitItem } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 import { filtrerKitsAdmin } from "./kits-filtrage";
+import { motifLigneCachee, type LigneCacheeAdmin } from "./motif-ligne-cachee";
 
-export type MotifLigneCachee = "masque" | "rupture" | "sans_prix";
-
-export type LigneCacheeAdmin = {
-  libelle_besoin: string | null;
-  produit_nom: string;
-  motif: MotifLigneCachee;
-};
+export type { MotifLigneCachee, LigneCacheeAdmin } from "./motif-ligne-cachee";
 
 export type KitAvecCompte = Kit & {
   nb_items_total: number;
@@ -33,12 +28,6 @@ export type FiltresKitsAdmin = {
   gamme?: Gamme;
   statut?: "masque" | "publie";
 };
-
-function motifLigneCachee(produit: { statut: string; statut_publication: string; prix: number }): MotifLigneCachee {
-  if (produit.statut_publication !== "publie") return "masque";
-  if (produit.statut === "epuise") return "rupture";
-  return "sans_prix";
-}
 
 type ProduitLite = { nom: string; prix: number; statut: string; statut_publication: string };
 type KitItemRow = {

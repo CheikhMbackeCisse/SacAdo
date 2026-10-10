@@ -13,10 +13,10 @@ import type { CommandeAjoutInfo } from "@/lib/ajout/actions";
 import { PanierLine } from "@/components/panier/panier-line";
 import { PanierKitCard } from "@/components/panier/panier-kit-card";
 import { formatPrice } from "@/lib/format";
-import type { GroupeKitPanier } from "@/lib/local/panier";
+import type { GroupePanier } from "@/lib/local/panier";
 import type { ModePaiement } from "@/lib/supabase/types";
 
-type GroupeAffichage = { groupe: GroupeKitPanier; lignes: LigneDetaillee[] };
+type GroupeAffichage = { groupe: GroupePanier; lignes: LigneDetaillee[] };
 
 function regrouperParKit(detail: LigneDetaillee[]): {
   groupes: GroupeAffichage[];
@@ -65,7 +65,7 @@ export default function AjoutPage() {
 
   const { groupes, horsGroupe } = useMemo(() => regrouperParKit(detail), [detail]);
 
-  const retirerKit = (groupe: GroupeKitPanier) => {
+  const retirerKit = (groupe: GroupePanier) => {
     retirerGroupe(groupe.id);
   };
 

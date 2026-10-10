@@ -12,6 +12,9 @@ const KEY = "sacado_panier";
 // dans le panier au lieu d'une ligne par produit. Deux kits identiques (deux
 // enfants dans la même classe) portent deux `id` différents.
 export type GroupeKitPanier = {
+  // Absent sur les groupes enregistrés AVANT ce champ (rétro-compatibilité
+  // totale avec un panier déjà en localStorage) : traité comme "kit".
+  type?: "kit";
   id: string;
   kitId: number;
   cycle: string;
@@ -23,6 +26,25 @@ export type GroupeKitPanier = {
   beneficiairePrenom?: string | null;
 };
 
+// Groupe d'une liste personnalisée partageable (migration 0121, lib/listes.ts)
+// ajoutée au panier : contrairement à un kit, pas de cycle/niveau/gamme/
+// bénéficiaire — juste le titre de la liste et son code (pour rouvrir
+// /liste/[code] en mode "Modifier").
+export type GroupeListePanier = {
+  type: "liste";
+  id: string;
+  listeId: number;
+  code: string;
+  titre: string;
+  photo: string | null;
+};
+
+export type GroupePanier = GroupeKitPanier | GroupeListePanier;
+
+export function estGroupeListe(groupe: GroupePanier): groupe is GroupeListePanier {
+  return groupe.type === "liste";
+}
+
 // Personnalisation payante (migration 0111) : texte choisi par le client sur
 // la fiche produit (blouse de laboratoire MedWorld). Présente seulement sur
 // les lignes d'un produit `personnalisable` dont le client a coché l'option.
@@ -32,9 +54,9 @@ export type LignePanier = {
   produitId: number;
   varianteId: number | null;
   quantite: number;
-  // Absent sur les lignes ajoutées hors kit, ou sur les paniers enregistrés
-  // avant ce lot (rétro-compatibilité : elles s'affichent comme avant).
-  groupe?: GroupeKitPanier | null;
+  // Absent sur les lignes ajoutées hors kit/liste, ou sur les paniers
+  // enregistrés avant ce lot (rétro-compatibilité : elles s'affichent comme avant).
+  groupe?: GroupePanier | null;
   personnalisation?: PersonnalisationPanier | null;
 };
 
@@ -123,15 +145,17 @@ export function usePanier() {
     mesurerVisite({ type: "ajout_panier", produitId, quantite });
   };
 
-  // Ajoute (ou remplace, en mode "modifier") toutes les lignes d'un kit en un
-  // seul geste : une seule entrée de toast, une seule carte dans le panier.
-  // `groupe.id` absent = nouveau kit (id généré ici) ; fourni = remplace les
-  // lignes de ce groupe existant par la sélection courante.
-  const ajouterKit = (
-    groupe: Omit<GroupeKitPanier, "id"> & { id?: string },
+  // Ajoute (ou remplace, en mode "modifier") toutes les lignes d'un kit/liste
+  // en un seul geste : une seule entrée de toast, une seule carte dans le
+  // panier. `groupe.id` absent = nouveau groupe (id généré ici) ; fourni =
+  // remplace les lignes de ce groupe existant par la sélection courante.
+  // Factorisé entre ajouterKit et ajouterListe ci-dessous (même logique,
+  // seul le type du groupe change).
+  function ajouterGroupe<G extends GroupePanier>(
+    groupe: Omit<G, "id"> & { id?: string },
     items: { produitId: number; varianteId: number | null; quantite: number }[],
-  ) => {
-    const groupeComplet: GroupeKitPanier = { ...groupe, id: groupe.id ?? genererIdGroupe() };
+  ): G {
+    const groupeComplet = { ...groupe, id: groupe.id ?? genererIdGroupe() } as G;
     let totalApres = 0;
     let quantiteAjoutee = 0;
     setLignes((current) => {
@@ -149,7 +173,17 @@ export function usePanier() {
       mesurerVisite({ type: "ajout_panier", produitId: it.produitId, quantite: it.quantite });
     });
     return groupeComplet;
-  };
+  }
+
+  const ajouterKit = (
+    groupe: Omit<GroupeKitPanier, "id" | "type"> & { id?: string },
+    items: { produitId: number; varianteId: number | null; quantite: number }[],
+  ) => ajouterGroupe<GroupeKitPanier>({ ...groupe, type: "kit" }, items);
+
+  const ajouterListe = (
+    groupe: Omit<GroupeListePanier, "id" | "type"> & { id?: string },
+    items: { produitId: number; varianteId: number | null; quantite: number }[],
+  ) => ajouterGroupe<GroupeListePanier>({ ...groupe, type: "liste" }, items);
 
   // Retire toutes les lignes d'un kit d'un coup ; renvoie les lignes retirées
   // pour permettre un « Annuler » (restaurerLignes ci-dessous).
@@ -208,6 +242,7 @@ export function usePanier() {
     lignes,
     ajouter,
     ajouterKit,
+    ajouterListe,
     retirer,
     retirerGroupe,
     restaurerLignes,
