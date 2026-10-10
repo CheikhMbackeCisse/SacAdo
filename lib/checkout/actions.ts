@@ -17,8 +17,11 @@ import {
 } from "@/lib/parametres";
 import { calculerDateLivraison } from "@/lib/checkout/date-livraison";
 import { coordonneesValides } from "@/lib/checkout/localisation";
+import { trouverLieuSpecialParPoint } from "@/lib/checkout/lieu-special";
 import { distanceKm, pointDansPolygone } from "@/lib/geo";
 import { declencherPreparationsAuto } from "@/lib/preparation-auto";
+import { getConfigPromoExpress } from "@/lib/promo-express";
+import { estJourPromoActif } from "@/lib/promo-express-regles";
 import { notifierPushStatutCommande } from "@/lib/messages/notifier";
 import { notifierPushAdminNouvelleCommande } from "@/lib/admin/notifier-commande";
 import { origineSite } from "@/lib/site-url";
@@ -173,14 +176,22 @@ type CommandeResolue = {
   // Distance (km) entre le point de livraison et le point de référence de la
   // localité retenue. NULL si lieu spécial ou hors couverture.
   distanceLocaliteKm: number | null;
+  dateLivraisonFixe: string | null;
   lignesResolues: LigneResolue[];
   sousTotal: number;
   fraisLivraison: number;
   // Les deux tarifs (pas seulement celui du mode choisi) pour que le checkout
   // affiche les deux options de vitesse sans un aller-retour par mode.
   fraisLivraison24h: number;
+  // Tarif express avant une éventuelle promo (Lot 4a), pour le prix barré côté client.
+  fraisLivraison24hNormal: number;
   fraisLivraison6j: number;
   total: number;
+  // Promo express (Lot 4a) : jour promo + avant l'heure limite -> l'express
+  // est au prix du 6j. `promoExpress` = la promo s'applique au mode choisi
+  // (toujours false si gratuite, ou si le mode choisi n'est pas "24h").
+  promoExpress: boolean;
+  promoExpressHeureLimite: string | null;
 };
 
 type ResolutionLivraison = {
@@ -190,10 +201,16 @@ type ResolutionLivraison = {
   localiteNom: string;
   fraisLivraison: number;
   fraisLivraison24h: number;
+  fraisLivraison24hNormal: number;
   fraisLivraison6j: number;
   aConfirmer: boolean;
   messageLivraison: string | null;
   distanceLocaliteKm: number | null;
+  // Date de livraison figée du lieu spécial retenu (EPT…), null sinon.
+  dateLivraisonFixe: string | null;
+  // true si le tarif express a été aligné sur le tarif 6j par la promo (Lot 4a).
+  promoExpress: boolean;
+  promoExpressHeureLimite: string | null;
 };
 
 type LocaliteGeo = {
@@ -244,6 +261,38 @@ async function resoudreLocaliteDepuisPoint(
 // Tarif recalculé EN BASE à partir du point de livraison (jamais du libellé ou
 // du montant que le client pourrait forger) — IMPLEMENTATION_TARIFS_LIVRAISON.md
 // §6 et PROMPT_CLIENT_LOCALISATION.md Lot 2.
+// Résolution directe sur une ligne `lieux_speciaux` (choix explicite du
+// LieuSpecialPicker, ou lieu retrouvé automatiquement par point/mots-clés).
+function resolutionDepuisLieuSpecial(lieu: {
+  id: number;
+  nom: string;
+  tarif: number | null;
+  mode: string;
+  message: string | null;
+  date_livraison_fixe: string | null;
+}): ResolutionLivraison {
+  // Même tarif quelle que soit la vitesse choisie (§4 du doc de spec).
+  const tarif = lieu.mode === "a_confirmer" ? 0 : (lieu.tarif ?? 0);
+  return {
+    zoneId: null,
+    localiteId: null,
+    lieuSpecialId: lieu.id,
+    localiteNom: lieu.nom,
+    fraisLivraison: tarif,
+    fraisLivraison24h: tarif,
+    fraisLivraison24hNormal: tarif,
+    fraisLivraison6j: tarif,
+    aConfirmer: lieu.mode === "a_confirmer",
+    messageLivraison: lieu.message ?? null,
+    distanceLocaliteKm: null,
+    dateLivraisonFixe: lieu.date_livraison_fixe ?? null,
+    // Lieux spéciaux : même tarif quel que soit le mode, la promo express n'a
+    // rien à y faire (Lot 4a).
+    promoExpress: false,
+    promoExpressHeureLimite: null,
+  };
+}
+
 async function resoudreLivraison(params: {
   modeLivraison: ModeLivraison;
   lieuSpecialId: number | null;
@@ -258,27 +307,27 @@ async function resoudreLivraison(params: {
       .maybeSingle();
     if (error) return { ok: false, error: "Une erreur est survenue, réessaie." };
     if (!lieu) return { ok: false, error: "Ce lieu n'est plus disponible, choisis-en un autre." };
-    // Même tarif quelle que soit la vitesse choisie (§4 du doc de spec).
-    const tarif = lieu.mode === "a_confirmer" ? 0 : (lieu.tarif ?? 0);
-    return {
-      ok: true,
-      data: {
-        zoneId: null,
-        localiteId: null,
-        lieuSpecialId: lieu.id,
-        localiteNom: lieu.nom,
-        fraisLivraison: tarif,
-        fraisLivraison24h: tarif,
-        fraisLivraison6j: tarif,
-        aConfirmer: lieu.mode === "a_confirmer",
-        messageLivraison: lieu.message ?? null,
-        distanceLocaliteKm: null,
-      },
-    };
+    return { ok: true, data: resolutionDepuisLieuSpecial(lieu) };
   }
 
   if (params.lat == null || params.lng == null || !coordonneesValides(params.lat, params.lng)) {
     return { ok: false, error: "Indique ta position de livraison (position actuelle ou lien Google Maps)." };
+  }
+
+  // Un point qui tombe dans le rayon de couverture d'un lieu spécial
+  // géolocalisé (ex: EPT) prime sur la déduction par localité — c'est le cas
+  // typique d'une recherche d'adresse ("École Polytechnique de Thiès") qui
+  // place l'épingle au bon endroit sans que le client ait choisi le lieu
+  // spécial à la main (TACHE_bug_checkout_ept.md).
+  const { data: lieuxSpeciaux } = await supabaseAdmin.from("lieux_speciaux").select("*");
+  const lieuParPoint = trouverLieuSpecialParPoint(
+    params.lat,
+    params.lng,
+    (lieuxSpeciaux ?? []).map((l) => ({ id: l.id, motsCles: [], lat: l.lat, lng: l.lng, rayonM: l.rayon_m })),
+  );
+  if (lieuParPoint) {
+    const lieu = (lieuxSpeciaux ?? []).find((l) => l.id === lieuParPoint.id)!;
+    return { ok: true, data: resolutionDepuisLieuSpecial(lieu) };
   }
 
   const trouvee = await resoudreLocaliteDepuisPoint(params.lat, params.lng);
@@ -294,10 +343,14 @@ async function resoudreLivraison(params: {
         localiteNom: "Livraison hors zone habituelle",
         fraisLivraison: 0,
         fraisLivraison24h: 0,
+        fraisLivraison24hNormal: 0,
         fraisLivraison6j: 0,
         aConfirmer: true,
         messageLivraison: null,
         distanceLocaliteKm: null,
+        dateLivraisonFixe: null,
+        promoExpress: false,
+        promoExpressHeureLimite: null,
       },
     };
   }
@@ -309,6 +362,12 @@ async function resoudreLivraison(params: {
     .maybeSingle<Zone>();
   if (errGroupe || !groupe) return { ok: false, error: "Une erreur est survenue, réessaie." };
 
+  // Promo express (Lot 4a) : un jour promo, avant l'heure limite, l'express
+  // coûte le même prix que la livraison à date donnée pour cette localité.
+  const configPromo = await getConfigPromoExpress();
+  const promoActive = estJourPromoActif(configPromo);
+  const fraisLivraison24h = promoActive ? groupe.tarif_6j : groupe.tarif_24h;
+
   return {
     ok: true,
     data: {
@@ -316,12 +375,16 @@ async function resoudreLivraison(params: {
       localiteId: trouvee.localite.id,
       lieuSpecialId: null,
       localiteNom: trouvee.localite.nom,
-      fraisLivraison: params.modeLivraison === "24h" ? groupe.tarif_24h : groupe.tarif_6j,
-      fraisLivraison24h: groupe.tarif_24h,
+      fraisLivraison: params.modeLivraison === "24h" ? fraisLivraison24h : groupe.tarif_6j,
+      fraisLivraison24h,
+      fraisLivraison24hNormal: groupe.tarif_24h,
       fraisLivraison6j: groupe.tarif_6j,
       aConfirmer: false,
       messageLivraison: groupe.message_special ?? null,
       distanceLocaliteKm: trouvee.distanceKm,
+      dateLivraisonFixe: null,
+      promoExpress: promoActive && params.modeLivraison === "24h",
+      promoExpressHeureLimite: promoActive ? configPromo.heureLimite : null,
     },
   };
 }
@@ -426,11 +489,15 @@ async function resoudreCommande(
       aConfirmer,
       messageLivraison: livraison.data.messageLivraison,
       distanceLocaliteKm: livraison.data.distanceLocaliteKm,
+      dateLivraisonFixe: livraison.data.dateLivraisonFixe,
       lignesResolues,
       sousTotal,
       fraisLivraison,
       fraisLivraison24h: gratuite ? 0 : livraison.data.fraisLivraison24h,
+      fraisLivraison24hNormal: gratuite ? 0 : livraison.data.fraisLivraison24hNormal,
       fraisLivraison6j: gratuite ? 0 : livraison.data.fraisLivraison6j,
+      promoExpress: gratuite ? false : livraison.data.promoExpress,
+      promoExpressHeureLimite: gratuite ? null : livraison.data.promoExpressHeureLimite,
       total: sousTotal + fraisLivraison,
     },
   };
@@ -484,6 +551,14 @@ async function figerPrixAchat(commandeId: number, lignes: LigneResolue[]): Promi
   }
 }
 
+// `creer_commande()` (RPC) ne connaît pas la promo express (Lot 4a) : figée
+// juste après, comme le message de livraison ci-dessus. Idempotent (ne touche
+// jamais `frais_livraison`, déjà correct depuis sa création).
+async function figerPromoExpress(commandeId: number, promoExpress: boolean): Promise<void> {
+  if (!promoExpress) return;
+  await supabaseAdmin.from("commandes").update({ promo_express: true }).eq("id", commandeId);
+}
+
 function panierValide(lignes: LignePanier[]): boolean {
   return (
     lignes.length > 0 &&
@@ -496,6 +571,7 @@ export type OptionsPaiementResult =
   | ({ ok: true } & OptionsPaiement & {
         fraisLivraison: number;
         fraisLivraison24h: number;
+        fraisLivraison24hNormal: number;
         fraisLivraison6j: number;
         localiteNom: string;
         aConfirmer: boolean;
@@ -503,11 +579,16 @@ export type OptionsPaiementResult =
         // Date de livraison "à date donnée" (maj-accueil §7), affichée à la
         // place de « 6 jours » — "YYYY-MM-DD".
         dateLivraisonPrevue: string;
+        // Date figée du lieu spécial retenu (EPT…), affichée dans la carte
+        // "Livraison" à la place du choix de mode. null sinon.
+        dateLivraisonFixe: string | null;
         // Nom marchand réellement affiché par Wave à l'écran de paiement
         // (lib/parametres.ts::getNomMarchandWave) — null si Wave n'est pas une
         // option pour ce total, pour ne jamais afficher une mention Wave hors
         // propos.
         waveNomMarchand: string | null;
+        promoExpress: boolean;
+        promoExpressHeureLimite: string | null;
       })
   | { ok: false; error: string };
 
@@ -519,10 +600,15 @@ async function dateLivraisonPrevue(): Promise<string> {
 }
 
 // Fige la date sur la commande juste après sa création (creer_commande() ne
-// la connaît pas), seulement pour le mode "à date donnée". Idempotent.
-async function figerDateLivraison(commandeId: number, modeLivraison: ModeLivraison): Promise<void> {
-  if (modeLivraison !== "6j") return;
-  const date = await dateLivraisonPrevue();
+// la connaît pas) : la date fixe d'un lieu spécial (EPT…) prime toujours,
+// sinon seulement pour le mode "à date donnée". Idempotent.
+async function figerDateLivraison(
+  commandeId: number,
+  modeLivraison: ModeLivraison,
+  dateLivraisonFixe: string | null,
+): Promise<void> {
+  const date = dateLivraisonFixe ?? (modeLivraison === "6j" ? await dateLivraisonPrevue() : null);
+  if (!date) return;
   await supabaseAdmin.from("commandes").update({ date_livraison_prevue: date }).eq("id", commandeId);
 }
 
@@ -553,12 +639,16 @@ export async function getOptionsPaiement(
     ...options,
     fraisLivraison: resolu.data.fraisLivraison,
     fraisLivraison24h: resolu.data.fraisLivraison24h,
+    fraisLivraison24hNormal: resolu.data.fraisLivraison24hNormal,
     fraisLivraison6j: resolu.data.fraisLivraison6j,
     localiteNom: resolu.data.localiteNom,
     aConfirmer: resolu.data.aConfirmer,
     messageLivraison: resolu.data.messageLivraison,
-    dateLivraisonPrevue: await dateLivraisonPrevue(),
+    dateLivraisonPrevue: resolu.data.dateLivraisonFixe ?? (await dateLivraisonPrevue()),
+    dateLivraisonFixe: resolu.data.dateLivraisonFixe,
     waveNomMarchand: options.options.includes("wave") ? await getNomMarchandWave() : null,
+    promoExpress: resolu.data.promoExpress,
+    promoExpressHeureLimite: resolu.data.promoExpressHeureLimite,
   };
 }
 
@@ -720,8 +810,18 @@ export async function passerCommande(
     getPaiementLivraisonMax(),
   ]);
   if (!resolu.ok) return { ok: false, error: resolu.error };
-  const { zoneId, localiteId, lieuSpecialId, localiteNom, aConfirmer, lignesResolues, sousTotal, fraisLivraison, total } =
-    resolu.data;
+  const {
+    zoneId,
+    localiteId,
+    lieuSpecialId,
+    localiteNom,
+    aConfirmer,
+    lignesResolues,
+    sousTotal,
+    fraisLivraison,
+    total,
+    dateLivraisonFixe,
+  } = resolu.data;
 
   // Au-dessus du plafond (réglable dans l'admin), le paiement à la livraison
   // n'est plus permis (PROMPT_CLIENT_V2 Lot 1). Contrôle serveur : le client a
@@ -772,8 +872,9 @@ export async function passerCommande(
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
   await figerLienLocalisation(commandeId as number, input.lienLocalisation);
   await figerSourceEtDistance(commandeId as number, input.source, resolu.data.distanceLocaliteKm);
-  await figerDateLivraison(commandeId as number, input.modeLivraison);
+  await figerDateLivraison(commandeId as number, input.modeLivraison, dateLivraisonFixe);
   await figerPrixAchat(commandeId as number, lignesResolues);
+  await figerPromoExpress(commandeId as number, resolu.data.promoExpress);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
 
   // Signal de classement « commande » (poids 5), une ligne par produit.
@@ -851,8 +952,18 @@ export async function demarrerPaiementWave(
     lng: input.lng,
   });
   if (!resolu.ok) return { ok: false, error: resolu.error };
-  const { zoneId, localiteId, lieuSpecialId, localiteNom, aConfirmer, lignesResolues, sousTotal, fraisLivraison, total } =
-    resolu.data;
+  const {
+    zoneId,
+    localiteId,
+    lieuSpecialId,
+    localiteNom,
+    aConfirmer,
+    lignesResolues,
+    sousTotal,
+    fraisLivraison,
+    total,
+    dateLivraisonFixe,
+  } = resolu.data;
 
   if (!paiementAutorise("wave", total)) {
     return { ok: false, error: "Le paiement Wave n'est pas disponible pour cette commande." };
@@ -917,8 +1028,9 @@ export async function demarrerPaiementWave(
   await figerMessageLivraison(commandeId as number, resolu.data.messageLivraison);
   await figerLienLocalisation(commandeId as number, input.lienLocalisation);
   await figerSourceEtDistance(commandeId as number, input.source, resolu.data.distanceLocaliteKm);
-  await figerDateLivraison(commandeId as number, input.modeLivraison);
+  await figerDateLivraison(commandeId as number, input.modeLivraison, dateLivraisonFixe);
   await figerPrixAchat(commandeId as number, lignesResolues);
+  await figerPromoExpress(commandeId as number, resolu.data.promoExpress);
   await annoterEbookClasses(commandeId as number, input.ebookClasses);
 
   // Signal de classement « commande » (poids 5). Enregistré à la création

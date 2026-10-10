@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, MessageCircle, Search } from "lucide-react";
 import { lienLocaliteLivraison } from "@/lib/whatsapp";
+import { normaliserTexteLieu } from "@/lib/checkout/lieu-special";
 import type { LieuSpecial } from "@/lib/supabase/types";
 
 // Sélection d'un lieu spécial (retrait, ville hors zone habituelle à
@@ -12,18 +13,15 @@ import type { LieuSpecial } from "@/lib/supabase/types";
 // l'alternative "je ne me fais pas livrer à domicile".
 export type SelectionLieuSpecial = { id: number; nom: string } | null;
 
-type Suggestion = { id: number; nom: string; norme: string };
+// `cles` = nom + mots-clés normalisés (migration 0119) : "poly thies" ou
+// "ept" retrouvent le lieu même quand ce n'est pas un sous-texte littéral
+// du nom officiel.
+type Suggestion = { id: number; nom: string; cles: string[] };
 
 const MAX_RESULTATS = 60;
 
-const MARQUES_DIACRITIQUES = new RegExp("[\\u0300-\\u036f]", "g");
 function normaliser(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(MARQUES_DIACRITIQUES, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  return normaliserTexteLieu(s);
 }
 
 type Props = {
@@ -41,8 +39,12 @@ export function LieuSpecialPicker({ lieuxSpeciaux, value, onChange }: Props) {
   const toutes: Suggestion[] = useMemo(
     () =>
       lieuxSpeciaux
-        .map((l) => ({ id: l.id, nom: l.nom, norme: normaliser(l.nom) }))
-        .sort((x, y) => x.norme.localeCompare(y.norme)),
+        .map((l) => ({
+          id: l.id,
+          nom: l.nom,
+          cles: [normaliser(l.nom), ...(l.mots_cles ?? []).map(normaliser)],
+        }))
+        .sort((x, y) => x.nom.localeCompare(y.nom)),
     [lieuxSpeciaux],
   );
 
@@ -51,14 +53,17 @@ export function LieuSpecialPicker({ lieuxSpeciaux, value, onChange }: Props) {
 
   const suggestions: Suggestion[] = useMemo(() => {
     if (!requete) return toutes.slice(0, MAX_RESULTATS);
-    // Priorité au début du nom, puis à l'intérieur ; alphabétique dans chaque groupe.
+    // Priorité au nom (préfixe, puis sous-chaîne), puis aux mots-clés seuls.
     const prefixe: Suggestion[] = [];
     const interieur: Suggestion[] = [];
+    const parMotCle: Suggestion[] = [];
     for (const s of toutes) {
-      if (s.norme.startsWith(requete)) prefixe.push(s);
-      else if (s.norme.includes(requete)) interieur.push(s);
+      const norme = s.cles[0];
+      if (norme.startsWith(requete)) prefixe.push(s);
+      else if (norme.includes(requete)) interieur.push(s);
+      else if (s.cles.some((c) => c === requete || c.includes(requete))) parMotCle.push(s);
     }
-    return [...prefixe, ...interieur].slice(0, MAX_RESULTATS);
+    return [...prefixe, ...interieur, ...parMotCle].slice(0, MAX_RESULTATS);
   }, [toutes, requete]);
 
   // Index actif borné à la liste courante (elle change à chaque frappe).

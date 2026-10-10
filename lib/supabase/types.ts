@@ -392,6 +392,18 @@ export type LieuSpecial = {
   mode: ModeLieuSpecial;
   message: string | null;
   created_at: string;
+  // Géolocalisation + rayon de couverture (migration 0119) : un point de
+  // livraison tombant dans ce rayon résout automatiquement ce lieu spécial,
+  // même sans sélection manuelle (ex: EPT via la recherche d'adresse).
+  lat: number | null;
+  lng: number | null;
+  rayon_m: number | null;
+  // Mots-clés (admin-éditables) qui déclenchent ce lieu quand tapés dans une
+  // recherche ("EPT", "polytechnique de thies"…).
+  mots_cles: string[];
+  // Date de livraison figée, sans date limite de commande (EPT : livraison
+  // groupée avant la rentrée). null = pas de date fixe, délai normal.
+  date_livraison_fixe: string | null;
 };
 
 export type ModeLivraison = "24h" | "6j";
@@ -503,6 +515,10 @@ export type Commande = {
   // couverture, ou une commande antérieure à ce lot.
   source_localisation: "position" | "lien" | "deplace" | null;
   distance_localite_km: number | null;
+  // Promo "express au prix normal" (TACHE_commandes_fournisseurs_promo_express.md
+  // Lot 4a, migration 0119) : true si frais_livraison a été aligné sur le tarif
+  // "à date donnée" par la promo du jour, figé à la création.
+  promo_express: boolean;
 };
 
 export type CommandeItem = {

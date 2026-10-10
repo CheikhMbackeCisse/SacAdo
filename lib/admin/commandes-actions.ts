@@ -59,6 +59,7 @@ function mapCommandeRow(
     est_test: row.est_test,
     source_localisation: row.source_localisation,
     distance_localite_km: row.distance_localite_km,
+    promo_express: row.promo_express,
     client_nom: client?.nom ?? "—",
     client_telephone: client?.telephone ?? "—",
     facture_id: facture?.id ?? null,

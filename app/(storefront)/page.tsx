@@ -1,6 +1,7 @@
 import { HeroCarousel } from "@/components/home/hero-carousel";
 import { CategoryScroll } from "@/components/home/category-scroll";
 import { Feed } from "@/components/home/feed";
+import { BandeauPromoExpress } from "@/components/home/bandeau-promo-express";
 import { getCategories } from "@/lib/supabase/queries";
 import { FondDecor } from "@/components/ui/fond-decor";
 
@@ -16,6 +17,7 @@ export default async function Home() {
   return (
     <div className="flex flex-col pb-6">
       <FondDecor variante="general" />
+      <BandeauPromoExpress />
       <HeroCarousel />
       <CategoryScroll categories={categories} />
       <h1 className="sr-only">

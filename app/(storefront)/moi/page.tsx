@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ClipboardList, Heart, History, LifeBuoy, Search } from "lucide-react";
+import { ClipboardList, Heart, History, LifeBuoy, Tag } from "lucide-react";
 import { NavIcon } from "@/components/layout/nav-icon";
 import { IconeBoiteReception } from "@/components/ui/icones-sacado";
 import { useIdentite } from "@/lib/local/identite";
@@ -10,9 +10,9 @@ import { useFavoris } from "@/lib/local/favoris";
 import { useConsultes } from "@/lib/local/consultes";
 import { getMessagesParTelephone } from "@/lib/moi/actions";
 import { getPopulaires, getProduitsByIds } from "@/lib/supabase/queries";
+import { getPromoExpressBandeau } from "@/lib/promo-express-public-actions";
 import { ProductGrid } from "@/components/product/product-grid";
 import { DemanderProduit } from "@/components/demande/demander-produit";
-import { IdentitePrompt } from "@/components/moi/identite-prompt";
 import type { Produit } from "@/lib/supabase/types";
 
 // 6 entrées disposées en 2 lignes × 3 colonnes (voir la grille plus bas).
@@ -24,7 +24,9 @@ const ONGLETS = [
   { href: "/moi/messages", label: "Boîte de réception", icon: IconeBoiteReception, img: undefined },
   { href: "/favoris", label: "Favoris", icon: Heart, img: undefined },
   { href: "/moi/consultes", label: "Déjà consultés", icon: History, img: undefined },
-  { href: "/recherche", label: "Rechercher un produit", icon: Search, img: "/images/moi-recherche.png" },
+  // Remplace "Rechercher un produit" (déjà dans le header) — TACHE_commandes_
+  // fournisseurs_promo_express.md Lot 5a.
+  { href: "/moi/promos", label: "Promos", icon: Tag, img: undefined },
 ] as const;
 
 const APERCU_MAX = 4;
@@ -34,9 +36,14 @@ export default function MoiPage() {
   const { favoris } = useFavoris();
   const { consultes } = useConsultes();
   const [nonLus, setNonLus] = useState(0);
+  const [promoActive, setPromoActive] = useState(false);
   const [favorisProduits, setFavorisProduits] = useState<Produit[]>([]);
   const [consultesProduits, setConsultesProduits] = useState<Produit[]>([]);
   const [autresProduits, setAutresProduits] = useState<Produit[]>([]);
+
+  useEffect(() => {
+    getPromoExpressBandeau().then((r) => setPromoActive(r.actif));
+  }, []);
 
   useEffect(() => {
     if (!identite?.jeton) return;
@@ -101,31 +108,23 @@ export default function MoiPage() {
                   {nonLusAffiches}
                 </span>
               )}
+              {label === "Promos" && promoActive && (
+                <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-action" aria-hidden="true" />
+              )}
             </span>
             <span className="line-clamp-2 text-[11px] leading-tight text-ink/70">{label}</span>
           </Link>
         ))}
       </div>
 
-      {/* Remplace l'écran de bienvenue plein écran (retiré du navigateur,
-          Search Console) : même formulaire nom/téléphone, en carte discrète,
-          déjà utilisé sur "Mes commandes" quand l'identité n'est pas connue. */}
-      {!identite && <IdentitePrompt contexte="vos commandes et votre boîte de réception" />}
-
-      {/* maj-accueil §2 : remplace "Trouver un produit avec une photo" par une
-          recherche texte (même moteur/synonymes que la barre principale, dans
-          un cadre) puis, hors cadre, l'envoi de la liste de fournitures. */}
-      <form action="/recherche" method="get" className="rounded-2xl border border-ink/10 bg-elevated p-3">
-        <label className="flex items-center gap-2 rounded-xl border border-ink/15 bg-surface px-3 py-2.5">
-          <Search size={16} className="text-ink/40" aria-hidden="true" />
-          <input
-            type="text"
-            name="q"
-            placeholder="Rechercher un produit"
-            className="w-full bg-transparent text-sm text-ink placeholder:text-ink/40 focus:outline-none"
-          />
-        </label>
-      </form>
+      {/* La recherche existe déjà dans le header (CLAUDE.md §5) : remplacée
+          ici par "Demander un produit" (Lot 5b) — la barre de recherche
+          principale fait déjà ce que faisait ce cadre. */}
+      <DemanderProduit
+        origine="moi"
+        variante="discret"
+        texteAmorce="Tu ne trouves pas un produit ? Décris-le, on le cherche pour toi."
+      />
       <DemanderProduit
         origine="liste_fournitures"
         variante="discret"

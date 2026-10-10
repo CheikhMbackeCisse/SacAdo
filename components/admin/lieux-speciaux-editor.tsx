@@ -71,6 +71,14 @@ export function LieuxSpeciauxEditor({ lieux }: { lieux: LieuSpecial[] }) {
                 </div>
               </div>
               {l.message && <p className="text-ink/60">{l.message}</p>}
+              {l.date_livraison_fixe && (
+                <p className="text-xs text-brand">Livraison figée le {l.date_livraison_fixe}</p>
+              )}
+              {l.lat != null && l.lng != null && (
+                <p className="text-[11px] text-ink/40">
+                  Reconnaissance : rayon {l.rayon_m ?? 0} m{l.mots_cles.length > 0 && ` · ${l.mots_cles.join(", ")}`}
+                </p>
+              )}
             </li>
           ))}
         </ul>
@@ -85,6 +93,11 @@ function FormLieuSpecial({ lieu, onFini }: { lieu: LieuSpecial | null; onFini: (
   const [mode, setMode] = useState<ModeLieuSpecial>(lieu?.mode ?? "livraison");
   const [tarif, setTarif] = useState(lieu?.tarif != null ? String(lieu.tarif) : "");
   const [message, setMessage] = useState(lieu?.message ?? "");
+  const [lat, setLat] = useState(lieu?.lat != null ? String(lieu.lat) : "");
+  const [lng, setLng] = useState(lieu?.lng != null ? String(lieu.lng) : "");
+  const [rayonM, setRayonM] = useState(lieu?.rayon_m != null ? String(lieu.rayon_m) : "800");
+  const [motsClesTexte, setMotsClesTexte] = useState((lieu?.mots_cles ?? []).join(", "));
+  const [dateLivraisonFixe, setDateLivraisonFixe] = useState(lieu?.date_livraison_fixe ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,6 +109,14 @@ function FormLieuSpecial({ lieu, onFini }: { lieu: LieuSpecial | null; onFini: (
       tarif: mode === "a_confirmer" ? null : Number(tarif),
       mode,
       message: message.trim() || null,
+      lat: lat.trim() ? Number(lat) : null,
+      lng: lng.trim() ? Number(lng) : null,
+      rayonM: lat.trim() && rayonM.trim() ? Number(rayonM) : null,
+      motsCles: motsClesTexte
+        .split(",")
+        .map((m) => m.trim())
+        .filter(Boolean),
+      dateLivraisonFixe: dateLivraisonFixe.trim() || null,
     };
     const res = lieu ? await modifierLieuSpecial(lieu.id, input) : await creerLieuSpecial(input);
     if (!res.ok) {
@@ -143,6 +164,59 @@ function FormLieuSpecial({ lieu, onFini }: { lieu: LieuSpecial | null; onFini: (
           maxLength={300}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          className={CHAMP}
+        />
+      </label>
+
+      <p className="text-xs font-medium text-ink/60">
+        Reconnaissance automatique <span className="text-ink/40">(facultatif)</span>
+      </p>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs font-medium text-ink/60">
+          Mots-clés (séparés par des virgules) — déclenchent ce lieu quand le client les tape
+        </span>
+        <input
+          value={motsClesTexte}
+          onChange={(e) => setMotsClesTexte(e.target.value)}
+          placeholder="EPT, polytechnique, poly thies"
+          className={CHAMP}
+        />
+      </label>
+
+      <div className="grid grid-cols-3 gap-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-ink/60">Latitude</span>
+          <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="14.78896" className={CHAMP} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-ink/60">Longitude</span>
+          <input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="-16.9246" className={CHAMP} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-ink/60">Rayon (m)</span>
+          <input
+            type="number"
+            min={1}
+            value={rayonM}
+            onChange={(e) => setRayonM(e.target.value)}
+            className={CHAMP}
+          />
+        </label>
+      </div>
+      <p className="text-[11px] text-ink/45">
+        Une épingle posée dans ce rayon autour de la position résout automatiquement ce lieu, même sans
+        sélection manuelle.
+      </p>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs font-medium text-ink/60">
+          Date de livraison figée <span className="text-ink/40">(facultatif, sans date limite de commande)</span>
+        </span>
+        <input
+          type="date"
+          value={dateLivraisonFixe}
+          onChange={(e) => setDateLivraisonFixe(e.target.value)}
           className={CHAMP}
         />
       </label>

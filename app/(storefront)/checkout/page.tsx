@@ -205,13 +205,17 @@ export default function CheckoutPage() {
     total: number;
     fraisLivraison: number;
     fraisLivraison24h: number;
+    fraisLivraison24hNormal: number;
     fraisLivraison6j: number;
     localiteNom: string;
     aConfirmer: boolean;
     messageLivraison: string | null;
     dateLivraisonPrevue: string;
+    dateLivraisonFixe: string | null;
     waveNomMarchand: string | null;
     paiementLivraisonMax: number | null;
+    promoExpress: boolean;
+    promoExpressHeureLimite: string | null;
   } | null>(null);
   const panierSignature = detail
     .map((d) => `${d.produit.id}:${d.variante?.id ?? 0}x${d.quantite}`)
@@ -247,13 +251,17 @@ export default function CheckoutPage() {
         total: r.total,
         fraisLivraison: r.fraisLivraison,
         fraisLivraison24h: r.fraisLivraison24h,
+        fraisLivraison24hNormal: r.fraisLivraison24hNormal,
         fraisLivraison6j: r.fraisLivraison6j,
         localiteNom: r.localiteNom,
         aConfirmer: r.aConfirmer,
         messageLivraison: r.messageLivraison,
         dateLivraisonPrevue: r.dateLivraisonPrevue,
+        dateLivraisonFixe: r.dateLivraisonFixe,
         waveNomMarchand: r.waveNomMarchand,
         paiementLivraisonMax: r.paiementLivraisonMax,
+        promoExpress: r.promoExpress,
+        promoExpressHeureLimite: r.promoExpressHeureLimite,
       });
     });
     return () => {
@@ -513,6 +521,12 @@ export default function CheckoutPage() {
             <Truck size={15} className="text-brand" aria-hidden="true" />
             Livraison
           </span>
+          {opts.dateLivraisonFixe && (
+            <p className="text-sm font-semibold text-ink">
+              Livraison le {formatDateLivraison(opts.dateLivraisonFixe)}
+              {opts.aConfirmer ? "" : ` · ${opts.fraisLivraison === 0 ? "Gratuite" : formatPrice(opts.fraisLivraison)}`}
+            </p>
+          )}
           <p className="text-sm text-ink/75">{opts.messageLivraison}</p>
         </section>
       ) : (
@@ -528,6 +542,11 @@ export default function CheckoutPage() {
                 : mode === "24h"
                   ? opts.fraisLivraison24h
                   : opts.fraisLivraison6j;
+            // Promo express (Lot 4a) : le prix barré n'a de sens que si la
+            // promo a réellement baissé le tarif express (sinon express =
+            // 6j par coïncidence, rien à mettre en avant).
+            const promoVisible =
+              mode === "24h" && opts?.promoExpress && prix != null && prix !== opts.fraisLivraison24hNormal;
             return (
               <button
                 key={mode}
@@ -548,13 +567,25 @@ export default function CheckoutPage() {
                       ? `Livraison le ${formatDateLivraison(opts.dateLivraisonPrevue)}`
                       : "Livraison à une date donnée"}
                 </span>
-                <span className="text-xs text-ink/50">
-                  {prix === null ? "—" : prix === 0 ? "Gratuite" : formatPrice(prix)}
-                </span>
+                {promoVisible ? (
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <span className="text-ink/40 line-through">{formatPrice(opts!.fraisLivraison24hNormal)}</span>
+                    <span className="font-semibold text-action">{prix === 0 ? "Gratuite" : formatPrice(prix!)}</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-ink/50">
+                    {prix === null ? "—" : prix === 0 ? "Gratuite" : formatPrice(prix)}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
+        {opts?.promoExpress && (
+          <p className="text-xs text-action">
+            Aujourd&apos;hui, la livraison express est au prix normal, jusqu&apos;à {opts.promoExpressHeureLimite}.
+          </p>
+        )}
       </section>
       )}
 

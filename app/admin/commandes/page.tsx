@@ -6,6 +6,8 @@ import {
   getMiniaturesParCommande,
   getModeleAppelWhatsApp,
 } from "@/lib/admin/commandes-actions";
+import { getLieuxSpeciauxDateFixe } from "@/lib/admin/lieux-speciaux-actions";
+import { formatDateLivraison } from "@/lib/format";
 import { STATUTS_COMMANDE_EFFECTUEE, STATUTS_COMMANDE_EN_ATTENTE } from "@/lib/commandes";
 import { CommandesListe } from "@/components/admin/commandes-liste";
 import type { StatutCommande } from "@/lib/supabase/types";
@@ -53,11 +55,12 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
   const offset = (page - 1) * TAILLE_PAGE;
   const statutsVue = vue === "effectuees" ? STATUTS_COMMANDE_EFFECTUEE : STATUTS_COMMANDE_EN_ATTENTE;
 
-  const [{ items: commandes, hasMore }, nbRecues, modeleAppel, compteursVue] = await Promise.all([
+  const [{ items: commandes, hasMore }, nbRecues, modeleAppel, compteursVue, lieuxDateFixe] = await Promise.all([
     getCommandesAdmin(filtre, { offset, limit: TAILLE_PAGE, dateLivraison, test, statutsVue, injoignable }),
     compterCommandesRecues(),
     getModeleAppelWhatsApp(),
     compterCommandesParVue(),
+    getLieuxSpeciauxDateFixe(),
   ]);
   const miniaturesMap = await getMiniaturesParCommande(commandes.map((c) => c.id));
   const miniatures = Object.fromEntries(miniaturesMap);
@@ -177,6 +180,24 @@ export default async function AdminCommandesPage(props: PageProps<"/admin/comman
           </Link>
         )}
       </form>
+
+      {/* Raccourcis vers les dates de livraison figées (EPT…), pour préparer
+          la tournée sans avoir à retaper la date (TACHE_bug_checkout_ept.md §4). */}
+      {lieuxDateFixe.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {lieuxDateFixe.map((l) => (
+            <Link
+              key={l.nom}
+              href={hrefAvec({ dateLivraison: l.date, page: 1 })}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                dateLivraison === l.date ? "border-brand bg-brand text-surface" : "border-ink/15 text-ink/70"
+              }`}
+            >
+              Livraison {l.nom} · {formatDateLivraison(l.date)}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {commandes.length === 0 ? (
         <p className="rounded-2xl border border-ink/10 bg-white px-4 py-8 text-center text-sm text-ink/50">
