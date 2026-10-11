@@ -7,6 +7,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { calculerPrixListe, type LigneListe } from "@/lib/listes";
 import { ligneEstAffichable } from "@/lib/kits";
 import { motifLigneCachee, type LigneCacheeAdmin } from "./motif-ligne-cachee";
+import { parserTexteImport } from "@/lib/listes-import";
+import { rechercherProduitsAdmin } from "./produits-actions";
 import type { Liste, Produit, StatutListe } from "@/lib/supabase/types";
 import type { ActionResult } from "./produits-actions";
 
@@ -273,4 +275,74 @@ export async function reordonnerListeItems(listeId: number, idsOrdonnes: number[
   const { error } = await supabaseAdmin.rpc("remplacer_liste_items", { p_liste_id: listeId, p_items: payload });
   if (error) return { ok: false, error: "Impossible de réordonner." };
   return { ok: true };
+}
+
+// --- Import depuis un texte collé (admin colle une liste, une ligne par
+// article ; voir lib/listes-import.ts pour le détail de l'extraction
+// libellé/quantité) -----------------------------------------------------
+
+export type CandidatImport = { id: number; nom: string; prix: number };
+export type LigneImportAnalysee = {
+  texte: string;
+  libelle: string;
+  quantite: number;
+  candidats: CandidatImport[];
+};
+
+const MAX_LIGNES_IMPORT = 200;
+
+// Étape 1 : découpe le texte collé et cherche, pour chaque ligne, les
+// meilleures correspondances dans le catalogue (même recherche que le
+// sélecteur "ajouter un article") — à valider/corriger côté client avant
+// création réelle de la liste.
+export async function analyserImportListe(texte: string): Promise<LigneImportAnalysee[]> {
+  await requireAdmin();
+  const lignes = parserTexteImport(texte).slice(0, MAX_LIGNES_IMPORT);
+
+  return Promise.all(
+    lignes.map(async (l) => {
+      const candidats = await rechercherProduitsAdmin(l.libelle, { limite: 5, exclureAncienneEdition: true });
+      return {
+        texte: l.texteOriginal,
+        libelle: l.libelle,
+        quantite: l.quantite,
+        candidats: candidats.map((p) => ({ id: p.id, nom: p.nom, prix: p.prix })),
+      };
+    }),
+  );
+}
+
+// Étape 2 : l'admin a choisi/corrigé un produit par ligne retenue (certaines
+// lignes sans bonne correspondance peuvent avoir été décochées côté client,
+// elles n'arrivent jamais ici). Deux lignes résolues vers le même produit
+// (ex: deux libellés différents du papier qui désignent le même article du
+// catalogue) sont fusionnées — liste_items a une contrainte unique sur
+// (liste_id, produit_id).
+export async function creerListeDepuisImport(
+  titre: string,
+  lignes: { produitId: number; quantite: number }[],
+): Promise<ActionResult & { id?: number }> {
+  await requireAdmin();
+  if (!texteNonVide(titre, 200)) return { ok: false, error: "Le titre est requis." };
+  if (lignes.length === 0) return { ok: false, error: "Aucun article sélectionné." };
+
+  const quantiteParProduit = new Map<number, number>();
+  for (const l of lignes) {
+    quantiteParProduit.set(l.produitId, (quantiteParProduit.get(l.produitId) ?? 0) + l.quantite);
+  }
+
+  const creation = await creerListe({ titre });
+  if (!creation.ok || !creation.id) return creation;
+
+  const payload = [...quantiteParProduit.entries()].map(([produit_id, quantite_defaut], ordre) => ({
+    liste_id: creation.id,
+    produit_id,
+    quantite_defaut: Math.max(1, Math.min(999, quantite_defaut)),
+    coche_defaut: true,
+    ordre,
+  }));
+
+  const { error } = await supabaseAdmin.from("liste_items").insert(payload);
+  if (error) return { ok: false, error: "Liste créée, mais l'ajout des articles a échoué." };
+  return { ok: true, id: creation.id };
 }

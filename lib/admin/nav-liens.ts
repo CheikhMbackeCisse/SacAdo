@@ -97,6 +97,7 @@ export const ENTREES_PRINCIPALES_DESKTOP: typeof ENTREES_PRINCIPALES = [
   { href: "/admin/achats", label: "Fournisseurs", icon: ShoppingBag },
   { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/kits", label: "Kits", icon: GraduationCap },
+  { href: "/admin/listes", label: "Listes personnalisées", icon: ListChecks },
   { href: "/admin/trafic", label: "Trafic", icon: Activity },
   { href: "/admin/plus", label: "Plus", icon: Menu },
 ];
